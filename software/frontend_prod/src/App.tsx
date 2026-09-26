@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getMe, logout, type User } from './api'
 import { AuthCard } from './components/AuthCard'
 import { Portfolio } from './components/Portfolio'
-import { Shell, type Section } from './components/Shell'
+import { Shell } from './components/Shell'
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -10,7 +10,6 @@ export default function App() {
   const [section, setSection] = useState<Section>('strategies')
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
-  const [sessionError, setSessionError] = useState<string | null>(null)
 
   useEffect(() => {
     let ignore = false
@@ -39,7 +38,6 @@ export default function App() {
     try {
       await logout()
       setUser(null)
-      setSection('strategies')
     } catch (error) {
       setLogoutError(error instanceof Error ? error.message : 'Could not sign out.')
     } finally {
@@ -72,36 +70,12 @@ export default function App() {
         </div>
       </div>
     )
-  } else if (section === 'account') {
-    main = (
-      <section className="account">
-        <h1>Account</h1>
-        <p className="subtitle">Signed in as {user.email}</p>
-        {logoutError ? (
-          <p className="form-error" role="alert">
-            {logoutError}
-          </p>
-        ) : null}
-        <button type="button" className="primary" onClick={handleLogout} disabled={loggingOut}>
-          Sign out
-        </button>
-      </section>
-    )
   } else {
-    main = (
-      <>
-        {logoutError ? (
-          <p className="form-error banner" role="alert">
-            {logoutError}
-          </p>
-        ) : null}
-        <Portfolio />
-      </>
-    )
+    main = <Portfolio />
   }
 
   return (
-    <Shell user={user} section={user ? section : 'strategies'} onSection={setSection}>
+    <Shell user={user} onLogout={handleLogout} loggingOut={loggingOut} logoutError={logoutError}>
       {main}
     </Shell>
   )
