@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User } from '../api'
-import { DUMMY_BALANCE, displayName } from '../strategies'
+import { displayName } from '../strategies'
 
 type Props = {
   user: User | null
@@ -74,7 +74,6 @@ export function Shell({ user, onLogout, loggingOut, logoutError, flush = false, 
             <div className="user-menu" role="menu">
               <p className="user-menu-name">{displayName(user.email)}</p>
               <p className="user-menu-email">{user.email}</p>
-              <p className="user-menu-balance">{DUMMY_BALANCE}</p>
               {logoutError ? (
                 <p className="form-error" role="alert">
                   {logoutError}
