@@ -11,7 +11,7 @@ from pydantic import BaseModel
 import helpers.auth as auth
 from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, search_symbols
 
-app = FastAPI(title="Ticker search")
+app = FastAPI(title="Mantis Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
