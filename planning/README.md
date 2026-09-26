@@ -8,10 +8,21 @@ Here is a list of preliminary tasks that need to be done to ensure frontend func
 - /authenticate_user
 - /delete_user
 
+### TODO
+- Develop schema for users
+- Implement basic authentication
+- Only allow user to access their strategies when signed in and not others
+  - Important to ensure confidential strategies
+
 ### Discussion Page
 - /create_post
 - /comment_post
 - /like_post
+
+#### TODO
+- Develop schema for posts
+  - Needs to be able to reference a algorithm or stock
+- Create basic endpoints for posts
 
 ### Algorithm Sandbox
 - /publish_algorithm
@@ -19,11 +30,43 @@ Here is a list of preliminary tasks that need to be done to ensure frontend func
 - /update_algorithm
 - /share_algorithm
 
+#### TODO
+- Develop schema for algorithm storage
+- Create basic endpoints for algorithm storage
+
 ### Backtest Analysis
 - /backtest_algorithm
 - /view_backtest_orders
 - /view_backtest_balance
 - /view_backtest_metrics
+
+#### TODO
+- Create sample schema for backtest
+- Develop schema for naive backtest metric storage
+  - orders
+  - balance
+  - overall_performance (can be derived from the balance and orders)
+    - max_drawdown
+    - cagr (compound annual growth rate)
+    - alpha (optional - depends on if you have time) (requires risk free rate from treasury)
+    - sharpe ratio (we need to assume a constant sharpe ratio)
+    - num_trades
+    - num_trades_won
+    - num_trades_lost
+    - expected_win_loss_per_trade
+    - avg_win_amount
+    - avg_loss_amount
+    - gross_p_and_l
+    - distribution_of_trade_returns
+- Develop schema for market data
+  - tickers
+- Get historical bars market data for subset of relevant stocks
+- Upload data to some sort of database (postgres or otherwise)
+- Build dummy backtest function which will produce dummy orders and metrics
+- Figure out how to convert a basic strategy outputed as json from react-flow to valid assembly
+- Figure out how to flash the FPGA with the assembly, run the code, and get results
+- Integrate FPGA part into dummy backtest function with order and balance saving
+- Finalize endpoints
 
 ## Frontend System Description
 
@@ -33,6 +76,11 @@ Here is a list of preliminary tasks that need to be done to ensure frontend func
 - Allow users to like a discussion
 - Posts can reference stocks or algorithms
 
+#### TODO
+- Create UI for discussion viewing
+- Create UI for discussion commenting
+- Create UI for discussion posting
+
 ### Algorithm Sandbox
 - Should allows users to develop an algorithm in a sandbox with a node based UI
 - Should allows users to backtest that algorithm
@@ -41,19 +89,20 @@ Here is a list of preliminary tasks that need to be done to ensure frontend func
 - Should allow users to deploy that algorithm (Can be placebo)
 - Should allow users to prompt a inbuilt agent for assistance with crafting an algorithm
 
+#### TODO
+- Finalize the blocks we need available to a user on react flow
+- Implement react-flow and UI for frontend
+- Add UI for AI collaboration
+- Add UI for backtesting
+- Add UI for viewing results of backtest
+- Add UI for viewing past revisions of a strategy
+
 ### Algorithm Home
 - Should have ability to create multiple algorithm sandboxes
 - Should have ability for users to edit these sandboxes
 - Should have ability for users to view history of iterations for the algorithm (only save iterations that have been backtested)
 - Should have total number of programs and overall statistics (post engagement, algorithm statuses, ect.)
 
-
-1. Create the program to retrieve stock data for 5 years for NASDAQ 100 stocks and store in MongoDB
-2. Come up with series of blocks that can be used on frontend to create strategies
-3. Write basic algorithm on frontend using the blocks created in #2
-4. Write a function that converts the block code to assembly (translation logic - basic)
-5. Create unit tests for #4 to ensure robust implementation for translation logic
-6. Test preliminary program compiling on FPGA
-7. Create OP Codes for FPGA
-8. Run a sample program on FPGA and get results
-9. Make the main endpoint for taking in JSON algorithm, parsing it, running the aseembly on FPGA, getting results
+#### TODO
+- Add ability to create a new sandbox
+- Add overall statistics
