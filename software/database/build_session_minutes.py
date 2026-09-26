@@ -151,22 +151,6 @@ def connect() -> psycopg.Connection:
     conn.execute("SET TIME ZONE 'UTC'")
     return conn
 
-
-def collect_symbols(tickers: list[str]) -> list[str]:
-    ordered: list[str] = []
-    seen: set[str] = set()
-    for ticker in tickers:
-        for item in ticker.split(","):
-            symbol = item.strip().upper()
-            if not symbol or symbol in seen:
-                continue
-            seen.add(symbol)
-            ordered.append(symbol)
-    if not ordered:
-        raise RuntimeError("Pass at least one symbol, for example AAPL META")
-    return ordered
-
-
 def execute_sql_file(conn: psycopg.Connection, name: str) -> None:
     script = (SQL_DIR / name).read_text()
     statement = []
@@ -202,7 +186,7 @@ def rebuild_trading_minutes(conn: psycopg.Connection) -> int:
         ) AS gs(ts)
         """
     )
-    minutes = conn.execute("SELECT count(*) FROM trading_minutes").fetchone()[0]
+    minutes = conn.execute("SELECT count(*) FROM trading_minutes").fetchone()[0] #type:ignore
     print(f"trading_minutes: {minutes}")
     return int(minutes)
 
@@ -247,7 +231,7 @@ def fill_symbol(conn: psycopg.Connection, symbol: str) -> int:
         f"sessions={stored[3]} carried={stored[1]} rows={stored[2]} "
         f"listing_start={first[0]}"
     )
-    return int(stored[2])
+    return int(stored[2]) # type:ignore
 
 
 def build_session_minutes(symbols: list[str]) -> None:
@@ -262,14 +246,22 @@ def build_session_minutes(symbols: list[str]) -> None:
         conn.close()
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Forward-fill minute closes onto the NYSE session clock."
-    )
-    parser.add_argument("symbols", nargs="+", help="Tickers, for example AAPL META")
-    args = parser.parse_args()
-    build_session_minutes(collect_symbols(args.symbols))
+def get_symbols(file_path: str) -> list[str]:
+    # reads a list of symbols in from a file path
+
+    with open(file_path, "r") as f:
+        symbols = [item.replace("\n", "").strip() for item in f.readlines()]
+        return symbols
+
+    return []
 
 
 if __name__ == "__main__":
-    main()
+
+    nasdaq_stocks = get_symbols("symbols/nasdaq.txt")
+    build_session_minutes(nasdaq_stocks)
+
+    sponsor_stocks = get_symbols("symbols/sponsors.txt")
+    build_session_minutes(sponsor_stocks)
+
+
