@@ -1,0 +1,173 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2026.1 (win64) Build 6511674 Tue Jun 16 11:02:23 MDT 2026
+| Date         : Fri Sep 25 22:18:07 2026
+| Host         : Abhay_PC running 64-bit major release  (build 9200)
+| Command      : report_drc -file {C:/Users/abhay/OneDrive/Documents/projects/Trade CPU/checkpoints/reports/impl_drc.rpt}
+| Design       : tradecpu_top
+| Device       : xc7s50csga324-2
+| Speed File   : -2
+| Design State : Fully Routed
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+Report DRC
+
+Table of Contents
+-----------------
+1. REPORT SUMMARY
+2. REPORT DETAILS
+
+1. REPORT SUMMARY
+-----------------
+            Netlist: tradecpu_top
+          Floorplan: design_1
+      Design limits: <entire design considered>
+           Ruledeck: default
+             Max checks: <unlimited>
+             Checks found: 27
++-----------+----------+----------------------------+--------+
+| Rule      | Severity | Description                | Checks |
++-----------+----------+----------------------------+--------+
+| CHECK-3   | Warning  | Report rule limit reached  | 1      |
+| DPIP-1    | Warning  | Input pipelining           | 6      |
+| REQP-1840 | Warning  | RAMB18 async control check | 20     |
++-----------+----------+----------------------------+--------+
+
+2. REPORT DETAILS
+-----------------
+CHECK-3#1 Warning
+Report rule limit reached  
+REQP-1840 rule limit reached: 20 violations have been found.
+Related violations: <none>
+
+DPIP-1#1 Warning
+Input pipelining  
+DSP u_core/u_alu/result0 input u_core/u_alu/result0/A[29:0] is not pipelined. Pipelining DSP48 input will improve performance.
+Related violations: <none>
+
+DPIP-1#2 Warning
+Input pipelining  
+DSP u_core/u_alu/result0 input u_core/u_alu/result0/B[17:0] is not pipelined. Pipelining DSP48 input will improve performance.
+Related violations: <none>
+
+DPIP-1#3 Warning
+Input pipelining  
+DSP u_core/u_alu/result0__0 input u_core/u_alu/result0__0/A[29:0] is not pipelined. Pipelining DSP48 input will improve performance.
+Related violations: <none>
+
+DPIP-1#4 Warning
+Input pipelining  
+DSP u_core/u_alu/result0__0 input u_core/u_alu/result0__0/B[17:0] is not pipelined. Pipelining DSP48 input will improve performance.
+Related violations: <none>
+
+DPIP-1#5 Warning
+Input pipelining  
+DSP u_core/u_alu/result0__1 input u_core/u_alu/result0__1/A[29:0] is not pipelined. Pipelining DSP48 input will improve performance.
+Related violations: <none>
+
+DPIP-1#6 Warning
+Input pipelining  
+DSP u_core/u_alu/result0__1 input u_core/u_alu/result0__1/B[17:0] is not pipelined. Pipelining DSP48 input will improve performance.
+Related violations: <none>
+
+REQP-1840#1 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[11] (net: u_core/u_control_unit/p_0_in[6]) which is driven by a register (u_core/u_control_unit/pc_reg[0]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#2 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[11] (net: u_core/u_control_unit/p_0_in[6]) which is driven by a register (u_core/u_control_unit/pc_reg[1]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#3 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[11] (net: u_core/u_control_unit/p_0_in[6]) which is driven by a register (u_core/u_control_unit/pc_reg[2]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#4 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[12] (net: u_core/u_control_unit/p_0_in[7]) which is driven by a register (u_core/u_control_unit/pc_reg[0]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#5 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[12] (net: u_core/u_control_unit/p_0_in[7]) which is driven by a register (u_core/u_control_unit/pc_reg[1]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#6 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[12] (net: u_core/u_control_unit/p_0_in[7]) which is driven by a register (u_core/u_control_unit/pc_reg[2]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#7 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[12] (net: u_core/u_control_unit/p_0_in[7]) which is driven by a register (u_core/u_control_unit/pc_reg[3]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#8 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[12] (net: u_core/u_control_unit/p_0_in[7]) which is driven by a register (u_core/u_control_unit/pc_reg[4]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#9 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[12] (net: u_core/u_control_unit/p_0_in[7]) which is driven by a register (u_core/u_control_unit/pc_reg[5]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#10 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[12] (net: u_core/u_control_unit/p_0_in[7]) which is driven by a register (u_core/u_control_unit/pc_reg[6]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#11 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[12] (net: u_core/u_control_unit/p_0_in[7]) which is driven by a register (u_core/u_control_unit/pc_reg[7]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#12 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[0]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#13 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[1]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#14 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[2]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#15 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[3]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#16 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[4]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#17 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[5]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#18 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[6]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#19 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[7]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+REQP-1840#20 Warning
+RAMB18 async control check  
+The RAMB18E1 u_core/u_control_unit/prog_mem_reg_1 has an input control pin u_core/u_control_unit/prog_mem_reg_1/ADDRARDADDR[13] (net: u_core/u_control_unit/p_0_in[8]) which is driven by a register (u_core/u_control_unit/pc_reg[8]) that has an active asychronous set or reset. This may cause corruption of the memory contents and/or read values when the set/reset is asserted and is not analyzed by the default static timing analysis. It is suggested to eliminate the use of a set/reset to registers driving this RAMB pin or else use a synchronous reset in which the assertion of the reset is timed by default.
+Related violations: <none>
+
+

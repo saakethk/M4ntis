@@ -1,0 +1,38 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2026.1 (win64) Build 6511674 Tue Jun 16 11:02:23 MDT 2026
+| Date         : Fri Sep 25 22:18:04 2026
+| Host         : Abhay_PC running 64-bit major release  (build 9200)
+| Command      : report_utilization -hierarchical -file {C:/Users/abhay/OneDrive/Documents/projects/Trade CPU/checkpoints/reports/impl_utilization_hier.rpt}
+| Design       : tradecpu_top
+| Device       : xc7s50csga324-2
+| Speed File   : -2
+| Design State : Routed
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Utilization Design Information
+
+Table of Contents
+-----------------
+1. Utilization by Hierarchy
+
+1. Utilization by Hierarchy
+---------------------------
+
++-------------------------+---------------+------------+------------+---------+------+------+--------+--------+------------+
+|         Instance        |     Module    | Total LUTs | Logic LUTs | LUTRAMs | SRLs |  FFs | RAMB36 | RAMB18 | DSP Blocks |
++-------------------------+---------------+------------+------------+---------+------+------+--------+--------+------------+
+| tradecpu_top            |         (top) |       1306 |       1222 |      84 |    0 | 1104 |      0 |      2 |          3 |
+|   (tradecpu_top)        |         (top) |          9 |          9 |       0 |    0 |   13 |      0 |      0 |          0 |
+|   u_core                | tradecpu_core |       1297 |       1213 |      84 |    0 | 1091 |      0 |      2 |          3 |
+|     u_var_store         |     var_store |         64 |         64 |       0 |    0 |  240 |      0 |      0 |          0 |
+|     u_control_unit      |  control_unit |        308 |        308 |       0 |    0 |   52 |      0 |      2 |          0 |
+|     u_divider           |       divider |        181 |        181 |       0 |    0 |  104 |      0 |      0 |          0 |
+|     u_register_file     | register_file |        417 |        417 |       0 |    0 |  256 |      0 |      0 |          0 |
+|     u_stock_buffers     | stock_buffers |         98 |         38 |      60 |    0 |  110 |      0 |      0 |          0 |
+|     u_uart_protocol     | uart_protocol |        164 |        140 |      24 |    0 |  220 |      0 |      0 |          0 |
+|       (u_uart_protocol) | uart_protocol |        128 |        128 |       0 |    0 |  212 |      0 |      0 |          0 |
++-------------------------+---------------+------------+------------+---------+------+------+--------+--------+------------+
+* Note: The sum of lower-level cells may be larger than their parent cells total, due to cross-hierarchy LUT combining
+
+

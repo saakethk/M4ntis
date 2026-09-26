@@ -1,0 +1,5 @@
+top:                 tradecpu_top (xc7s50csga324-2)
+primitive cells:     3060 (post-synthesis)
+worst setup slack:   5.310 ns  (clock clk50_mmcm, requirement 20.000 ns)
+worst setup path:    u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK -> u_core/u_register_file/registers_reg[7][31]/D
+worst hold slack:    0.072 ns
