@@ -1,16 +1,23 @@
 # Database
-All the code necessary for initializing the database with the necessary data and schemas.
 
-## User
+## stock_minute_bars
 
-## Algorithm
+1-minute equity bars. Timescale hypertable on `ts`.
 
-## Backtest
+| Column | Type |
+| --- | --- |
+| symbol | TEXT NOT NULL |
+| ts | TIMESTAMPTZ NOT NULL |
+| open | DOUBLE PRECISION NOT NULL |
+| high | DOUBLE PRECISION NOT NULL |
+| low | DOUBLE PRECISION NOT NULL |
+| close | DOUBLE PRECISION NOT NULL |
+| volume | BIGINT NOT NULL |
+| trade_count | BIGINT |
+| vwap | DOUBLE PRECISION |
 
-## Posts
+Primary key: `(symbol, ts)`.
 
-## Market data
+DDL: [`sql/stock_minute_bars.sql`](sql/stock_minute_bars.sql).
 
-`schema_dev.ipynb` creates the Timescale hypertable `stock_minute_bars` and loads five years of 1-minute bars for AAPL and META from Alpaca. META bars before the 2022-06-09 rename are read as `FB` and stored as `META`.
-
-Copy `.env.example` to `.env` in the repo root and fill in the Alpaca and Tiger Data variables, then run the notebook from the repo root. The default Alpaca feed is `iex`. Set `ALPACA_DATA_FEED=sip` when the account includes SIP.
+Load bars with `python software/database/load_minute_bars.py AAPL`.
