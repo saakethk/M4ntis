@@ -3,6 +3,7 @@ import { listStrategies } from '../api'
 import {
   formatDrawdown,
   formatPct,
+  portfolioChoice,
   portfolioStrategies,
   type Strategy,
   type StrategyStatus,
@@ -62,6 +63,15 @@ function metricText(value: number | null, format: (value: number) => string): st
   return value === null ? '–' : format(value)
 }
 
+function GetStartedCard({ onNew }: { onNew: () => void }) {
+  return (
+    <button type="button" className="get-started" onClick={onNew}>
+      <span className="get-started-title">Get Started</span>
+      <span className="get-started-copy">Create a strategy and open the editor.</span>
+    </button>
+  )
+}
+
 function StrategyCard({ strategy, onEdit }: { strategy: Strategy; onEdit: (id: string) => void }) {
   const returnClass =
     strategy.returnPct === null ? 'metric-value' : strategy.returnPct < 0 ? 'metric-value down' : 'metric-value up'
@@ -107,17 +117,22 @@ export function Portfolio({ onNew, onEdit }: { onNew: () => void; onEdit: (id: s
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [statusOpen, setStatusOpen] = useState(false)
-  const [strategies, setStrategies] = useState<Strategy[]>(() => portfolioStrategies(null))
+  const [strategies, setStrategies] = useState<Strategy[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const statusRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let ignore = false
     listStrategies()
       .then((rows) => {
-        if (!ignore) setStrategies(portfolioStrategies(rows))
+        if (ignore) return
+        setLoadError(null)
+        setStrategies(portfolioStrategies(rows))
       })
-      .catch(() => {
-        if (!ignore) setStrategies(portfolioStrategies(null))
+      .catch((error: unknown) => {
+        if (ignore) return
+        setStrategies([])
+        setLoadError(error instanceof Error ? error.message : 'Could not load strategies.')
       })
     return () => {
       ignore = true
@@ -142,7 +157,12 @@ export function Portfolio({ onNew, onEdit }: { onNew: () => void; onEdit: (id: s
 
   const selected = FILTERS.find((item) => item.id === status) ?? FILTERS[0]
   const needle = query.trim().toLowerCase()
-  const catalog = strategies
+  const catalog = strategies ?? []
+  const choice = portfolioChoice({
+    loading: strategies === null,
+    failed: loadError != null,
+    count: catalog.length,
+  })
   const visible = catalog.filter((strategy) => {
     const matchesName = needle.length === 0 || strategy.name.toLowerCase().includes(needle)
     const matchesStatus = status === 'all' || strategy.status === status
@@ -156,65 +176,78 @@ export function Portfolio({ onNew, onEdit }: { onNew: () => void; onEdit: (id: s
           <h1>My Strategies</h1>
           <p className="subtitle">Manage, test, and deploy automated trading models.</p>
         </div>
-        <button type="button" className="primary" onClick={onNew}>
-          + New Strategy
-        </button>
-      </div>
-      <div className="toolbar">
-        <label className="search">
-          <SearchIcon />
-          <input
-            type="search"
-            placeholder="Search by name..."
-            aria-label="Search by name"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        <div className="status-filter" ref={statusRef}>
-          <button
-            type="button"
-            className="status-btn"
-            aria-haspopup="listbox"
-            aria-expanded={statusOpen}
-            onClick={() => setStatusOpen((open) => !open)}
-          >
-            Status: {selected.label}
-            <Chevron />
+        {choice === 'list' || choice === 'error' ? (
+          <button type="button" className="primary" onClick={onNew}>
+            + New Strategy
           </button>
-          {statusOpen ? (
-            <ul className="status-menu" role="listbox" aria-label="Status">
-              {FILTERS.map((item) => (
-                <li key={item.id}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={item.id === status}
-                    onClick={() => {
-                      setStatus(item.id)
-                      setStatusOpen(false)
-                    }}
-                  >
-                    {item.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
+        ) : null}
       </div>
+      {choice === 'list' ? (
+        <div className="toolbar">
+          <label className="search">
+            <SearchIcon />
+            <input
+              type="search"
+              placeholder="Search by name..."
+              aria-label="Search by name"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <div className="status-filter" ref={statusRef}>
+            <button
+              type="button"
+              className="status-btn"
+              aria-haspopup="listbox"
+              aria-expanded={statusOpen}
+              onClick={() => setStatusOpen((open) => !open)}
+            >
+              Status: {selected.label}
+              <Chevron />
+            </button>
+            {statusOpen ? (
+              <ul className="status-menu" role="listbox" aria-label="Status">
+                {FILTERS.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={item.id === status}
+                      onClick={() => {
+                        setStatus(item.id)
+                        setStatusOpen(false)
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       <div className="cards">
-        {visible.map((strategy) => (
-          <StrategyCard key={strategy.id} strategy={strategy} onEdit={onEdit} />
-        ))}
-        {visible.length === 0 ? <p className="empty">No strategies match.</p> : null}
-        <button type="button" className="add-card" onClick={onNew}>
-          <PlusIcon />
-          <span className="add-title">Add new strategy</span>
-          <span className="add-copy">
-            Create another project card and keep your portfolio organized in a clean grid.
-          </span>
-        </button>
+        {choice === 'loading' ? <p className="empty">Loading strategies…</p> : null}
+        {choice === 'error' ? (
+          <p className="empty" role="alert">
+            {loadError}
+          </p>
+        ) : null}
+        {choice === 'get-started' ? <GetStartedCard onNew={onNew} /> : null}
+        {choice === 'list'
+          ? visible.map((strategy) => <StrategyCard key={strategy.id} strategy={strategy} onEdit={onEdit} />)
+          : null}
+        {choice === 'list' && visible.length === 0 ? <p className="empty">No strategies match.</p> : null}
+        {choice === 'list' ? (
+          <button type="button" className="add-card" onClick={onNew}>
+            <PlusIcon />
+            <span className="add-title">Add new strategy</span>
+            <span className="add-copy">
+              Create another project card and keep your portfolio organized in a clean grid.
+            </span>
+          </button>
+        ) : null}
       </div>
     </section>
   )
