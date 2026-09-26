@@ -20,7 +20,7 @@ Unique key: `(symbol, ts)`, including the `ts` partition column. A reload does n
 
 DDL: [`sql/stock_minute_bars.sql`](sql/stock_minute_bars.sql). Dedupe: [`sql/dedupe_stock_minute_bars.sql`](sql/dedupe_stock_minute_bars.sql).
 
-Load bars with `python software/database/load_minute_bars.py AAPL`.
+Load bars with `python software/database/load_minute_bars.py`.
 
 ## trading_days
 
