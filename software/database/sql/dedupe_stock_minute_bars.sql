@@ -3,12 +3,13 @@
 -- Safe to run more than once. A unique index on (symbol, ts) already makes
 -- exact duplicates impossible, so this returns immediately. Otherwise it
 -- counts duplicates with a normal aggregate. That aggregate works on a
--- columnstore chunk. ctid does not: transparent decompression only supports
--- the tableoid system column, and selecting ctid raises InvalidColumnReference.
+-- columnstore chunk.
 --
--- ctid is used only after a duplicate exists. Compressed chunks are
--- decompressed first so the earliest stored copy (smallest ctid) can be kept.
--- A later columnstore policy compresses those chunks again.
+-- ctid does not. Transparent decompression only supports the tableoid system
+-- column, and selecting ctid raises InvalidColumnReference. When any chunk is
+-- compressed, duplicates are collapsed by rewriting distinct (symbol, ts)
+-- rows. ctid is used only when every chunk is a normal row chunk, where it
+-- identifies the earliest stored copy.
 
 CREATE OR REPLACE FUNCTION dedupe_stock_minute_bars()
 RETURNS bigint
@@ -16,7 +17,10 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     removed bigint := 0;
+    total_rows bigint;
+    kept_rows bigint;
     has_duplicate boolean;
+    has_compressed boolean := false;
 BEGIN
     IF to_regclass('stock_minute_bars') IS NULL THEN
         RETURN 0;
@@ -63,10 +67,45 @@ BEGIN
         RETURN 0;
     END IF;
 
-    -- Planned only when Timescale is installed and a duplicate minute exists.
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
-        PERFORM decompress_chunk(chunk, if_compressed => true)
-        FROM show_chunks('stock_minute_bars') AS chunk;
+        SELECT EXISTS (
+            SELECT 1
+            FROM timescaledb_information.chunks
+            WHERE hypertable_name = 'stock_minute_bars'
+              AND is_compressed
+        )
+        INTO has_compressed;
+    END IF;
+
+    IF has_compressed THEN
+        DROP TABLE IF EXISTS pg_temp.stock_minute_bars_dedupe_keep;
+        CREATE TEMP TABLE stock_minute_bars_dedupe_keep ON COMMIT DROP AS
+        SELECT DISTINCT ON (symbol, ts)
+            symbol,
+            ts,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            trade_count,
+            vwap
+        FROM stock_minute_bars
+        ORDER BY symbol, ts;
+
+        SELECT count(*) INTO total_rows FROM stock_minute_bars;
+        SELECT count(*) INTO kept_rows FROM stock_minute_bars_dedupe_keep;
+        removed := total_rows - kept_rows;
+
+        TRUNCATE stock_minute_bars;
+        INSERT INTO stock_minute_bars (
+            symbol, ts, open, high, low, close, volume, trade_count, vwap
+        )
+        SELECT
+            symbol, ts, open, high, low, close, volume, trade_count, vwap
+        FROM stock_minute_bars_dedupe_keep;
+
+        RETURN removed;
     END IF;
 
     DROP TABLE IF EXISTS pg_temp.stock_minute_bars_dedupe_extra;
