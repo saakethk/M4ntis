@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 import main
 import helpers.symbols as symbols
+from helpers.db import env_port
 from helpers.symbols import Instrument
 
 SYMBOLS = [
@@ -90,6 +94,51 @@ class SymbolRoutesTest(unittest.TestCase):
         with patch.object(symbols, "list_symbols", side_effect=RuntimeError("missing env")):
             response = self.client.get("/symbols", params={"q": "A"})
         self.assertEqual(response.status_code, 503)
+
+
+class EnvPortTest(unittest.TestCase):
+    def test_repo_env_file_sets_backend_port_and_blank_frontend_uses_default(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".env").write_text("BACKEND_PORT=8123\nFRONTEND_PORT=\n", encoding="utf-8")
+            with patch.dict(os.environ, {}, clear=True):
+                os.environ.pop("BACKEND_PORT", None)
+                os.environ.pop("FRONTEND_PORT", None)
+                with patch("helpers.db._repo_root", return_value=root):
+                    self.assertEqual(env_port("BACKEND_PORT", 8001), 8123)
+                    self.assertEqual(env_port("FRONTEND_PORT", 8002), 8002)
+
+    def test_process_environment_overrides_env_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / ".env").write_text("BACKEND_PORT=1111\n", encoding="utf-8")
+            with patch.dict(os.environ, {"BACKEND_PORT": "2222"}, clear=True):
+                with patch("helpers.db._repo_root", return_value=root):
+                    self.assertEqual(env_port("BACKEND_PORT", 8001), 2222)
+
+    def test_non_integer_port_fails(self) -> None:
+        with patch.dict(os.environ, {"BACKEND_PORT": "80abc"}, clear=True):
+            with patch("helpers.db.load_dotenv"):
+                with self.assertRaises(ValueError) as caught:
+                    env_port("BACKEND_PORT", 8001)
+        self.assertIn("BACKEND_PORT", str(caught.exception))
+        self.assertIn("80abc", str(caught.exception))
+
+    def test_cors_allows_configured_frontend_port_and_dev_origins(self) -> None:
+        origins = main.frontend_origins(9002)
+        self.assertEqual(
+            origins,
+            [
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5173",
+                "http://0.0.0.0:9002",
+                "http://localhost:9002",
+                "http://127.0.0.1:9002",
+            ],
+        )
+        self.assertNotIn("*", origins)
 
 
 if __name__ == "__main__":

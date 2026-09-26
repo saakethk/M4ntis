@@ -21,3 +21,4 @@ This is the code to expose the backend code like the FPGA interface and such to 
 ## To Run
 1. cd software/backend
 2. python main.py
+   The listen port comes from BACKEND_PORT in the repo-root .env (default 8001). The frontend dev server uses FRONTEND_PORT (default 8002).

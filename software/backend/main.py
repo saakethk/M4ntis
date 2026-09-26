@@ -14,20 +14,29 @@ import helpers.auth as auth
 import helpers.backtests as backtests
 import helpers.discussions as discussions
 import helpers.strategies as strategies
+from helpers.db import env_port
 from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, search_symbols
 
-app = FastAPI(title="Mantis Backend")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+BACKEND_PORT = env_port("BACKEND_PORT", 8001)
+FRONTEND_PORT = env_port("FRONTEND_PORT", 8002)
+
+
+def frontend_origins(frontend_port: int) -> list[str]:
+    origins = [
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
-        "http://0.0.0.0:8002",
-        "http://localhost:8002",
-        "http://127.0.0.1:8002",
-    ],
+    ]
+    for host in ("0.0.0.0", "localhost", "127.0.0.1"):
+        origins.append(f"http://{host}:{frontend_port}")
+    return origins
+
+
+app = FastAPI(title="Mantis Backend")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=frontend_origins(FRONTEND_PORT),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
@@ -288,4 +297,4 @@ def create_discussion_route(body: DiscussionCreate, request: Request) -> dict:
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=BACKEND_PORT)
