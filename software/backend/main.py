@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 
 import helpers.auth as auth
+import helpers.backtests as backtests
 import helpers.discussions as discussions
 import helpers.strategies as strategies
 from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, search_symbols
@@ -44,6 +45,12 @@ class StrategyCreate(BaseModel):
     document: dict[str, Any]
     ir: dict[str, Any] | None = None
     visibility: str | None = None
+
+
+class BacktestCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_id: int
+    strategy_id: int
 
 
 class StrategyUpdate(BaseModel):
@@ -240,6 +247,21 @@ def copy_strategy_route(strategy_id: int, request: Request) -> dict:
     except (RuntimeError, psycopg.Error) as exc:
         raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
     return {"id": new_id}
+
+
+@app.post("/backtests", status_code=201)
+def create_backtest_route(body: BacktestCreate, request: Request) -> dict:
+    user = _require_user(request)
+    if body.user_id != user.id:
+        raise HTTPException(status_code=403, detail="You can only run a backtest as yourself")
+    try:
+        return backtests.run_dummy_backtest(body.user_id, body.strategy_id)
+    except backtests.UserNotFound as exc:
+        raise HTTPException(status_code=404, detail="User not found") from exc
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Backtest database is unavailable") from exc
 
 
 @app.post("/discussions", status_code=201)
