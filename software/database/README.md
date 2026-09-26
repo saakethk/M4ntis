@@ -16,8 +16,8 @@
 | trade_count | BIGINT |
 | vwap | DOUBLE PRECISION |
 
-Primary key: `(symbol, ts)`.
+Unique key: `(symbol, ts)`, including the `ts` partition column. A reload does not insert a second copy of the same minute. If that unique index is missing, the loader first deletes duplicate `(symbol, ts)` rows, then creates the index.
 
-DDL: [`sql/stock_minute_bars.sql`](sql/stock_minute_bars.sql).
+DDL: [`sql/stock_minute_bars.sql`](sql/stock_minute_bars.sql). Dedupe: [`sql/dedupe_stock_minute_bars.sql`](sql/dedupe_stock_minute_bars.sql).
 
 Load bars with `python software/database/load_minute_bars.py AAPL`.

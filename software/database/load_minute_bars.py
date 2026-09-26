@@ -3,13 +3,20 @@
 Creates the ``stock_minute_bars`` hypertable if needed, pulls 1-minute bars
 from Alpaca, and copies them into Tiger Data with ``ON CONFLICT DO NOTHING``.
 
+A rerun does not insert a second copy of the same minute. The loader deletes
+exact duplicate ``(symbol, ts)`` rows when the table has no unique key, then
+creates a unique index on ``(symbol, ts)`` if that index is missing.
+``CREATE TABLE IF NOT EXISTS`` does not add a primary key to a table that
+already existed without one, and ``ON CONFLICT (symbol, ts)`` only skips a
+row when that unique index exists.
+
 Credentials are read from the repo-root ``.env`` file (``ALPACA_API_KEY``,
 ``ALPACA_API_SECRET``, and ``TIGER_DB_PG*``). The default data feed is
 ``iex``. Override it with ``ALPACA_DATA_FEED``. Secret values are never printed.
 
 When META is one of the requested tickers, bars before the 2022-06-09 rename
 are requested as FB and stored as META. A native META bar wins when both
-exist for the same minute.
+exist for the same minute. Bar times are stored as UTC ``timestamptz``.
 """
 
 from __future__ import annotations
@@ -28,6 +35,8 @@ from psycopg.rows import dict_row
 ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars"
 META_RENAME = datetime(2022, 6, 9, tzinfo=timezone.utc)
 WINDOW = timedelta(days=31)
+SQL_DIR = Path(__file__).resolve().parent / "sql"
+UNIQUE_INDEX_MARKER = "-- @@unique-index"
 REQUIRED_ENV = (
     "ALPACA_API_KEY",
     "ALPACA_API_SECRET",
@@ -113,7 +122,7 @@ def load_environment() -> str:
 
 
 def connect() -> psycopg.Connection:
-    return psycopg.connect(
+    conn = psycopg.connect(
         host=os.environ["TIGER_DB_PGHOST"],
         port=os.environ["TIGER_DB_PGPORT"],
         dbname=os.environ["TIGER_DB_PGDATABASE"],
@@ -122,40 +131,131 @@ def connect() -> psycopg.Connection:
         sslmode=os.environ.get("TIGER_DB_PGSSLMODE", "require"),
         autocommit=True,
     )
+    # Naive timestamps cast to timestamptz in the session time zone. Pin UTC
+    # so the same bar is the same instant on every run.
+    conn.execute("SET TIME ZONE 'UTC'")
+    return conn
+
+
+def split_sql(script: str) -> list[str]:
+    """Split a SQL script on semicolons, keeping dollar-quoted bodies intact."""
+    statements: list[str] = []
+    buf: list[str] = []
+    i = 0
+    length = len(script)
+    dollar_tag: str | None = None
+    while i < length:
+        if dollar_tag is not None:
+            if script.startswith(dollar_tag, i):
+                buf.append(dollar_tag)
+                i += len(dollar_tag)
+                dollar_tag = None
+                continue
+            buf.append(script[i])
+            i += 1
+            continue
+
+        if script.startswith("--", i):
+            newline = script.find("\n", i)
+            i = length if newline == -1 else newline + 1
+            continue
+
+        if script[i] == "'":
+            buf.append(script[i])
+            i += 1
+            while i < length:
+                buf.append(script[i])
+                if script[i] == "'":
+                    if i + 1 < length and script[i + 1] == "'":
+                        buf.append(script[i + 1])
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            continue
+
+        if script[i] == "$":
+            end = i + 1
+            while end < length and (script[end].isalnum() or script[end] == "_"):
+                end += 1
+            if end < length and script[end] == "$":
+                dollar_tag = script[i : end + 1]
+                buf.append(dollar_tag)
+                i = end + 1
+                continue
+
+        if script[i] == ";":
+            statement = "".join(buf).strip()
+            if statement:
+                statements.append(statement)
+            buf = []
+            i += 1
+            continue
+
+        buf.append(script[i])
+        i += 1
+
+    tail = "".join(buf).strip()
+    if tail:
+        statements.append(tail)
+    return statements
+
+
+def execute_sql_script(conn: psycopg.Connection, script: str) -> None:
+    with conn.cursor() as cur:
+        for statement in split_sql(script):
+            cur.execute(statement)
+
+
+def parse_bar_ts(value: str) -> datetime:
+    """Return the bar instant as a UTC ``timestamptz`` value.
+
+    Naive strings are treated as UTC. Aware strings are converted to UTC so
+    the same instant is not stored twice under two offsets.
+    """
+    text = value.strip()
+    if text.endswith(("Z", "z")):
+        text = text[:-1] + "+00:00"
+    fraction = text.find(".")
+    if fraction != -1:
+        zone = max(text.find("+", fraction), text.find("-", fraction))
+        digits_end = zone if zone != -1 else len(text)
+        digits = text[fraction + 1 : digits_end]
+        if len(digits) > 6:
+            text = text[: fraction + 1] + digits[:6] + text[digits_end:]
+    ts = datetime.fromisoformat(text)
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc)
+
+
+def alpaca_inclusive_end(window_end: datetime) -> datetime:
+    """Alpaca's ``end`` is inclusive. Shift it so ``[start, window_end)`` is fetched."""
+    return window_end - timedelta(microseconds=1)
+
+
+def canonical_ts(ts: datetime) -> datetime:
+    if ts.tzinfo is None:
+        return ts.replace(tzinfo=timezone.utc)
+    return ts.astimezone(timezone.utc)
 
 
 def ensure_hypertable(conn: psycopg.Connection) -> None:
-    with conn.cursor() as cur:
-        cur.execute("SELECT extname FROM pg_extension WHERE extname = 'timescaledb'")
-        if cur.fetchone() is None:
-            cur.execute("CREATE EXTENSION IF NOT EXISTS timescaledb")
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS stock_minute_bars (
-                symbol TEXT NOT NULL,
-                ts TIMESTAMPTZ NOT NULL,
-                open DOUBLE PRECISION NOT NULL,
-                high DOUBLE PRECISION NOT NULL,
-                low DOUBLE PRECISION NOT NULL,
-                close DOUBLE PRECISION NOT NULL,
-                volume BIGINT NOT NULL,
-                trade_count BIGINT,
-                vwap DOUBLE PRECISION,
-                PRIMARY KEY (symbol, ts)
-            )
-            """
+    """Create the hypertable, drop exact duplicates, then ensure the unique key."""
+    schema = (SQL_DIR / "stock_minute_bars.sql").read_text()
+    if UNIQUE_INDEX_MARKER not in schema:
+        raise RuntimeError(
+            "stock_minute_bars.sql is missing the unique-index section"
         )
-        cur.execute(
-            """
-            SELECT create_hypertable(
-                'stock_minute_bars',
-                'ts',
-                if_not_exists => TRUE,
-                migrate_data => TRUE
-            )
-            """
-        )
+    before, _, after = schema.partition(UNIQUE_INDEX_MARKER)
+    execute_sql_script(conn, before)
+    execute_sql_script(conn, (SQL_DIR / "dedupe_stock_minute_bars.sql").read_text())
+    removed = conn.execute("SELECT dedupe_stock_minute_bars()").fetchone()
+    removed_count = int(removed[0]) if removed else 0
+    if removed_count:
+        print(f"Removed {removed_count} duplicate stock_minute_bars rows")
+    execute_sql_script(conn, after)
     print("stock_minute_bars is ready")
 
 
@@ -179,7 +279,7 @@ def rows_from_bars(
     """
     rows = []
     for bar in bars:
-        ts = datetime.fromisoformat(bar["t"].replace("Z", "+00:00"))
+        ts = parse_bar_ts(bar["t"])
         stored_symbol = symbol
         rank = 0
         if map_fb_to_meta and symbol == "FB":
@@ -212,7 +312,15 @@ def fetch_bars(
     feed: str,
     map_fb_to_meta: bool,
 ) -> list[tuple]:
-    """Page through Alpaca minute bars for one time window."""
+    """Page through Alpaca minute bars for the half-open interval ``[start, end)``.
+
+    Alpaca treats both ``start`` and ``end`` as inclusive. The requested end
+    is one microsecond before ``end`` so the next window can start at ``end``
+    without fetching that minute again.
+    """
+    inclusive_end = alpaca_inclusive_end(end)
+    if inclusive_end < start:
+        return []
     rows: list[tuple] = []
     page_token = None
     while True:
@@ -220,7 +328,7 @@ def fetch_bars(
             "symbols": ",".join(symbols),
             "timeframe": "1Min",
             "start": start.isoformat(),
-            "end": end.isoformat(),
+            "end": inclusive_end.isoformat(),
             "limit": 10000,
             "adjustment": "split",
             "feed": feed,
@@ -255,14 +363,20 @@ def fetch_bars(
 
 
 def prefer_native_bars(rows: list[tuple]) -> list[tuple]:
-    """Drop the rank column, keeping the native META bar on timestamp ties."""
+    """Keep one row per ``(symbol, ts)``, preferring a native bar over FB.
+
+    The rank column stays on the row so the insert can apply the same
+    preference if both copies reach the stage table. Rank 0 is native.
+    """
     deduped: dict[tuple, tuple] = {}
     rank: dict[tuple, int] = {}
     for row in rows:
-        key = (row[0], row[1])
-        row_rank = row[-1]
+        ts = canonical_ts(row[1])
+        stored = (row[0], ts, *row[2:])
+        key = (stored[0], ts)
+        row_rank = stored[-1]
         if key not in deduped or row_rank < rank[key]:
-            deduped[key] = row[:-1]
+            deduped[key] = stored
             rank[key] = row_rank
     return list(deduped.values())
 
@@ -284,14 +398,16 @@ def insert_rows(conn: psycopg.Connection, rows: list[tuple]) -> int:
                     close DOUBLE PRECISION NOT NULL,
                     volume BIGINT NOT NULL,
                     trade_count BIGINT,
-                    vwap DOUBLE PRECISION
+                    vwap DOUBLE PRECISION,
+                    source_rank SMALLINT NOT NULL
                 ) ON COMMIT DROP
                 """
             )
             with cur.copy(
                 """
                 COPY stock_minute_bars_stage (
-                    symbol, ts, open, high, low, close, volume, trade_count, vwap
+                    symbol, ts, open, high, low, close, volume,
+                    trade_count, vwap, source_rank
                 ) FROM STDIN
                 """
             ) as copy:
@@ -299,11 +415,13 @@ def insert_rows(conn: psycopg.Connection, rows: list[tuple]) -> int:
                     copy.write_row(row)
             cur.execute(
                 """
-                INSERT INTO stock_minute_bars
+                INSERT INTO stock_minute_bars (
+                    symbol, ts, open, high, low, close, volume, trade_count, vwap
+                )
                 SELECT DISTINCT ON (symbol, ts)
                     symbol, ts, open, high, low, close, volume, trade_count, vwap
                 FROM stock_minute_bars_stage
-                ORDER BY symbol, ts
+                ORDER BY symbol, ts, source_rank
                 ON CONFLICT (symbol, ts) DO NOTHING
                 """
             )
