@@ -1,10 +1,11 @@
 """Build forward-filled session minutes for a naive close-price backtest.
 
 ``trading_minutes`` is one row per regular-session minute from ``trading_days``.
-``stock_session_minutes`` joins each symbol onto that clock and carries the
-last close forward. A minute with no trade is stored at that close with
-volume 0. Minutes before the first trade in history are omitted, because
-there is no current price yet. The prior session's close fills the next open.
+``stock_session_minutes`` keeps only sessions that contain at least one real
+bar for the symbol. Inside those sessions, a minute with no trade copies the
+previous close forward and stores volume 0. The previous session's close fills
+the next open only when that next session also has a trade. Empty sessions
+are not synthesized.
 """
 
 from __future__ import annotations
@@ -29,7 +30,24 @@ FILL_SQL = """
 INSERT INTO stock_session_minutes (
     symbol, ts, open, high, low, close, volume, is_filled
 )
-WITH joined AS (
+WITH bars AS (
+    SELECT DISTINCT ON (date_trunc('minute', ts))
+        date_trunc('minute', ts) AS ts,
+        open,
+        high,
+        low,
+        close,
+        volume
+    FROM stock_minute_bars
+    WHERE symbol = %s
+    ORDER BY date_trunc('minute', ts), ts
+),
+active AS (
+    SELECT DISTINCT m.session_date
+    FROM trading_minutes AS m
+    JOIN bars AS b ON b.ts = m.ts
+),
+joined AS (
     SELECT
         m.ts,
         b.open,
@@ -37,12 +55,11 @@ WITH joined AS (
         b.low,
         b.close,
         b.volume,
-        b.symbol IS NOT NULL AS has_trade,
+        b.ts IS NOT NULL AS has_trade,
         count(b.close) OVER (ORDER BY m.ts) AS grp
     FROM trading_minutes AS m
-    LEFT JOIN stock_minute_bars AS b
-      ON b.symbol = %s
-     AND b.ts = m.ts
+    JOIN active AS a ON a.session_date = m.session_date
+    LEFT JOIN bars AS b ON b.ts = m.ts
 ),
 carried AS (
     SELECT
@@ -171,14 +188,21 @@ def fill_symbol(conn: psycopg.Connection, symbol: str) -> int:
             """
             SELECT count(*) FILTER (WHERE NOT is_filled) AS trades,
                    count(*) FILTER (WHERE is_filled) AS filled,
-                   count(*) AS rows
+                   count(*) AS rows,
+                   count(DISTINCT (ts AT TIME ZONE 'America/New_York')::date)
+                       AS sessions
             FROM stock_session_minutes
             WHERE symbol = %s
             """,
             (symbol,),
         ).fetchone()
+        raw = conn.execute(
+            "SELECT count(*) FROM stock_minute_bars WHERE symbol = %s",
+            (symbol,),
+        ).fetchone()
     print(
-        f"{symbol}: rows={stored[2]} trades={stored[0]} carried={stored[1]}"
+        f"{symbol}: raw_bars={raw[0]} matched={stored[0]} "
+        f"sessions={stored[3]} carried={stored[1]} rows={stored[2]}"
     )
     return int(stored[2])
 
