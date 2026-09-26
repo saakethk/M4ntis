@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { listStrategies, type StrategySummary } from '../api'
+import { listStrategies } from '../api'
 import {
-  STRATEGIES,
   formatDrawdown,
   formatPct,
+  portfolioStrategies,
   type Strategy,
   type StrategyStatus,
 } from '../strategies'
@@ -62,19 +62,6 @@ function metricText(value: number | null, format: (value: number) => string): st
   return value === null ? '–' : format(value)
 }
 
-function withDummyMetrics(row: StrategySummary, index: number): Strategy {
-  const sample = STRATEGIES[index % STRATEGIES.length]
-  return {
-    id: String(row.id),
-    name: row.name,
-    status: sample.status,
-    createdLabel: sample.createdLabel,
-    returnPct: sample.returnPct,
-    maxDrawdownPct: sample.maxDrawdownPct,
-    lastBacktest: sample.lastBacktest,
-  }
-}
-
 function StrategyCard({ strategy, onEdit }: { strategy: Strategy; onEdit: (id: string) => void }) {
   const returnClass =
     strategy.returnPct === null ? 'metric-value' : strategy.returnPct < 0 ? 'metric-value down' : 'metric-value up'
@@ -120,17 +107,17 @@ export function Portfolio({ onNew, onEdit }: { onNew: () => void; onEdit: (id: s
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [statusOpen, setStatusOpen] = useState(false)
-  const [strategies, setStrategies] = useState<Strategy[] | null>(null)
+  const [strategies, setStrategies] = useState<Strategy[]>(() => portfolioStrategies(null))
   const statusRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     let ignore = false
     listStrategies()
       .then((rows) => {
-        if (!ignore) setStrategies(rows.map(withDummyMetrics))
+        if (!ignore) setStrategies(portfolioStrategies(rows))
       })
       .catch(() => {
-        if (!ignore) setStrategies(STRATEGIES)
+        if (!ignore) setStrategies(portfolioStrategies(null))
       })
     return () => {
       ignore = true
@@ -155,7 +142,7 @@ export function Portfolio({ onNew, onEdit }: { onNew: () => void; onEdit: (id: s
 
   const selected = FILTERS.find((item) => item.id === status) ?? FILTERS[0]
   const needle = query.trim().toLowerCase()
-  const catalog = strategies ?? []
+  const catalog = strategies
   const visible = catalog.filter((strategy) => {
     const matchesName = needle.length === 0 || strategy.name.toLowerCase().includes(needle)
     const matchesStatus = status === 'all' || strategy.status === status
@@ -217,13 +204,10 @@ export function Portfolio({ onNew, onEdit }: { onNew: () => void; onEdit: (id: s
         </div>
       </div>
       <div className="cards">
-        {strategies === null ? <p className="empty">Loading strategies…</p> : null}
         {visible.map((strategy) => (
           <StrategyCard key={strategy.id} strategy={strategy} onEdit={onEdit} />
         ))}
-        {strategies !== null && visible.length === 0 ? (
-          <p className="empty">{catalog.length === 0 ? 'No strategies yet.' : 'No strategies match.'}</p>
-        ) : null}
+        {visible.length === 0 ? <p className="empty">No strategies match.</p> : null}
         <button type="button" className="add-card" onClick={onNew}>
           <PlusIcon />
           <span className="add-title">Add new strategy</span>

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types --test api_base.test.ts"
+    "test": "node --experimental-strip-types --test api_base.test.ts strategies.test.ts"
   },
   "dependencies": {
     "@xyflow/react": "^12.12.0",
