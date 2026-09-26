@@ -227,9 +227,9 @@ def fill_symbol(conn: psycopg.Connection, symbol: str) -> int:
             (symbol,),
         ).fetchone()
     print(
-        f"{symbol}: raw_bars={raw[0]} matched={stored[0]} "
-        f"sessions={stored[3]} carried={stored[1]} rows={stored[2]} "
-        f"listing_start={first[0]}"
+        f"{symbol}: raw_bars={raw[0]} matched={stored[0]} " # type: ignore
+        f"sessions={stored[3]} carried={stored[1]} rows={stored[2]} " # type: ignore
+        f"listing_start={first[0]}" # type: ignore
     )
     return int(stored[2]) # type:ignore
 
