@@ -1,0 +1,297 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2026.1 (win64) Build 6511674 Tue Jun 16 11:02:23 MDT 2026
+| Date         : Fri Sep 25 22:18:04 2026
+| Host         : Abhay_PC running 64-bit major release  (build 9200)
+| Command      : report_timing -delay_type min -max_paths 5 -sort_by slack -file {C:/Users/abhay/OneDrive/Documents/projects/Trade CPU/checkpoints/reports/impl_worst_hold_paths.rpt}
+| Design       : tradecpu_top
+| Device       : 7s50-csga324
+| Speed File   : -2  PRODUCTION 1.23 2018-06-13
+| Design State : Routed
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (MET) :             0.072ns  (arrival time - required time)
+  Source:                 u_core/u_uart_protocol/pm_wdata_reg[12]/C
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_control_unit/prog_mem_reg_2/DIADI[12]
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            0.000ns  (clk50_mmcm rise@0.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        0.278ns  (logic 0.164ns (58.928%)  route 0.114ns (41.072%))
+  Logic Levels:           0  
+  Clock Path Skew:        0.052ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    2.361ns
+    Source Clock Delay      (SCD):    1.777ns
+    Clock Pessimism Removal (CPR):    0.532ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.209     0.209 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.440     0.649    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.050     0.699 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.489     1.188    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.026     1.214 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.564     1.777    u_core/u_uart_protocol/CLK
+    SLICE_X8Y38          FDCE                                         r  u_core/u_uart_protocol/pm_wdata_reg[12]/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X8Y38          FDCE (Prop_fdce_C_Q)         0.164     1.941 r  u_core/u_uart_protocol/pm_wdata_reg[12]/Q
+                         net (fo=2, routed)           0.114     2.056    u_core/u_control_unit/prog_mem_reg_2_31[12]
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/DIADI[12]
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.396     0.396 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.480     0.876    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.053     0.929 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.534     1.463    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.029     1.492 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.869     2.361    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKBWRCLK
+                         clock pessimism             -0.532     1.829    <hidden>
+    RAMB18_X0Y15         RAMB18E1 (Hold_ramb18e1_CLKBWRCLK_DIADI[12])
+                                                      0.155     1.984    u_core/u_control_unit/prog_mem_reg_2
+  -------------------------------------------------------------------
+                         required time                         -1.984    <hidden>
+                         arrival time                           2.056    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  0.072    <hidden>
+
+Slack (MET) :             0.074ns  (arrival time - required time)
+  Source:                 u_core/u_stock_buffers/g_buf[3].staged_price_reg[0]/C
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_stock_buffers/g_buf[3].mem_reg_0_31_0_5/RAMA/I
+                            (rising edge-triggered cell RAMD32 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            0.000ns  (clk50_mmcm rise@0.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        0.260ns  (logic 0.141ns (54.274%)  route 0.119ns (45.726%))
+  Logic Levels:           0  
+  Clock Path Skew:        0.039ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    2.355ns
+    Source Clock Delay      (SCD):    1.804ns
+    Clock Pessimism Removal (CPR):    0.512ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.209     0.209 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.440     0.649    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.050     0.699 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.489     1.188    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.026     1.214 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.591     1.804    u_core/u_stock_buffers/CLK
+    SLICE_X4Y54          FDCE                                         r  u_core/u_stock_buffers/g_buf[3].staged_price_reg[0]/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X4Y54          FDCE (Prop_fdce_C_Q)         0.141     1.945 r  u_core/u_stock_buffers/g_buf[3].staged_price_reg[0]/Q
+                         net (fo=1, routed)           0.119     2.064    u_core/u_stock_buffers/g_buf[3].mem_reg_0_31_0_5/DIA0
+    SLICE_X2Y54          RAMD32                                       r  u_core/u_stock_buffers/g_buf[3].mem_reg_0_31_0_5/RAMA/I
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.396     0.396 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.480     0.876    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.053     0.929 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.534     1.463    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.029     1.492 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.863     2.355    u_core/u_stock_buffers/g_buf[3].mem_reg_0_31_0_5/WCLK
+    SLICE_X2Y54          RAMD32                                       r  u_core/u_stock_buffers/g_buf[3].mem_reg_0_31_0_5/RAMA/CLK
+                         clock pessimism             -0.512     1.843    <hidden>
+    SLICE_X2Y54          RAMD32 (Hold_ramd32_CLK_I)
+                                                      0.147     1.990    u_core/u_stock_buffers/g_buf[3].mem_reg_0_31_0_5/RAMA
+  -------------------------------------------------------------------
+                         required time                         -1.990    <hidden>
+                         arrival time                           2.064    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  0.074    <hidden>
+
+Slack (MET) :             0.085ns  (arrival time - required time)
+  Source:                 u_core/u_stock_buffers/g_buf[1].staged_price_reg[0]/C
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/RAMA/I
+                            (rising edge-triggered cell RAMD32 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            0.000ns  (clk50_mmcm rise@0.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        0.249ns  (logic 0.141ns (56.528%)  route 0.108ns (43.472%))
+  Logic Levels:           0  
+  Clock Path Skew:        0.017ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    2.355ns
+    Source Clock Delay      (SCD):    1.805ns
+    Clock Pessimism Removal (CPR):    0.533ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.209     0.209 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.440     0.649    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.050     0.699 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.489     1.188    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.026     1.214 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.592     1.805    u_core/u_stock_buffers/CLK
+    SLICE_X3Y57          FDCE                                         r  u_core/u_stock_buffers/g_buf[1].staged_price_reg[0]/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X3Y57          FDCE (Prop_fdce_C_Q)         0.141     1.946 r  u_core/u_stock_buffers/g_buf[1].staged_price_reg[0]/Q
+                         net (fo=1, routed)           0.108     2.055    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/DIA0
+    SLICE_X2Y56          RAMD32                                       r  u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/RAMA/I
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.396     0.396 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.480     0.876    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.053     0.929 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.534     1.463    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.029     1.492 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.863     2.355    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/WCLK
+    SLICE_X2Y56          RAMD32                                       r  u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/RAMA/CLK
+                         clock pessimism             -0.533     1.822    <hidden>
+    SLICE_X2Y56          RAMD32 (Hold_ramd32_CLK_I)
+                                                      0.147     1.969    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/RAMA
+  -------------------------------------------------------------------
+                         required time                         -1.969    <hidden>
+                         arrival time                           2.055    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  0.085    <hidden>
+
+Slack (MET) :             0.086ns  (arrival time - required time)
+  Source:                 u_core/u_stock_buffers/g_buf[1].staged_price_reg[12]/C
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_12_15/RAMA/I
+                            (rising edge-triggered cell RAMD32 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            0.000ns  (clk50_mmcm rise@0.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        0.249ns  (logic 0.141ns (56.528%)  route 0.108ns (43.472%))
+  Logic Levels:           0  
+  Clock Path Skew:        0.016ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    2.354ns
+    Source Clock Delay      (SCD):    1.805ns
+    Clock Pessimism Removal (CPR):    0.533ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.209     0.209 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.440     0.649    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.050     0.699 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.489     1.188    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.026     1.214 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.592     1.805    u_core/u_stock_buffers/CLK
+    SLICE_X3Y57          FDCE                                         r  u_core/u_stock_buffers/g_buf[1].staged_price_reg[12]/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X3Y57          FDCE (Prop_fdce_C_Q)         0.141     1.946 r  u_core/u_stock_buffers/g_buf[1].staged_price_reg[12]/Q
+                         net (fo=1, routed)           0.108     2.055    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_12_15/DIA0
+    SLICE_X2Y58          RAMD32                                       r  u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_12_15/RAMA/I
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.396     0.396 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.480     0.876    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.053     0.929 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.534     1.463    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.029     1.492 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.862     2.354    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_12_15/WCLK
+    SLICE_X2Y58          RAMD32                                       r  u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_12_15/RAMA/CLK
+                         clock pessimism             -0.533     1.821    <hidden>
+    SLICE_X2Y58          RAMD32 (Hold_ramd32_CLK_I)
+                                                      0.147     1.968    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_12_15/RAMA
+  -------------------------------------------------------------------
+                         required time                         -1.968    <hidden>
+                         arrival time                           2.055    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  0.086    <hidden>
+
+Slack (MET) :             0.092ns  (arrival time - required time)
+  Source:                 u_core/u_stock_buffers/g_buf[1].staged_price_reg[2]/C
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/RAMB/I
+                            (rising edge-triggered cell RAMD32 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Hold (Min at Fast Process Corner)
+  Requirement:            0.000ns  (clk50_mmcm rise@0.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        0.251ns  (logic 0.141ns (56.078%)  route 0.110ns (43.922%))
+  Logic Levels:           0  
+  Clock Path Skew:        0.013ns (DCD - SCD - CPR)
+    Destination Clock Delay (DCD):    2.355ns
+    Source Clock Delay      (SCD):    1.806ns
+    Clock Pessimism Removal (CPR):    0.536ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.209     0.209 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.440     0.649    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.050     0.699 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.489     1.188    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.026     1.214 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.593     1.806    u_core/u_stock_buffers/CLK
+    SLICE_X3Y56          FDCE                                         r  u_core/u_stock_buffers/g_buf[1].staged_price_reg[2]/C
+  -------------------------------------------------------------------    -------------------
+    SLICE_X3Y56          FDCE (Prop_fdce_C_Q)         0.141     1.947 r  u_core/u_stock_buffers/g_buf[1].staged_price_reg[2]/Q
+                         net (fo=1, routed)           0.110     2.058    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/DIB0
+    SLICE_X2Y56          RAMD32                                       r  u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/RAMB/I
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         0.396     0.396 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           0.480     0.876    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.053     0.929 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           0.534     1.463    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.029     1.492 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        0.863     2.355    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/WCLK
+    SLICE_X2Y56          RAMD32                                       r  u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/RAMB/CLK
+                         clock pessimism             -0.536     1.819    <hidden>
+    SLICE_X2Y56          RAMD32 (Hold_ramd32_CLK_I)
+                                                      0.146     1.965    u_core/u_stock_buffers/g_buf[1].mem_reg_0_31_0_5/RAMB
+  -------------------------------------------------------------------
+                         required time                         -1.965    <hidden>
+                         arrival time                           2.058    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  0.092    <hidden>
+
+
+
+

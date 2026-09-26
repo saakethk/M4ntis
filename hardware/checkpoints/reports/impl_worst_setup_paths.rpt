@@ -1,0 +1,888 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2026.1 (win64) Build 6511674 Tue Jun 16 11:02:23 MDT 2026
+| Date         : Fri Sep 25 22:18:04 2026
+| Host         : Abhay_PC running 64-bit major release  (build 9200)
+| Command      : report_timing -delay_type max -max_paths 10 -sort_by slack -file {C:/Users/abhay/OneDrive/Documents/projects/Trade CPU/checkpoints/reports/impl_worst_setup_paths.rpt}
+| Design       : tradecpu_top
+| Device       : 7s50-csga324
+| Speed File   : -2  PRODUCTION 1.23 2018-06-13
+| Design State : Routed
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Timing Report
+
+Slack (MET) :             5.310ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[7][31]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.479ns  (logic 8.557ns (59.099%)  route 5.922ns (40.901%))
+  Logic Levels:           11  (CARRY4=3 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.083ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.076ns = ( 25.076 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.268ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[4])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[4]
+                         net (fo=2, routed)           0.766    16.973    u_core/u_alu/result0__1_n_101
+    SLICE_X12Y46         LUT2 (Prop_lut2_I0_O)        0.105    17.078 r  u_core/u_alu/registers[0][23]_i_10/O
+                         net (fo=1, routed)           0.000    17.078    u_core/u_alu/registers[0][23]_i_10_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.444    17.522 r  u_core/u_alu/registers_reg[0][23]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.522    u_core/u_alu/registers_reg[0][23]_i_5_n_0
+    SLICE_X12Y47         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.100    17.622 r  u_core/u_alu/registers_reg[0][27]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.622    u_core/u_alu/registers_reg[0][27]_i_5_n_0
+    SLICE_X12Y48         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.262    17.884 r  u_core/u_alu/registers_reg[0][31]_i_14/O[3]
+                         net (fo=1, routed)           0.330    18.213    u_core/u_control_unit/registers_reg[6][31][3]
+    SLICE_X14Y48         LUT6 (Prop_lut6_I0_O)        0.250    18.463 r  u_core/u_control_unit/registers[0][31]_i_7/O
+                         net (fo=1, routed)           0.518    18.981    u_core/u_control_unit/registers[0][31]_i_7_n_0
+    SLICE_X14Y48         LUT5 (Prop_lut5_I2_O)        0.105    19.086 r  u_core/u_control_unit/registers[0][31]_i_2/O
+                         net (fo=8, routed)           0.819    19.906    u_core/u_register_file/registers_reg[6][31]_0[31]
+    SLICE_X15Y37         FDCE                                         r  u_core/u_register_file/registers_reg[7][31]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.259    25.076    u_core/u_register_file/CLK
+    SLICE_X15Y37         FDCE                                         r  u_core/u_register_file/registers_reg[7][31]/C
+                         clock pessimism              0.268    25.344    <hidden>
+                         clock uncertainty           -0.082    25.262    <hidden>
+    SLICE_X15Y37         FDCE (Setup_fdce_C_D)       -0.047    25.215    u_core/u_register_file/registers_reg[7][31]
+  -------------------------------------------------------------------
+                         required time                         25.215    <hidden>
+                         arrival time                         -19.906    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.310    <hidden>
+
+Slack (MET) :             5.311ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[2][31]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.478ns  (logic 8.557ns (59.103%)  route 5.921ns (40.897%))
+  Logic Levels:           11  (CARRY4=3 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.083ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.076ns = ( 25.076 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.268ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[4])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[4]
+                         net (fo=2, routed)           0.766    16.973    u_core/u_alu/result0__1_n_101
+    SLICE_X12Y46         LUT2 (Prop_lut2_I0_O)        0.105    17.078 r  u_core/u_alu/registers[0][23]_i_10/O
+                         net (fo=1, routed)           0.000    17.078    u_core/u_alu/registers[0][23]_i_10_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.444    17.522 r  u_core/u_alu/registers_reg[0][23]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.522    u_core/u_alu/registers_reg[0][23]_i_5_n_0
+    SLICE_X12Y47         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.100    17.622 r  u_core/u_alu/registers_reg[0][27]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.622    u_core/u_alu/registers_reg[0][27]_i_5_n_0
+    SLICE_X12Y48         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.262    17.884 r  u_core/u_alu/registers_reg[0][31]_i_14/O[3]
+                         net (fo=1, routed)           0.330    18.213    u_core/u_control_unit/registers_reg[6][31][3]
+    SLICE_X14Y48         LUT6 (Prop_lut6_I0_O)        0.250    18.463 r  u_core/u_control_unit/registers[0][31]_i_7/O
+                         net (fo=1, routed)           0.518    18.981    u_core/u_control_unit/registers[0][31]_i_7_n_0
+    SLICE_X14Y48         LUT5 (Prop_lut5_I2_O)        0.105    19.086 r  u_core/u_control_unit/registers[0][31]_i_2/O
+                         net (fo=8, routed)           0.818    19.905    u_core/u_register_file/registers_reg[6][31]_0[31]
+    SLICE_X13Y38         FDCE                                         r  u_core/u_register_file/registers_reg[2][31]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.259    25.076    u_core/u_register_file/CLK
+    SLICE_X13Y38         FDCE                                         r  u_core/u_register_file/registers_reg[2][31]/C
+                         clock pessimism              0.268    25.344    <hidden>
+                         clock uncertainty           -0.082    25.262    <hidden>
+    SLICE_X13Y38         FDCE (Setup_fdce_C_D)       -0.047    25.215    u_core/u_register_file/registers_reg[2][31]
+  -------------------------------------------------------------------
+                         required time                         25.215    <hidden>
+                         arrival time                         -19.905    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.311    <hidden>
+
+Slack (MET) :             5.319ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[3][31]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.482ns  (logic 8.557ns (59.087%)  route 5.925ns (40.913%))
+  Logic Levels:           11  (CARRY4=3 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.081ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.078ns = ( 25.078 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.268ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[4])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[4]
+                         net (fo=2, routed)           0.766    16.973    u_core/u_alu/result0__1_n_101
+    SLICE_X12Y46         LUT2 (Prop_lut2_I0_O)        0.105    17.078 r  u_core/u_alu/registers[0][23]_i_10/O
+                         net (fo=1, routed)           0.000    17.078    u_core/u_alu/registers[0][23]_i_10_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.444    17.522 r  u_core/u_alu/registers_reg[0][23]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.522    u_core/u_alu/registers_reg[0][23]_i_5_n_0
+    SLICE_X12Y47         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.100    17.622 r  u_core/u_alu/registers_reg[0][27]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.622    u_core/u_alu/registers_reg[0][27]_i_5_n_0
+    SLICE_X12Y48         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.262    17.884 r  u_core/u_alu/registers_reg[0][31]_i_14/O[3]
+                         net (fo=1, routed)           0.330    18.213    u_core/u_control_unit/registers_reg[6][31][3]
+    SLICE_X14Y48         LUT6 (Prop_lut6_I0_O)        0.250    18.463 r  u_core/u_control_unit/registers[0][31]_i_7/O
+                         net (fo=1, routed)           0.518    18.981    u_core/u_control_unit/registers[0][31]_i_7_n_0
+    SLICE_X14Y48         LUT5 (Prop_lut5_I2_O)        0.105    19.086 r  u_core/u_control_unit/registers[0][31]_i_2/O
+                         net (fo=8, routed)           0.822    19.909    u_core/u_register_file/registers_reg[6][31]_0[31]
+    SLICE_X14Y40         FDCE                                         r  u_core/u_register_file/registers_reg[3][31]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.261    25.078    u_core/u_register_file/CLK
+    SLICE_X14Y40         FDCE                                         r  u_core/u_register_file/registers_reg[3][31]/C
+                         clock pessimism              0.268    25.346    <hidden>
+                         clock uncertainty           -0.082    25.264    <hidden>
+    SLICE_X14Y40         FDCE (Setup_fdce_C_D)       -0.037    25.227    u_core/u_register_file/registers_reg[3][31]
+  -------------------------------------------------------------------
+                         required time                         25.227    <hidden>
+                         arrival time                         -19.909    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.319    <hidden>
+
+Slack (MET) :             5.328ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[6][31]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.493ns  (logic 8.557ns (59.042%)  route 5.936ns (40.958%))
+  Logic Levels:           11  (CARRY4=3 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.083ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.076ns = ( 25.076 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.268ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[4])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[4]
+                         net (fo=2, routed)           0.766    16.973    u_core/u_alu/result0__1_n_101
+    SLICE_X12Y46         LUT2 (Prop_lut2_I0_O)        0.105    17.078 r  u_core/u_alu/registers[0][23]_i_10/O
+                         net (fo=1, routed)           0.000    17.078    u_core/u_alu/registers[0][23]_i_10_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.444    17.522 r  u_core/u_alu/registers_reg[0][23]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.522    u_core/u_alu/registers_reg[0][23]_i_5_n_0
+    SLICE_X12Y47         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.100    17.622 r  u_core/u_alu/registers_reg[0][27]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.622    u_core/u_alu/registers_reg[0][27]_i_5_n_0
+    SLICE_X12Y48         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.262    17.884 r  u_core/u_alu/registers_reg[0][31]_i_14/O[3]
+                         net (fo=1, routed)           0.330    18.213    u_core/u_control_unit/registers_reg[6][31][3]
+    SLICE_X14Y48         LUT6 (Prop_lut6_I0_O)        0.250    18.463 r  u_core/u_control_unit/registers[0][31]_i_7/O
+                         net (fo=1, routed)           0.518    18.981    u_core/u_control_unit/registers[0][31]_i_7_n_0
+    SLICE_X14Y48         LUT5 (Prop_lut5_I2_O)        0.105    19.086 r  u_core/u_control_unit/registers[0][31]_i_2/O
+                         net (fo=8, routed)           0.833    19.920    u_core/u_register_file/registers_reg[6][31]_0[31]
+    SLICE_X14Y37         FDCE                                         r  u_core/u_register_file/registers_reg[6][31]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.259    25.076    u_core/u_register_file/CLK
+    SLICE_X14Y37         FDCE                                         r  u_core/u_register_file/registers_reg[6][31]/C
+                         clock pessimism              0.268    25.344    <hidden>
+                         clock uncertainty           -0.082    25.262    <hidden>
+    SLICE_X14Y37         FDCE (Setup_fdce_C_D)       -0.015    25.247    u_core/u_register_file/registers_reg[6][31]
+  -------------------------------------------------------------------
+                         required time                         25.247    <hidden>
+                         arrival time                         -19.920    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.328    <hidden>
+
+Slack (MET) :             5.405ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[5][31]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.373ns  (logic 8.557ns (59.536%)  route 5.816ns (40.464%))
+  Logic Levels:           11  (CARRY4=3 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.082ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.077ns = ( 25.077 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.268ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[4])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[4]
+                         net (fo=2, routed)           0.766    16.973    u_core/u_alu/result0__1_n_101
+    SLICE_X12Y46         LUT2 (Prop_lut2_I0_O)        0.105    17.078 r  u_core/u_alu/registers[0][23]_i_10/O
+                         net (fo=1, routed)           0.000    17.078    u_core/u_alu/registers[0][23]_i_10_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.444    17.522 r  u_core/u_alu/registers_reg[0][23]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.522    u_core/u_alu/registers_reg[0][23]_i_5_n_0
+    SLICE_X12Y47         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.100    17.622 r  u_core/u_alu/registers_reg[0][27]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.622    u_core/u_alu/registers_reg[0][27]_i_5_n_0
+    SLICE_X12Y48         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.262    17.884 r  u_core/u_alu/registers_reg[0][31]_i_14/O[3]
+                         net (fo=1, routed)           0.330    18.213    u_core/u_control_unit/registers_reg[6][31][3]
+    SLICE_X14Y48         LUT6 (Prop_lut6_I0_O)        0.250    18.463 r  u_core/u_control_unit/registers[0][31]_i_7/O
+                         net (fo=1, routed)           0.518    18.981    u_core/u_control_unit/registers[0][31]_i_7_n_0
+    SLICE_X14Y48         LUT5 (Prop_lut5_I2_O)        0.105    19.086 r  u_core/u_control_unit/registers[0][31]_i_2/O
+                         net (fo=8, routed)           0.713    19.799    u_core/u_register_file/registers_reg[6][31]_0[31]
+    SLICE_X15Y39         FDCE                                         r  u_core/u_register_file/registers_reg[5][31]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.260    25.077    u_core/u_register_file/CLK
+    SLICE_X15Y39         FDCE                                         r  u_core/u_register_file/registers_reg[5][31]/C
+                         clock pessimism              0.268    25.345    <hidden>
+                         clock uncertainty           -0.082    25.263    <hidden>
+    SLICE_X15Y39         FDCE (Setup_fdce_C_D)       -0.059    25.204    u_core/u_register_file/registers_reg[5][31]
+  -------------------------------------------------------------------
+                         required time                         25.204    <hidden>
+                         arrival time                         -19.799    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.405    <hidden>
+
+Slack (MET) :             5.406ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[1][31]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.382ns  (logic 8.557ns (59.497%)  route 5.825ns (40.503%))
+  Logic Levels:           11  (CARRY4=3 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.083ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.076ns = ( 25.076 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.268ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[4])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[4]
+                         net (fo=2, routed)           0.766    16.973    u_core/u_alu/result0__1_n_101
+    SLICE_X12Y46         LUT2 (Prop_lut2_I0_O)        0.105    17.078 r  u_core/u_alu/registers[0][23]_i_10/O
+                         net (fo=1, routed)           0.000    17.078    u_core/u_alu/registers[0][23]_i_10_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.444    17.522 r  u_core/u_alu/registers_reg[0][23]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.522    u_core/u_alu/registers_reg[0][23]_i_5_n_0
+    SLICE_X12Y47         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.100    17.622 r  u_core/u_alu/registers_reg[0][27]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.622    u_core/u_alu/registers_reg[0][27]_i_5_n_0
+    SLICE_X12Y48         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.262    17.884 r  u_core/u_alu/registers_reg[0][31]_i_14/O[3]
+                         net (fo=1, routed)           0.330    18.213    u_core/u_control_unit/registers_reg[6][31][3]
+    SLICE_X14Y48         LUT6 (Prop_lut6_I0_O)        0.250    18.463 r  u_core/u_control_unit/registers[0][31]_i_7/O
+                         net (fo=1, routed)           0.518    18.981    u_core/u_control_unit/registers[0][31]_i_7_n_0
+    SLICE_X14Y48         LUT5 (Prop_lut5_I2_O)        0.105    19.086 r  u_core/u_control_unit/registers[0][31]_i_2/O
+                         net (fo=8, routed)           0.722    19.809    u_core/u_register_file/registers_reg[6][31]_0[31]
+    SLICE_X15Y38         FDCE                                         r  u_core/u_register_file/registers_reg[1][31]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.259    25.076    u_core/u_register_file/CLK
+    SLICE_X15Y38         FDCE                                         r  u_core/u_register_file/registers_reg[1][31]/C
+                         clock pessimism              0.268    25.344    <hidden>
+                         clock uncertainty           -0.082    25.262    <hidden>
+    SLICE_X15Y38         FDCE (Setup_fdce_C_D)       -0.047    25.215    u_core/u_register_file/registers_reg[1][31]
+  -------------------------------------------------------------------
+                         required time                         25.215    <hidden>
+                         arrival time                         -19.809    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.406    <hidden>
+
+Slack (MET) :             5.408ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[0][31]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.401ns  (logic 8.557ns (59.419%)  route 5.844ns (40.581%))
+  Logic Levels:           11  (CARRY4=3 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.083ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.076ns = ( 25.076 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.268ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[4])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[4]
+                         net (fo=2, routed)           0.766    16.973    u_core/u_alu/result0__1_n_101
+    SLICE_X12Y46         LUT2 (Prop_lut2_I0_O)        0.105    17.078 r  u_core/u_alu/registers[0][23]_i_10/O
+                         net (fo=1, routed)           0.000    17.078    u_core/u_alu/registers[0][23]_i_10_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.444    17.522 r  u_core/u_alu/registers_reg[0][23]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.522    u_core/u_alu/registers_reg[0][23]_i_5_n_0
+    SLICE_X12Y47         CARRY4 (Prop_carry4_CI_CO[3])
+                                                      0.100    17.622 r  u_core/u_alu/registers_reg[0][27]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.622    u_core/u_alu/registers_reg[0][27]_i_5_n_0
+    SLICE_X12Y48         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.262    17.884 r  u_core/u_alu/registers_reg[0][31]_i_14/O[3]
+                         net (fo=1, routed)           0.330    18.213    u_core/u_control_unit/registers_reg[6][31][3]
+    SLICE_X14Y48         LUT6 (Prop_lut6_I0_O)        0.250    18.463 r  u_core/u_control_unit/registers[0][31]_i_7/O
+                         net (fo=1, routed)           0.518    18.981    u_core/u_control_unit/registers[0][31]_i_7_n_0
+    SLICE_X14Y48         LUT5 (Prop_lut5_I2_O)        0.105    19.086 r  u_core/u_control_unit/registers[0][31]_i_2/O
+                         net (fo=8, routed)           0.741    19.828    u_core/u_register_file/registers_reg[6][31]_0[31]
+    SLICE_X14Y38         FDCE                                         r  u_core/u_register_file/registers_reg[0][31]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.259    25.076    u_core/u_register_file/CLK
+    SLICE_X14Y38         FDCE                                         r  u_core/u_register_file/registers_reg[0][31]/C
+                         clock pessimism              0.268    25.344    <hidden>
+                         clock uncertainty           -0.082    25.262    <hidden>
+    SLICE_X14Y38         FDCE (Setup_fdce_C_D)       -0.027    25.235    u_core/u_register_file/registers_reg[0][31]
+  -------------------------------------------------------------------
+                         required time                         25.235    <hidden>
+                         arrival time                         -19.828    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.408    <hidden>
+
+Slack (MET) :             5.413ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[4][21]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.307ns  (logic 8.317ns (58.133%)  route 5.990ns (41.867%))
+  Logic Levels:           10  (CARRY4=2 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.159ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.065ns = ( 25.065 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.202ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[2])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[2]
+                         net (fo=2, routed)           0.675    16.882    u_core/u_alu/result0__1_n_103
+    SLICE_X12Y45         LUT2 (Prop_lut2_I0_O)        0.105    16.987 r  u_core/u_alu/registers[0][19]_i_8/O
+                         net (fo=1, routed)           0.000    16.987    u_core/u_alu/registers[0][19]_i_8_n_0
+    SLICE_X12Y45         CARRY4 (Prop_carry4_S[3]_CO[3])
+                                                      0.314    17.301 r  u_core/u_alu/registers_reg[0][19]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.301    u_core/u_alu/registers_reg[0][19]_i_5_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_CI_O[1])
+                                                      0.257    17.558 r  u_core/u_alu/registers_reg[0][23]_i_5/O[1]
+                         net (fo=1, routed)           0.544    18.102    u_core/u_control_unit/registers_reg[6][23][1]
+    SLICE_X12Y44         LUT6 (Prop_lut6_I0_O)        0.245    18.347 r  u_core/u_control_unit/registers[0][21]_i_3/O
+                         net (fo=1, routed)           0.559    18.906    u_core/u_control_unit/registers[0][21]_i_3_n_0
+    SLICE_X12Y49         LUT5 (Prop_lut5_I2_O)        0.105    19.011 r  u_core/u_control_unit/registers[0][21]_i_1/O
+                         net (fo=8, routed)           0.722    19.734    u_core/u_register_file/registers_reg[6][31]_0[21]
+    SLICE_X15Y51         FDCE                                         r  u_core/u_register_file/registers_reg[4][21]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.248    25.065    u_core/u_register_file/CLK
+    SLICE_X15Y51         FDCE                                         r  u_core/u_register_file/registers_reg[4][21]/C
+                         clock pessimism              0.202    25.267    <hidden>
+                         clock uncertainty           -0.082    25.186    <hidden>
+    SLICE_X15Y51         FDCE (Setup_fdce_C_D)       -0.039    25.147    u_core/u_register_file/registers_reg[4][21]
+  -------------------------------------------------------------------
+                         required time                         25.147    <hidden>
+                         arrival time                         -19.734    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.413    <hidden>
+
+Slack (MET) :             5.416ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[1][21]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.328ns  (logic 8.317ns (58.046%)  route 6.011ns (41.954%))
+  Logic Levels:           10  (CARRY4=2 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.159ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.065ns = ( 25.065 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.202ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[2])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[2]
+                         net (fo=2, routed)           0.675    16.882    u_core/u_alu/result0__1_n_103
+    SLICE_X12Y45         LUT2 (Prop_lut2_I0_O)        0.105    16.987 r  u_core/u_alu/registers[0][19]_i_8/O
+                         net (fo=1, routed)           0.000    16.987    u_core/u_alu/registers[0][19]_i_8_n_0
+    SLICE_X12Y45         CARRY4 (Prop_carry4_S[3]_CO[3])
+                                                      0.314    17.301 r  u_core/u_alu/registers_reg[0][19]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.301    u_core/u_alu/registers_reg[0][19]_i_5_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_CI_O[1])
+                                                      0.257    17.558 r  u_core/u_alu/registers_reg[0][23]_i_5/O[1]
+                         net (fo=1, routed)           0.544    18.102    u_core/u_control_unit/registers_reg[6][23][1]
+    SLICE_X12Y44         LUT6 (Prop_lut6_I0_O)        0.245    18.347 r  u_core/u_control_unit/registers[0][21]_i_3/O
+                         net (fo=1, routed)           0.559    18.906    u_core/u_control_unit/registers[0][21]_i_3_n_0
+    SLICE_X12Y49         LUT5 (Prop_lut5_I2_O)        0.105    19.011 r  u_core/u_control_unit/registers[0][21]_i_1/O
+                         net (fo=8, routed)           0.743    19.755    u_core/u_register_file/registers_reg[6][31]_0[21]
+    SLICE_X12Y53         FDCE                                         r  u_core/u_register_file/registers_reg[1][21]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.248    25.065    u_core/u_register_file/CLK
+    SLICE_X12Y53         FDCE                                         r  u_core/u_register_file/registers_reg[1][21]/C
+                         clock pessimism              0.202    25.267    <hidden>
+                         clock uncertainty           -0.082    25.186    <hidden>
+    SLICE_X12Y53         FDCE (Setup_fdce_C_D)       -0.015    25.171    u_core/u_register_file/registers_reg[1][21]
+  -------------------------------------------------------------------
+                         required time                         25.171    <hidden>
+                         arrival time                         -19.755    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.416    <hidden>
+
+Slack (MET) :             5.422ns  (required time - arrival time)
+  Source:                 u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+                            (rising edge-triggered cell RAMB18E1 clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Destination:            u_core/u_register_file/registers_reg[7][27]/D
+                            (rising edge-triggered cell FDCE clocked by clk50_mmcm  {rise@0.000ns fall@10.000ns period=20.000ns})
+  Path Group:             clk50_mmcm
+  Path Type:              Setup (Max at Slow Process Corner)
+  Requirement:            20.000ns  (clk50_mmcm rise@20.000ns - clk50_mmcm rise@0.000ns)
+  Data Path Delay:        14.320ns  (logic 8.457ns (59.056%)  route 5.863ns (40.944%))
+  Logic Levels:           10  (CARRY4=2 DSP48E1=2 LUT2=2 LUT4=1 LUT5=1 LUT6=2)
+  Clock Path Skew:        -0.159ns (DCD - SCD + CPR)
+    Destination Clock Delay (DCD):    5.065ns = ( 25.065 - 20.000 ) 
+    Source Clock Delay      (SCD):    5.427ns
+    Clock Pessimism Removal (CPR):    0.202ns
+  Clock Uncertainty:      0.082ns  ((TSJ^2 + DJ^2)^1/2) / 2 + PE
+    Total System Jitter     (TSJ):    0.071ns
+    Discrete Jitter          (DJ):    0.147ns
+    Phase Error              (PE):    0.000ns
+
+    Location             Delay type                Incr(ns)  Path(ns)    Netlist Resource(s)
+  -------------------------------------------------------------------    -------------------
+                         (clock clk50_mmcm rise edge)
+                                                      0.000     0.000 r  <hidden>
+    N15                                               0.000     0.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000     0.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.371     1.371 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.065     2.436    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.077     2.513 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.425     3.938    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.081     4.019 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.407     5.427    u_core/u_control_unit/CLK
+    RAMB18_X0Y15         RAMB18E1                                     r  u_core/u_control_unit/prog_mem_reg_2/CLKARDCLK
+  -------------------------------------------------------------------    -------------------
+    RAMB18_X0Y15         RAMB18E1 (Prop_ramb18e1_CLKARDCLK_DOBDO[6])
+                                                      2.125     7.552 r  u_core/u_control_unit/prog_mem_reg_2/DOBDO[6]
+                         net (fo=1, routed)           0.626     8.178    u_core/u_control_unit/prog_mem_reg_2_n_25
+    SLICE_X9Y39          LUT2 (Prop_lut2_I0_O)        0.126     8.304 r  u_core/u_control_unit/result0_i_99/O
+                         net (fo=64, routed)          1.306     9.609    u_core/u_register_file/rf_raddr1[1]
+    SLICE_X29Y46         LUT6 (Prop_lut6_I2_O)        0.267     9.876 r  u_core/u_register_file/result0__0_i_22/O
+                         net (fo=2, routed)           0.915    10.792    u_core/u_register_file/result0__0_i_22_n_0
+    SLICE_X15Y47         LUT4 (Prop_lut4_I0_O)        0.105    10.897 r  u_core/u_register_file/result0__0_i_3/O
+                         net (fo=31, routed)          0.640    11.537    u_core/u_alu/rf_rdata1[14]
+    DSP48_X0Y17          DSP48E1 (Prop_dsp48e1_A[14]_PCOUT[47])
+                                                      3.397    14.934 r  u_core/u_alu/result0__0/PCOUT[47]
+                         net (fo=1, routed)           0.002    14.936    u_core/u_alu/result0__0_n_106
+    DSP48_X0Y18          DSP48E1 (Prop_dsp48e1_PCIN[47]_P[4])
+                                                      1.271    16.207 r  u_core/u_alu/result0__1/P[4]
+                         net (fo=2, routed)           0.766    16.973    u_core/u_alu/result0__1_n_101
+    SLICE_X12Y46         LUT2 (Prop_lut2_I0_O)        0.105    17.078 r  u_core/u_alu/registers[0][23]_i_10/O
+                         net (fo=1, routed)           0.000    17.078    u_core/u_alu/registers[0][23]_i_10_n_0
+    SLICE_X12Y46         CARRY4 (Prop_carry4_S[1]_CO[3])
+                                                      0.444    17.522 r  u_core/u_alu/registers_reg[0][23]_i_5/CO[3]
+                         net (fo=1, routed)           0.000    17.522    u_core/u_alu/registers_reg[0][23]_i_5_n_0
+    SLICE_X12Y47         CARRY4 (Prop_carry4_CI_O[3])
+                                                      0.262    17.784 r  u_core/u_alu/registers_reg[0][27]_i_5/O[3]
+                         net (fo=1, routed)           0.530    18.313    u_core/u_control_unit/registers_reg[6][27][3]
+    SLICE_X14Y47         LUT6 (Prop_lut6_I0_O)        0.250    18.563 r  u_core/u_control_unit/registers[0][27]_i_3/O
+                         net (fo=1, routed)           0.530    19.093    u_core/u_control_unit/registers[0][27]_i_3_n_0
+    SLICE_X8Y50          LUT5 (Prop_lut5_I2_O)        0.105    19.198 r  u_core/u_control_unit/registers[0][27]_i_1/O
+                         net (fo=8, routed)           0.549    19.747    u_core/u_register_file/registers_reg[6][31]_0[27]
+    SLICE_X10Y53         FDCE                                         r  u_core/u_register_file/registers_reg[7][27]/D
+  -------------------------------------------------------------------    -------------------
+
+                         (clock clk50_mmcm rise edge)
+                                                     20.000    20.000 r  <hidden>
+    N15                                               0.000    20.000 r  CLK_100MHZ
+                         net (fo=0)                   0.000    20.000    CLK_100MHZ
+    N15                  IBUF (Prop_ibuf_I_O)         1.306    21.306 r  CLK_100MHZ_IBUF_inst/O
+                         net (fo=1, routed)           1.004    22.309    CLK_100MHZ_IBUF
+    MMCME2_ADV_X0Y0      MMCME2_ADV (Prop_mmcme2_adv_CLKIN1_CLKOUT0)
+                                                      0.073    22.382 r  u_mmcm/CLKOUT0
+                         net (fo=1, routed)           1.357    23.740    clk50_mmcm
+    BUFGCTRL_X0Y0        BUFG (Prop_bufg_I_O)         0.077    23.817 r  u_bufg_clk50/O
+                         net (fo=1276, routed)        1.248    25.065    u_core/u_register_file/CLK
+    SLICE_X10Y53         FDCE                                         r  u_core/u_register_file/registers_reg[7][27]/C
+                         clock pessimism              0.202    25.267    <hidden>
+                         clock uncertainty           -0.082    25.186    <hidden>
+    SLICE_X10Y53         FDCE (Setup_fdce_C_D)       -0.017    25.169    u_core/u_register_file/registers_reg[7][27]
+  -------------------------------------------------------------------
+                         required time                         25.169    <hidden>
+                         arrival time                         -19.747    <hidden>
+  -------------------------------------------------------------------
+                         slack                                  5.422    <hidden>
+
+
+
+

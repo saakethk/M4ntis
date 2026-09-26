@@ -1,0 +1,79 @@
+Copyright 1986-2022 Xilinx, Inc. All Rights Reserved. Copyright 2022-2026 Advanced Micro Devices, Inc. All Rights Reserved.
+---------------------------------------------------------------------------------------------------------------------------------------------
+| Tool Version : Vivado v.2026.1 (win64) Build 6511674 Tue Jun 16 11:02:23 MDT 2026
+| Date         : Fri Sep 25 22:18:08 2026
+| Host         : Abhay_PC running 64-bit major release  (build 9200)
+| Command      : report_methodology -file {C:/Users/abhay/OneDrive/Documents/projects/Trade CPU/checkpoints/reports/impl_methodology.rpt}
+| Design       : tradecpu_top
+| Device       : xc7s50csga324-2
+| Speed File   : -2
+| Design State : Fully Routed
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+Report Methodology
+
+Table of Contents
+-----------------
+1. REPORT SUMMARY
+2. REPORT DETAILS
+
+1. REPORT SUMMARY
+-----------------
+            Netlist: tradecpu_top
+          Floorplan: design_1
+      Design limits: <entire design considered>
+             Max checks: <unlimited>
+             Checks found: 6
++----------+----------+--------------------------------------------+--------+
+| Rule     | Severity | Description                                | Checks |
++----------+----------+--------------------------------------------+--------+
+| LUTAR-1  | Warning  | LUT drives async reset alert               | 1      |
+| SYNTH-6  | Warning  | Timing of a RAM block might be sub-optimal | 2      |
+| SYNTH-10 | Warning  | Wide multiplier                            | 3      |
++----------+----------+--------------------------------------------+--------+
+
+2. REPORT DETAILS
+-----------------
+LUTAR-1#1 Warning
+LUT drives async reset alert  
+LUT cell u_core/u_uart_protocol/registers[0][31]_i_3, with 2 or more inputs, drives asynchronous preset/clear pin(s) u_core/dbg_advance_count_reg[0]/CLR, u_core/dbg_advance_count_reg[1]/CLR,
+u_core/dbg_advance_count_reg[2]/CLR, u_core/dbg_advance_count_reg[3]/CLR,
+u_core/dbg_advance_count_reg[4]/CLR,
+u_core/u_balance_reg/balance_reg[0]/CLR,
+u_core/u_balance_reg/balance_reg[10]/CLR,
+u_core/u_balance_reg/balance_reg[11]/CLR,
+u_core/u_balance_reg/balance_reg[12]/CLR,
+u_core/u_balance_reg/balance_reg[13]/CLR,
+u_core/u_balance_reg/balance_reg[14]/CLR,
+u_core/u_balance_reg/balance_reg[15]/CLR,
+u_core/u_balance_reg/balance_reg[16]/CLR,
+u_core/u_balance_reg/balance_reg[17]/CLR,
+u_core/u_balance_reg/balance_reg[18]/CLR (the first 15 of 799 listed). The LUT may glitch and trigger an unexpected reset, even if it is a properly timed path.
+Related violations: <none>
+
+SYNTH-6#1 Warning
+Timing of a RAM block might be sub-optimal  
+The timing for the instance u_core/u_control_unit/prog_mem_reg_1, implemented as a RAM block, might be sub-optimal as no output register was merged into the block.
+Related violations: <none>
+
+SYNTH-6#2 Warning
+Timing of a RAM block might be sub-optimal  
+The timing for the instance u_core/u_control_unit/prog_mem_reg_2, implemented as a RAM block, might be sub-optimal as no output register was merged into the block.
+Related violations: <none>
+
+SYNTH-10#1 Warning
+Wide multiplier  
+Detected multiplier at u_core/u_alu/result0 of size 15x18, it is decomposed from a wide multipler into 4 DSP blocks.
+Related violations: <none>
+
+SYNTH-10#2 Warning
+Wide multiplier  
+Detected multiplier at u_core/u_alu/result0__0 of size 18x18, it is decomposed from a wide multipler into 4 DSP blocks.
+Related violations: <none>
+
+SYNTH-10#3 Warning
+Wide multiplier  
+Detected multiplier at u_core/u_alu/result0__1 of size 18x15, it is decomposed from a wide multipler into 4 DSP blocks.
+Related violations: <none>
+
+

@@ -1,0 +1,26 @@
+# Vivado project: keep only the project file and sources (incl. constraints)
+Trade_CPU vivado/*
+!Trade_CPU vivado/Trade_CPU.xpr
+!Trade_CPU vivado/Trade_CPU.srcs/
+
+# Other Vivado generated files
+vivado_project/
+*.cache/
+*.runs/
+*.jou
+*.log
+.Xil/
+*.str
+*.ltx
+
+# Bitstreams: ignored everywhere except the committed copy in bitstream/
+*.bit
+!bitstream/*.bit
+
+# Icarus Verilog / simulation build output
+scripts/build/
+*.vvp
+*.vcd
+
+# Python
+__pycache__/
