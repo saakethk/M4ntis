@@ -11,6 +11,7 @@ from pathlib import Path
 import psycopg
 import requests
 from dotenv import load_dotenv
+from psycopg import generators, pq
 from psycopg.rows import dict_row
 
 load_dotenv()
@@ -157,10 +158,76 @@ def split_sql(script: str) -> list[str]:
     return statements
 
 
+def _command_in_progress(conn: psycopg.Connection) -> bool:
+    """True while libpq still has a COPY or query in flight."""
+    return (
+        conn.pgconn.status == pq.ConnStatus.OK
+        and conn.pgconn.transaction_status == pq.TransactionStatus.ACTIVE
+    )
+
+
+def _release_in_progress_command(conn: psycopg.Connection) -> None:
+    """Finish a COPY or other command before another statement or ROLLBACK.
+
+    ``Connection.transaction()`` sends ROLLBACK when its block exits with an
+    error. If that happens while COPY is still active, libpq refuses the
+    ROLLBACK with "another command is already in progress" and the connection
+    stays unusable. The copy context is supposed to cancel first; if its
+    flush fails before ``PQputCopyEnd``, the connection is still ACTIVE and
+    this finishes the command.
+    """
+    if not _command_in_progress(conn):
+        return
+
+    try:
+        conn.wait(
+            generators.copy_end(conn.pgconn, b"copy aborted before rollback"),
+            timeout=5.0,
+        )
+    except Exception:
+        pass
+
+    if not _command_in_progress(conn):
+        return
+
+    try:
+        conn.cancel_safe(timeout=5.0)
+    except Exception:
+        try:
+            conn.cancel()
+        except Exception:
+            return
+
+    if not _command_in_progress(conn):
+        return
+
+    try:
+        conn.wait(generators.execute(conn.pgconn), timeout=5.0)
+    except Exception:
+        return
+
+
+def _require_idle_session(conn: psycopg.Connection) -> None:
+    """Refuse pipeline mode, and drop a command left over from an earlier error.
+
+    Pipeline mode and COPY cannot run on the same connection. A cursor left
+    open from the dedupe query must also be finished before the next command.
+    """
+    if conn.pgconn.pipeline_status:
+        raise RuntimeError(
+            "stock_minute_bars cannot be loaded while the connection is in "
+            "pipeline mode"
+        )
+    _release_in_progress_command(conn)
+
+
 def execute_sql_script(conn: psycopg.Connection, script: str) -> None:
     with conn.cursor() as cur:
         for statement in split_sql(script):
-            cur.execute(statement) # type: ignore
+            # One statement at a time. Never send the next while the previous
+            # result or COPY is still in progress.
+            _release_in_progress_command(conn)
+            cur.execute(statement)  # type: ignore
 
 
 def parse_bar_ts(value: str) -> datetime:
@@ -196,8 +263,22 @@ def canonical_ts(ts: datetime) -> datetime:
     return ts.astimezone(timezone.utc)
 
 
+def delete_duplicate_rows(conn: psycopg.Connection) -> int:
+    """Run ``dedupe_stock_minute_bars()`` and close the cursor before returning.
+
+    ``Connection.execute()`` leaves its cursor open. The next statement (the
+    unique index, or a COPY) must not start while that result is still current.
+    """
+    _require_idle_session(conn)
+    with conn.cursor() as cur:
+        cur.execute("SELECT dedupe_stock_minute_bars()")
+        removed = cur.fetchone()
+    return int(removed[0]) if removed else 0
+
+
 def ensure_hypertable(conn: psycopg.Connection) -> None:
     """Create the hypertable, drop exact duplicates, then ensure the unique key."""
+    _require_idle_session(conn)
     schema = (SQL_DIR / "stock_minute_bars.sql").read_text()
     if UNIQUE_INDEX_MARKER not in schema:
         raise RuntimeError(
@@ -206,8 +287,7 @@ def ensure_hypertable(conn: psycopg.Connection) -> None:
     before, _, after = schema.partition(UNIQUE_INDEX_MARKER)
     execute_sql_script(conn, before)
     execute_sql_script(conn, (SQL_DIR / "dedupe_stock_minute_bars.sql").read_text())
-    removed = conn.execute("SELECT dedupe_stock_minute_bars()").fetchone()
-    removed_count = int(removed[0]) if removed else 0
+    removed_count = delete_duplicate_rows(conn)
     if removed_count:
         print(f"Removed {removed_count} duplicate stock_minute_bars rows")
     execute_sql_script(conn, after)
@@ -340,47 +420,58 @@ def insert_rows(conn: psycopg.Connection, rows: list[tuple]) -> int:
     if not rows:
         return 0
     values = prefer_native_bars(rows)
+    # autocommit stays on for DDL. This block is the only transaction.
+    # Exit the COPY context, and finish it if the flush failed, before the
+    # INSERT and before this context sends COMMIT or ROLLBACK. ROLLBACK while
+    # COPY is active is ignored as "another command is already in progress".
+    _require_idle_session(conn)
     with conn.transaction():
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                CREATE TEMP TABLE stock_minute_bars_stage (
-                    symbol TEXT NOT NULL,
-                    ts TIMESTAMPTZ NOT NULL,
-                    open DOUBLE PRECISION NOT NULL,
-                    high DOUBLE PRECISION NOT NULL,
-                    low DOUBLE PRECISION NOT NULL,
-                    close DOUBLE PRECISION NOT NULL,
-                    volume BIGINT NOT NULL,
-                    trade_count BIGINT,
-                    vwap DOUBLE PRECISION,
-                    source_rank SMALLINT NOT NULL
-                ) ON COMMIT DROP
-                """
-            )
-            with cur.copy(
-                """
-                COPY stock_minute_bars_stage (
-                    symbol, ts, open, high, low, close, volume,
-                    trade_count, vwap, source_rank
-                ) FROM STDIN
-                """
-            ) as copy:
-                for row in values:
-                    copy.write_row(row)
-            cur.execute(
-                """
-                INSERT INTO stock_minute_bars (
-                    symbol, ts, open, high, low, close, volume, trade_count, vwap
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    CREATE TEMP TABLE stock_minute_bars_stage (
+                        symbol TEXT NOT NULL,
+                        ts TIMESTAMPTZ NOT NULL,
+                        open DOUBLE PRECISION NOT NULL,
+                        high DOUBLE PRECISION NOT NULL,
+                        low DOUBLE PRECISION NOT NULL,
+                        close DOUBLE PRECISION NOT NULL,
+                        volume BIGINT NOT NULL,
+                        trade_count BIGINT,
+                        vwap DOUBLE PRECISION,
+                        source_rank SMALLINT NOT NULL
+                    ) ON COMMIT DROP
+                    """
                 )
-                SELECT DISTINCT ON (symbol, ts)
-                    symbol, ts, open, high, low, close, volume, trade_count, vwap
-                FROM stock_minute_bars_stage
-                ORDER BY symbol, ts, source_rank
-                ON CONFLICT (symbol, ts) DO NOTHING
-                """
-            )
-            inserted = cur.rowcount
+                try:
+                    with cur.copy(
+                        """
+                        COPY stock_minute_bars_stage (
+                            symbol, ts, open, high, low, close, volume,
+                            trade_count, vwap, source_rank
+                        ) FROM STDIN
+                        """
+                    ) as copy:
+                        for row in values:
+                            copy.write_row(row)
+                finally:
+                    _release_in_progress_command(conn)
+                cur.execute(
+                    """
+                    INSERT INTO stock_minute_bars (
+                        symbol, ts, open, high, low, close, volume, trade_count, vwap
+                    )
+                    SELECT DISTINCT ON (symbol, ts)
+                        symbol, ts, open, high, low, close, volume, trade_count, vwap
+                    FROM stock_minute_bars_stage
+                    ORDER BY symbol, ts, source_rank
+                    ON CONFLICT (symbol, ts) DO NOTHING
+                    """
+                )
+                inserted = cur.rowcount
+        finally:
+            _release_in_progress_command(conn)
     return inserted
 
 
