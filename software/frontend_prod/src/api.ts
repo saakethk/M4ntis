@@ -9,14 +9,20 @@ export type User = {
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 export async function getMe(): Promise<User | null> {
-  let response: Response
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS)
   try {
-    response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+    const response = await fetch(`${API_BASE}/auth/me`, {
+      credentials: 'include',
+      signal: controller.signal,
+    })
+    if (response.status === 401 || !response.ok) return null
+    return (await response.json()) as User
   } catch {
-    return null
+    throw new Error('Could not reach the server.')
+  } finally {
+    clearTimeout(timer)
   }
-  if (response.status === 401 || !response.ok) return null
-  return (await response.json()) as User
 }
 
 export function login(email: string, password: string): Promise<User> {

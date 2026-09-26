@@ -44,10 +44,7 @@ export function Portfolio() {
           </article>
         ))}
         <button type="button" className="card new-card">
-          <span className="plus" aria-hidden="true">
-            +
-          </span>
-          New Strategy
+          + New Strategy
         </button>
       </div>
     </section>
