@@ -6,7 +6,7 @@ import threading
 import time
 from dataclasses import dataclass
 
-from db import connect
+from helpers.db import connect
 
 MAX_LIMIT = 100
 _CACHE_SECONDS = 300

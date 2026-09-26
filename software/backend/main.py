@@ -1,22 +1,14 @@
-"""HTTP API for symbol search.
-
-Run from the repository root:
-
-    python software/backend/main.py
-"""
+"""Main Backend Server"""
 
 from __future__ import annotations
 
-import os
-import threading
-import time
 from pathlib import Path
 import uvicorn
 import psycopg
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, search_symbols
+from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, search_symbols
 
 app = FastAPI(title="Ticker search")
 app.add_middleware(

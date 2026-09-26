@@ -12,7 +12,7 @@ from datetime import datetime
 
 from psycopg.rows import dict_row
 
-from db import connect
+from helpers.db import connect
 
 RESOLUTIONS = {
     "1min": "1 minute",
@@ -80,7 +80,7 @@ def stream_ticker_data(
         with conn.transaction():
             with conn.cursor(name="ticker_bars", row_factory=dict_row) as cur:
                 cur.itersize = 1000
-                cur.execute(query, params)
+                cur.execute(query, params) # type: ignore
                 yield from (dict(row) for row in cur)
     finally:
         conn.close()

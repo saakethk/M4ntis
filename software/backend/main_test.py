@@ -8,8 +8,8 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 import main
-import symbols
-from symbols import Instrument
+import helpers.symbols as symbols
+from helpers.symbols import Instrument
 
 SYMBOLS = [
     Instrument("AAPL", "Apple Inc. Common Stock"),
