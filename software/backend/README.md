@@ -10,6 +10,11 @@ This is the code to expose the backend code like the FPGA interface and such to 
   - sets an HttpOnly `session` cookie for 14 days
 - POST /auth/logout clears that cookie
 - GET /auth/me returns the signed-in user
+- POST /strategies with `{ "name", "document", "ir"? }` creates a private strategy for the signed-in user
+- GET /strategies lists strategies the signed-in user owns (`id`, `name`, `visibility`, `updated_at`)
+- GET /strategies/{id} returns `document` and `ir` when the user owns the strategy or it is public, plus `owned`
+- PUT /strategies/{id} lets the owner update `name`, `document`, `ir`, and `visibility` (`private` or `public`)
+- POST /strategies/{id}/copy creates a private copy owned by the signed-in user when they can view the original
 
 ## To Run
 1. cd software/backend
