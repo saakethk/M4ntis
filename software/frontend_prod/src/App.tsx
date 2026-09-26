@@ -17,6 +17,7 @@ export default function App() {
 
   useEffect(() => {
     let ignore = false
+    // getMe returns null on 401. A missing cookie is signed out, not an error.
     getMe()
       .then((next) => {
         if (ignore) return

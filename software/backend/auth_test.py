@@ -51,6 +51,44 @@ class AuthRoutesTest(unittest.TestCase):
                 json={"email": "person@example.com", "password": "correct horse"},
             )
         self.assertEqual(response.status_code, 401)
+        self.assertIsNone(response.cookies.get("session"))
+
+    def test_login_cookie_authenticates_the_next_me(self) -> None:
+        user = User(7, "person@example.com")
+
+        def lookup(token: str) -> User | None:
+            if token == "raw-token":
+                return user
+            return None
+
+        with patch.object(auth, "login", return_value=(user, "raw-token")):
+            logged_in = self.client.post(
+                "/auth/login",
+                json={"email": "person@example.com", "password": "correct horse"},
+            )
+        self.assertEqual(logged_in.status_code, 200)
+        self.assertEqual(logged_in.json(), {"id": 7, "email": "person@example.com"})
+        self.assertEqual(logged_in.cookies.get("session"), "raw-token")
+        header = logged_in.headers["set-cookie"]
+        lowered = header.lower()
+        self.assertIn("httponly", lowered)
+        self.assertIn("path=/", lowered)
+        self.assertIn("samesite=lax", lowered)
+        self.assertNotIn("secure", lowered)
+        self.assertNotIn("domain=", lowered)
+        self.assertEqual(self.client.cookies.get("session"), "raw-token")
+
+        with patch.object(auth, "user_from_token", side_effect=lookup) as seen:
+            me = self.client.get("/auth/me")
+        self.assertEqual(me.status_code, 200)
+        self.assertEqual(me.json(), {"id": 7, "email": "person@example.com"})
+        seen.assert_called_once_with("raw-token")
+
+        self.client.cookies.clear()
+        with patch.object(auth, "user_from_token", side_effect=lookup) as seen_again:
+            missing = self.client.get("/auth/me")
+        self.assertEqual(missing.status_code, 401)
+        seen_again.assert_called_once_with("")
 
     def test_me_requires_a_session(self) -> None:
         with patch.object(auth, "user_from_token", return_value=None):

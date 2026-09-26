@@ -1,28 +1,19 @@
 // Cookie session against the Mantis API. The session token stays in an
 // HttpOnly cookie; this module never stores it or the password.
 
+import { resolveApiBase } from './apiBase.ts'
+
 export type User = {
   id: number
   email: string
 }
 
-const DEFAULT_API_BASE = 'http://localhost:8001'
 const SESSION_TIMEOUT_MS = 5000
 
-// The page may be opened at 0.0.0.0:8002, but API calls stay on the backend.
-function resolveApiBase(value: string | undefined): string {
-  const trimmed = value?.trim() ?? ''
-  if (!trimmed) return DEFAULT_API_BASE
-  try {
-    const url = new URL(trimmed)
-    if (url.hostname === '0.0.0.0') return DEFAULT_API_BASE
-  } catch {
-    return DEFAULT_API_BASE
-  }
-  return trimmed.replace(/\/+$/, '')
-}
-
-const API_BASE = resolveApiBase(import.meta.env.VITE_API_URL)
+const API_BASE = resolveApiBase(import.meta.env.VITE_API_URL, {
+  dev: import.meta.env.DEV,
+  pageHostname: typeof window === 'undefined' ? undefined : window.location.hostname,
+})
 
 export async function getMe(): Promise<User | null> {
   const controller = new AbortController()
@@ -32,7 +23,9 @@ export async function getMe(): Promise<User | null> {
       credentials: 'include',
       signal: controller.signal,
     })
-    if (response.status === 401 || !response.ok) return null
+    // No session cookie yet. That is signed out, not a failed request.
+    if (response.status === 401) return null
+    if (!response.ok) return null
     return (await response.json()) as User
   } catch {
     throw new Error('Could not reach the server.')
