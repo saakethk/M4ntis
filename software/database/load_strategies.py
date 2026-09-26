@@ -86,7 +86,7 @@ def load_strategies() -> None:
         for statement in SQL_PATH.read_text().split(";"):
             sql = statement.strip()
             if sql:
-                conn.execute(sql)
+                conn.execute(sql) # type: ignore
         conn.execute(DROP_SHARES_SQL)
         conn.execute(ADD_VISIBILITY_SQL)
         _add_visibility_check_if_missing(conn)
