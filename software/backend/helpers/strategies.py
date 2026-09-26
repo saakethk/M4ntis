@@ -92,13 +92,19 @@ def _json_object(value: object, label: str) -> dict[str, Any]:
     return value
 
 
-def new_strategy_values(user_id: int, name: object, document: object, ir: object) -> dict[str, Any]:
-    """Fields for a strategy the caller owns. New strategies are private."""
+def new_strategy_values(
+    user_id: int,
+    name: object,
+    document: object,
+    ir: object,
+    visibility: object = PRIVATE,
+) -> dict[str, Any]:
+    """Fields for a strategy the caller owns. Visibility defaults to private."""
     stored_ir = None if ir is None else _json_object(ir, "ir")
     return {
         "user_id": user_id,
         "name": clean_name(name),
-        "visibility": PRIVATE,
+        "visibility": normalize_visibility(visibility),
         "document": _json_object(document, "document"),
         "ir": stored_ir,
     }
@@ -138,8 +144,14 @@ def to_api(row: StrategyRow, viewer_id: int) -> dict[str, Any]:
     }
 
 
-def create_strategy(user_id: int, name: str, document: Any, ir: Any = None) -> dict[str, Any]:
-    values = new_strategy_values(user_id, name, document, ir)
+def create_strategy(
+    user_id: int,
+    name: str,
+    document: Any,
+    ir: Any = None,
+    visibility: object = PRIVATE,
+) -> dict[str, Any]:
+    values = new_strategy_values(user_id, name, document, ir, visibility)
     conn = _connect()
     try:
         with conn.transaction():
@@ -151,7 +163,8 @@ def create_strategy(user_id: int, name: str, document: Any, ir: Any = None) -> d
                 """,
                 _insert_params(values),
             ).fetchone()
-        return to_api(_row_from_record(record), user_id)
+        row = _row_from_record(record)
+        return to_summary(row.id, row.name, row.visibility, row.updated_at)
     finally:
         conn.close()
 
@@ -211,7 +224,8 @@ def update_strategy(
             ).fetchone()
         if record is None:
             raise StrategyNotFound()
-        return to_api(_row_from_record(record), user_id)
+        row = _row_from_record(record)
+        return to_summary(row.id, row.name, row.visibility, row.updated_at)
     finally:
         conn.close()
 

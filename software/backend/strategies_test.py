@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from psycopg.types.json import Jsonb
 
 import helpers.auth as auth
 import helpers.strategies as strategies
@@ -49,6 +51,11 @@ class VisibilityRulesTest(unittest.TestCase):
         self.assertEqual(values["visibility"], "private")
         self.assertEqual(values["document"], DOCUMENT)
         self.assertIsNone(values["ir"])
+
+    def test_new_strategy_can_be_public(self) -> None:
+        values = strategies.new_strategy_values(9, "Trend", DOCUMENT, None, "public")
+        self.assertEqual(values["visibility"], "public")
+        self.assertEqual(values["user_id"], 9)
 
     def test_copy_is_a_private_row_for_the_caller(self) -> None:
         document = {"nodes": [1]}
@@ -113,14 +120,9 @@ class StrategyRoutesTest(unittest.TestCase):
     def test_create_stores_a_private_strategy_for_the_session_user(self) -> None:
         stored = {
             "id": 3,
-            "user_id": 4,
             "name": "Trend",
             "visibility": "private",
-            "document": DOCUMENT,
-            "ir": IR,
             "updated_at": "2026-09-26T00:00:00+00:00",
-            "created_at": "2026-09-26T00:00:00+00:00",
-            "owned": True,
         }
         _sign_in(self.client)
         with (
@@ -131,9 +133,56 @@ class StrategyRoutesTest(unittest.TestCase):
                 "/strategies", json={"name": "Trend", "document": DOCUMENT, "ir": IR}
             )
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.json()["visibility"], "private")
-        self.assertTrue(response.json()["owned"])
-        create.assert_called_once_with(4, "Trend", DOCUMENT, IR)
+        self.assertEqual(response.json(), stored)
+        create.assert_called_once_with(4, "Trend", DOCUMENT, IR, "private")
+
+    def test_create_rejects_a_blank_name_bad_visibility_and_user_id(self) -> None:
+        _sign_in(self.client)
+        with patch.object(auth, "user_from_token", return_value=OWNER):
+            blank = self.client.post(
+                "/strategies", json={"name": "  ", "document": DOCUMENT}
+            )
+        self.assertEqual(blank.status_code, 400)
+
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(strategies, "create_strategy") as create,
+        ):
+            bad_visibility = self.client.post(
+                "/strategies",
+                json={"name": "Trend", "document": DOCUMENT, "visibility": "edit"},
+            )
+            user_id = self.client.post(
+                "/strategies",
+                json={"name": "Trend", "document": DOCUMENT, "user_id": 9},
+            )
+            not_object = self.client.post(
+                "/strategies", json={"name": "Trend", "document": [1]}
+            )
+        self.assertEqual(bad_visibility.status_code, 400)
+        self.assertEqual(user_id.status_code, 422)
+        self.assertEqual(not_object.status_code, 422)
+        create.assert_not_called()
+
+    def test_create_stores_a_public_strategy_when_asked(self) -> None:
+        stored = {
+            "id": 3,
+            "name": "Trend",
+            "visibility": "public",
+            "updated_at": "2026-09-26T00:00:00+00:00",
+        }
+        _sign_in(self.client)
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(strategies, "create_strategy", return_value=stored) as create,
+        ):
+            response = self.client.post(
+                "/strategies",
+                json={"name": "Trend", "document": DOCUMENT, "visibility": "public"},
+            )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), stored)
+        create.assert_called_once_with(4, "Trend", DOCUMENT, None, "public")
 
     def test_create_rejects_share_fields(self) -> None:
         _sign_in(self.client)
@@ -199,6 +248,41 @@ class StrategyRoutesTest(unittest.TestCase):
             response = self.client.get("/strategies/3")
         self.assertEqual(response.status_code, 404)
 
+    def test_put_returns_the_updated_summary(self) -> None:
+        stored = {
+            "id": 3,
+            "name": "Trend",
+            "visibility": "public",
+            "updated_at": "2026-09-26T00:00:00+00:00",
+        }
+        _sign_in(self.client)
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(strategies, "update_strategy", return_value=stored) as update,
+        ):
+            response = self.client.put("/strategies/3", json={"visibility": "public"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), stored)
+        update.assert_called_once_with(
+            4,
+            3,
+            name=strategies.UNSET,
+            document=strategies.UNSET,
+            ir=strategies.UNSET,
+            visibility="public",
+        )
+
+    def test_put_rejects_an_empty_body(self) -> None:
+        _sign_in(self.client)
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(
+                strategies, "update_strategy", side_effect=ValueError("No fields to update")
+            ),
+        ):
+            response = self.client.put("/strategies/3", json={})
+        self.assertEqual(response.status_code, 400)
+
     def test_put_rejects_non_owners_and_bad_visibility(self) -> None:
         _sign_in(self.client)
         with (
@@ -262,6 +346,142 @@ class StrategyRoutesTest(unittest.TestCase):
         ):
             response = self.client.get("/strategies")
         self.assertEqual(response.status_code, 503)
+
+
+class _Result:
+    def __init__(self, row: tuple | None) -> None:
+        self._row = row
+
+    def fetchone(self) -> tuple | None:
+        return self._row
+
+
+class _Conn:
+    def __init__(self, rows: list[tuple | None]) -> None:
+        self._rows = list(rows)
+        self.statements: list[tuple[str, object]] = []
+        self.closed = False
+
+    def transaction(self) -> "_Conn":
+        return self
+
+    def __enter__(self) -> "_Conn":
+        return self
+
+    def __exit__(self, *args: object) -> bool:
+        return False
+
+    def execute(self, sql: str, params: object = None) -> _Result:
+        self.statements.append((" ".join(sql.split()), params))
+        row = self._rows.pop(0) if self._rows else None
+        return _Result(row)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def _saved_row(
+    strategy_id: int = 8,
+    user_id: int = 4,
+    name: str = "Trend",
+    visibility: str = "private",
+    document: dict | None = None,
+    ir: dict | None = None,
+) -> tuple:
+    moment = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+    return (
+        strategy_id,
+        user_id,
+        name,
+        visibility,
+        document if document is not None else DOCUMENT,
+        ir,
+        moment,
+        moment,
+    )
+
+
+class SaveStrategyDbTest(unittest.TestCase):
+    def test_create_inserts_the_caller_and_returns_a_summary(self) -> None:
+        conn = _Conn([_saved_row(visibility="public", ir=IR)])
+        with patch.object(strategies, "_connect", return_value=conn):
+            result = strategies.create_strategy(4, " Trend ", DOCUMENT, IR, "public")
+        self.assertEqual(
+            result,
+            {
+                "id": 8,
+                "name": "Trend",
+                "visibility": "public",
+                "updated_at": "2026-09-26T12:00:00+00:00",
+            },
+        )
+        sql, params = conn.statements[0]
+        self.assertIn("INSERT INTO strategies (user_id, name, visibility, document, ir)", sql)
+        self.assertEqual(params[0], 4)
+        self.assertEqual(params[1], "Trend")
+        self.assertEqual(params[2], "public")
+        self.assertIsInstance(params[3], Jsonb)
+        self.assertEqual(params[3].obj, DOCUMENT)
+        self.assertIsInstance(params[4], Jsonb)
+        self.assertEqual(params[4].obj, IR)
+        self.assertTrue(conn.closed)
+
+    def test_create_defaults_to_private_without_touching_a_client_user_id(self) -> None:
+        conn = _Conn([_saved_row()])
+        with patch.object(strategies, "_connect", return_value=conn):
+            result = strategies.create_strategy(4, "Trend", {"user_id": 99, "nodes": []})
+        self.assertEqual(result["visibility"], "private")
+        self.assertNotIn("user_id", result)
+        self.assertNotIn("document", result)
+        _sql, params = conn.statements[0]
+        self.assertEqual(params[0], 4)
+        self.assertEqual(params[2], "private")
+        self.assertIsNone(params[4])
+
+    def test_update_sets_updated_at_for_the_owner_and_returns_a_summary(self) -> None:
+        current = _saved_row(strategy_id=3)
+        saved = _saved_row(strategy_id=3, name="Breakout", visibility="public")
+        conn = _Conn([current, saved])
+        with patch.object(strategies, "_connect", return_value=conn):
+            result = strategies.update_strategy(4, 3, name="Breakout", visibility="public")
+        self.assertEqual(
+            result,
+            {
+                "id": 3,
+                "name": "Breakout",
+                "visibility": "public",
+                "updated_at": "2026-09-26T12:00:00+00:00",
+            },
+        )
+        sql, params = conn.statements[1]
+        self.assertIn("updated_at = now()", sql)
+        self.assertIn("WHERE id = %s AND user_id = %s", sql)
+        self.assertEqual(params[0], "Breakout")
+        self.assertEqual(params[1], "public")
+        self.assertEqual(params[-2:], [3, 4])
+        self.assertTrue(conn.closed)
+
+    def test_update_rejects_a_non_owner_before_writing(self) -> None:
+        conn = _Conn([_saved_row(strategy_id=3, user_id=9, visibility="public")])
+        with patch.object(strategies, "_connect", return_value=conn):
+            with self.assertRaises(strategies.StrategyForbidden):
+                strategies.update_strategy(4, 3, name="Nope")
+        self.assertEqual(len(conn.statements), 1)
+        self.assertIn("SELECT", conn.statements[0][0])
+
+    def test_update_is_not_found_when_the_row_is_missing(self) -> None:
+        conn = _Conn([None])
+        with patch.object(strategies, "_connect", return_value=conn):
+            with self.assertRaises(strategies.StrategyNotFound):
+                strategies.update_strategy(4, 99, name="Nope")
+        self.assertEqual(len(conn.statements), 1)
+
+    def test_update_requires_a_field(self) -> None:
+        conn = _Conn([_saved_row(strategy_id=3)])
+        with patch.object(strategies, "_connect", return_value=conn):
+            with self.assertRaises(ValueError):
+                strategies.update_strategy(4, 3)
+        self.assertEqual(len(conn.statements), 1)
 
 
 if __name__ == "__main__":
