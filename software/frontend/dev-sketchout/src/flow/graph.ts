@@ -1,5 +1,5 @@
-import { BLOCK_DEFS, defaultParams, isDataBlock, portsOf } from '../blocks/catalog';
-import { NUM_VAR_SLOTS } from '../blocks/hardware';
+import { BLOCK_DEFS, defaultParams, historyTicks, isDataBlock, portsOf } from '../blocks/catalog';
+import { NUM_VAR_SLOTS, ticksToDuration } from '../blocks/hardware';
 import type {
   BlockEdge,
   BlockNode,
@@ -156,8 +156,11 @@ export function analyze(nodes: BlockNode[], edges: BlockEdge[]): Diagnostic[] {
 
   const setSlots = new Set<string>();
   const getSlots = new Map<string, string>();
+  const startParams = byId.get(START_NODE_ID)?.data.params ?? {};
+  const unassignedBuffers = new Map<number, string>();
   let forLoops = 0;
   let trades = 0;
+  let history = 1;
 
   for (const n of nodes) {
     const type = n.type as BlockType;
@@ -204,6 +207,27 @@ export function analyze(nodes: BlockNode[], edges: BlockEdge[]): Diagnostic[] {
     if (type === 'for' && Number(n.data.params.step) === 0) {
       out.push({ level: 'error', message: 'For (Range): step cannot be 0', nodeId: n.id });
     }
+    if (def.history && (reachable.has(n.id) || (isDataBlock(type) && consumed.has(n.id)))) {
+      history = Math.max(history, historyTicks(type, n.data.params));
+      const buf = Number(n.data.params.buffer);
+      if (!startParams[`symbol${buf}`]) unassignedBuffers.set(buf, n.id);
+    }
+  }
+
+  for (const [buf, nodeId] of unassignedBuffers) {
+    out.push({
+      level: 'error',
+      message: `BUF${buf} is used but has no stock assigned on the Start block`,
+      nodeId,
+    });
+  }
+
+  if (history > 1) {
+    const span = ticksToDuration(history - 1, String(startParams.resolution));
+    out.push({
+      level: 'info',
+      message: `Needs ${history} ticks of history: the first ${history - 1} ticks (${span}) are warm-up with no trades`,
+    });
   }
 
   for (const [slot, nodeId] of getSlots) {

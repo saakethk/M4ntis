@@ -1,4 +1,5 @@
-import { MAX_LOOKBACK_DAYS, NUM_STOCK_BUFFERS, NUM_VAR_SLOTS } from './hardware';
+import { BUFFER_DEPTH, NUM_STOCK_BUFFERS, NUM_VAR_SLOTS, RESOLUTIONS } from './hardware';
+import { NASDAQ_100 } from './symbols';
 import type {
   BlockCategory,
   BlockDef,
@@ -34,21 +35,29 @@ const execOut = (name: string, label = name): PortDef => ({
 
 const bufferParam: ParamDef = {
   key: 'buffer',
-  label: 'Buffer',
+  label: 'Stock',
   type: 'select',
   default: 0,
   options: range(NUM_STOCK_BUFFERS).map((i) => ({ value: i, label: `BUF${i}` })),
 };
 
-const daysParam = (defaultDays: number, key = 'n', label = 'N (days)'): ParamDef => ({
-  key,
-  label,
+/** GETSUMPRICEBEFORE sums the N most recent entries, so N can be the full buffer depth. */
+const windowParam = (defaultTicks: number, min = 1, max = BUFFER_DEPTH): ParamDef => ({
+  key: 'n',
+  label: 'N (ticks)',
   type: 'number',
-  default: defaultDays,
-  min: 1,
-  max: MAX_LOOKBACK_DAYS,
+  default: defaultTicks,
+  min,
+  max,
   integer: true,
+  ticks: true,
 });
+
+/** GETSTOCKPRICEBEFORE offset 30 wraps back to the current tick, so 29 is the furthest back. */
+const offsetParam = (defaultTicks: number): ParamDef => windowParam(defaultTicks, 1, BUFFER_DEPTH - 1);
+
+/** Loop bounds are loaded with LOAD_IMM, which takes a 16-bit signed immediate. */
+const IMM16 = { min: -32768, max: 32767, integer: true } as const;
 
 const slotParam: ParamDef = {
   key: 'slot',
@@ -64,16 +73,25 @@ const quantityParam: ParamDef = {
   type: 'number',
   default: 10,
   min: 1,
+  max: 32767,
   integer: true,
 };
 
+const symbolParam = (buf: number): ParamDef => ({
+  key: `symbol${buf}`,
+  label: `BUF${buf}`,
+  type: 'select',
+  default: buf === 0 ? 'AAPL' : '',
+  options: [{ value: '', label: '—' }, ...NASDAQ_100.map((s) => ({ value: s, label: s }))],
+});
+
 export const COMPARISON_OPERATORS = [
-  { value: '>', label: '>', hint: 'GT → BR' },
-  { value: '>=', label: '≥', hint: 'LT → BR, Then/Else swapped' },
-  { value: '<', label: '<', hint: 'LT → BR' },
-  { value: '<=', label: '≤', hint: 'GT → BR, Then/Else swapped' },
-  { value: '==', label: '=', hint: 'SUB → BR≠0, Then/Else swapped' },
-  { value: '!=', label: '≠', hint: 'SUB → BR≠0' },
+  { value: '>', label: '>', hint: 'CMP_GT → JMP_IF Then' },
+  { value: '>=', label: '≥', hint: 'CMP_LT → JMP_IF Else' },
+  { value: '<', label: '<', hint: 'CMP_LT → JMP_IF Then' },
+  { value: '<=', label: '≤', hint: 'CMP_GT → JMP_IF Else' },
+  { value: '==', label: '=', hint: 'SUB → JMP_IF Else' },
+  { value: '!=', label: '≠', hint: 'SUB → JMP_IF Then' },
 ] as const;
 
 export type ComparisonOperator = (typeof COMPARISON_OPERATORS)[number]['value'];
@@ -83,6 +101,7 @@ const binaryMath = (
   label: string,
   symbol: string,
   opcode: string,
+  note?: string,
 ): BlockDef => ({
   type,
   label,
@@ -92,8 +111,7 @@ const binaryMath = (
   params: [],
   compilesTo: opcode,
   status: 'confirmed',
-  statusNote:
-    'Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM.',
+  statusNote: note,
 });
 
 export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
@@ -103,56 +121,66 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     label: 'Start',
     category: 'structure',
     description:
-      'Entry point, runs once. Wherever the exec chain dead-ends, the compiler appends UPDATEALLSTOCKBUFFERS + JMP LOOP.',
+      'Runs once per tick. The compiler adds the tick loop, warm-up and per-tick acknowledgement around the chain.',
     ports: [{ ...EXEC_OUT, label: 'each tick' }],
     params: [
-      { key: 'startingBalance', label: 'Starting Balance', type: 'number', default: 100000, min: 0 },
+      { key: 'startingBalance', label: 'Starting Balance ($)', type: 'number', default: 100000, min: 0, max: 21000000 },
+      {
+        key: 'resolution',
+        label: 'Resolution',
+        type: 'select',
+        default: '5m',
+        options: RESOLUTIONS.map((r) => ({ value: r.value, label: r.label })),
+      },
+      ...range(NUM_STOCK_BUFFERS).map(symbolParam),
     ],
-    compilesTo: 'SETBALANCE (once)',
+    compilesTo: 'SETBALANCE, warm-up, UPDATEALLSTOCKBUFFERS loop',
     status: 'confirmed',
     system: true,
   },
 
-  // 2. Reserved variables
+  // 2. Market data
   current_price: {
     type: 'current_price',
     label: 'Current Price',
     category: 'reserved',
-    description: 'Latest price of the stock in the selected buffer.',
+    description: 'Price at the current tick.',
     ports: [DATA_OUT],
     params: [bufferParam],
     compilesTo: 'GETSTOCKPRICE',
     status: 'confirmed',
+    history: '1',
   },
-  sum_last_n: {
-    type: 'sum_last_n',
-    label: 'Sum of Last N Days',
+  sum_n_ticks: {
+    type: 'sum_n_ticks',
+    label: 'Sum of Last N Ticks',
     category: 'reserved',
-    description: 'Sum of the last N daily prices in the buffer.',
+    description: 'Sum of the N most recent prices, including the current tick.',
     ports: [DATA_OUT],
-    params: [bufferParam, daysParam(20)],
+    params: [bufferParam, windowParam(20)],
     compilesTo: 'GETSUMPRICEBEFORE',
     status: 'confirmed',
+    history: 'n',
   },
-  price_n_days_ago: {
-    type: 'price_n_days_ago',
-    label: 'Price N Days Ago',
+  price_n_ticks_ago: {
+    type: 'price_n_ticks_ago',
+    label: 'Price N Ticks Ago',
     category: 'reserved',
-    description: 'Price of the stock N days before the current tick.',
+    description: 'Price N ticks before the current one.',
     ports: [DATA_OUT],
-    params: [bufferParam, daysParam(10)],
-    compilesTo: '—',
-    status: 'blocked',
-    statusNote: 'No confirmed opcode. Required by Momentum.',
+    params: [bufferParam, offsetParam(10)],
+    compilesTo: 'GETSTOCKPRICEBEFORE',
+    status: 'confirmed',
+    history: 'n+1',
   },
   constant: {
     type: 'constant',
     label: 'Constant',
     category: 'reserved',
-    description: 'Literal number.',
+    description: 'Literal number. Prices are in dollars, so 150.25 means $150.25.',
     ports: [DATA_OUT],
     params: [{ key: 'value', label: 'Value', type: 'number', default: 0 }],
-    compilesTo: 'LOAD_IMM (deduped / cached)',
+    compilesTo: 'LOAD_IMM (scaled to fixed point)',
     status: 'confirmed',
   },
 
@@ -161,7 +189,7 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     type: 'set_var',
     label: 'Set Variable',
     category: 'variables',
-    description: 'Store a value into a hardware variable slot.',
+    description: 'Store a value into a hardware variable slot (16-bit signed).',
     ports: [EXEC_IN, dataIn('value', 'value'), EXEC_OUT],
     params: [slotParam],
     compilesTo: 'ASSIGNVAR',
@@ -182,28 +210,26 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
   add: binaryMath('add', 'Add', '+', 'ADD'),
   subtract: binaryMath('subtract', 'Subtract', '−', 'SUB'),
   multiply: binaryMath('multiply', 'Multiply', '×', 'MUL'),
-  divide: binaryMath('divide', 'Divide', '÷', 'DIV'),
+  divide: binaryMath('divide', 'Divide', '÷', 'MUL ×100 → DIV', 'Numerator is pre-scaled so ratios keep 2 decimals.'),
   power: {
     type: 'power',
     label: 'Power',
     category: 'math',
-    description: 'base ^ exponent',
-    ports: [dataIn('base'), dataIn('exp', 'exponent'), DATA_OUT],
-    params: [],
-    compilesTo: '—',
-    status: 'blocked',
-    statusNote: 'No opcode seen. Flag for hardware team.',
+    description: 'base ^ exponent (whole-number exponent).',
+    ports: [dataIn('base'), DATA_OUT],
+    params: [{ key: 'exponent', label: 'Exponent', type: 'number', default: 2, min: 0, max: 8, integer: true }],
+    compilesTo: 'repeated MUL',
+    status: 'confirmed',
   },
-  root: {
-    type: 'root',
-    label: 'Root',
+  sqrt: {
+    type: 'sqrt',
+    label: 'Square Root',
     category: 'math',
-    description: 'base-th root of x',
-    ports: [dataIn('x'), dataIn('base'), DATA_OUT],
+    description: '√x, to 2 decimal places.',
+    ports: [dataIn('x'), DATA_OUT],
     params: [],
-    compilesTo: '—',
-    status: 'blocked',
-    statusNote: 'No opcode seen. Volatility needs this for sqrt.',
+    compilesTo: 'integer Newton loop (DIV, CMP_LT, JMP_IF)',
+    status: 'confirmed',
   },
   log: {
     type: 'log',
@@ -214,7 +240,7 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     params: [],
     compilesTo: '—',
     status: 'blocked',
-    statusNote: 'No opcode seen.',
+    statusNote: 'No opcode and no practical integer expansion on this ISA.',
   },
 
   // 6. Control flow (5. Comparisons live inside If)
@@ -234,7 +260,7 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
         options: COMPARISON_OPERATORS.map((o) => ({ ...o })),
       },
     ],
-    compilesTo: 'GT | LT | SUB → BR / JMP',
+    compilesTo: 'CMP_GT | CMP_LT | SUB → JMP_IF',
     status: 'confirmed',
     condition: true,
   },
@@ -246,11 +272,11 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
       'Runs Body for each i in [start, end) within ONE tick. For sub-calculations, not for walking back through history.',
     ports: [EXEC_IN, dataOut('index', 'i'), execOut('body', 'Body ↻'), execOut('after', 'After')],
     params: [
-      { key: 'start', label: 'Start', type: 'number', default: 0, integer: true },
-      { key: 'end', label: 'End', type: 'number', default: 10, integer: true },
-      { key: 'step', label: 'Step', type: 'number', default: 1, integer: true },
+      { key: 'start', label: 'Start', type: 'number', default: 0, ...IMM16 },
+      { key: 'end', label: 'End', type: 'number', default: 10, ...IMM16 },
+      { key: 'step', label: 'Step', type: 'number', default: 1, ...IMM16 },
     ],
-    compilesTo: 'ASSIGNVAR counter, GT/LT bound, ADD/SUB step, JMP back',
+    compilesTo: 'counter in a spare VAR, CMP_LT/GT bound, ADD step, JMP back',
     status: 'confirmed',
   },
 
@@ -262,8 +288,9 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     description: 'Buy shares at the current price.',
     ports: [EXEC_IN, EXEC_OUT],
     params: [bufferParam, quantityParam],
-    compilesTo: 'GETSTOCKPRICE → MUL → UPDATEBALANCE(+) → EMITDECISION(qty, buf, 1)',
+    compilesTo: 'GETSTOCKPRICE → MUL → UPDATEBALANCE (cash −= cost) → EMITDECISION(qty, buf, 1)',
     status: 'confirmed',
+    history: '1',
   },
   sell: {
     type: 'sell',
@@ -272,8 +299,9 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     description: 'Sell shares at the current price.',
     ports: [EXEC_IN, EXEC_OUT],
     params: [bufferParam, quantityParam],
-    compilesTo: 'GETSTOCKPRICE → MUL → SUB from R0 → UPDATEBALANCE(−) → EMITDECISION(qty, buf, 0)',
+    compilesTo: 'GETSTOCKPRICE → MUL → negate → UPDATEBALANCE (cash += proceeds) → EMITDECISION(qty, buf, 0)',
     status: 'confirmed',
+    history: '1',
   },
 
   // 8. Composite macros
@@ -281,34 +309,35 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     type: 'sma',
     label: 'SMA',
     category: 'composite',
-    description: 'Simple moving average over N days.',
+    description: 'Simple moving average over the last N ticks.',
     ports: [DATA_OUT],
-    params: [bufferParam, daysParam(20)],
-    compilesTo: 'Sum of Last N Days ÷ N',
+    params: [bufferParam, windowParam(20)],
+    compilesTo: 'GETSUMPRICEBEFORE ÷ N',
     status: 'confirmed',
+    history: 'n',
   },
   momentum: {
     type: 'momentum',
     label: 'Momentum',
     category: 'composite',
-    description: 'Fractional price change over N days.',
+    description: 'Fractional change over N ticks: 0.05 = up 5%.',
     ports: [DATA_OUT],
-    params: [bufferParam, daysParam(10)],
-    compilesTo: '(Current Price ÷ Price N Days Ago) − 1',
-    status: 'blocked',
-    statusNote: 'Blocked on "Price N Days Ago".',
+    params: [bufferParam, offsetParam(10)],
+    compilesTo: '(price × 100 ÷ price N ticks ago) − 100',
+    status: 'confirmed',
+    history: 'n+1',
   },
   volatility: {
     type: 'volatility',
     label: 'Volatility',
     category: 'composite',
-    description: 'Sample standard deviation of price over N days.',
+    description: 'Sample standard deviation of price over the last N ticks, in dollars.',
     ports: [DATA_OUT],
-    params: [bufferParam, daysParam(20)],
-    compilesTo: 'sqrt(Σ(price − mean)² / (N − 1))',
-    status: 'blocked',
-    statusNote:
-      'Blocked on a per-day price source (or sum-of-squares sibling to GETSUMPRICEBEFORE) and a sqrt/root opcode.',
+    params: [bufferParam, windowParam(20, 2)],
+    compilesTo: 'unrolled Σ(price − mean)² ÷ (N − 1), integer sqrt',
+    status: 'confirmed',
+    statusNote: 'About 4N + 30 instructions per use; cache it in a variable if several blocks need it.',
+    history: 'n',
   },
   mean_reversion_bands: {
     type: 'mean_reversion_bands',
@@ -318,12 +347,13 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     ports: [dataOut('upper', 'upper'), dataOut('middle', 'middle'), dataOut('lower', 'lower')],
     params: [
       bufferParam,
-      daysParam(20),
-      { key: 'k', label: 'k (std devs)', type: 'number', default: 2, min: 0, step: 0.1 },
+      windowParam(20, 2),
+      { key: 'k', label: 'k (std devs)', type: 'number', default: 2, min: 0, max: 10, step: 0.1 },
     ],
     compilesTo: 'SMA ± k × Volatility',
-    status: 'blocked',
-    statusNote: "Inherits Volatility's blockers.",
+    status: 'confirmed',
+    statusNote: 'Upper and lower each expand Volatility; about 4N + 40 instructions per band used.',
+    history: 'n',
   },
 };
 
@@ -354,4 +384,12 @@ export function portsOf(type: BlockType, kind: PortDef['kind'], direction: PortD
 /** A block is "pure data" if it has no exec ports: it is evaluated on demand wherever its output is consumed. */
 export function isDataBlock(type: BlockType) {
   return BLOCK_DEFS[type].ports.every((p) => p.kind === 'data');
+}
+
+export function historyTicks(type: BlockType, params: Record<string, ParamValue>): number {
+  const h = BLOCK_DEFS[type].history;
+  if (!h) return 0;
+  if (h === '1') return 1;
+  const n = Number(params.n);
+  return h === 'n+1' ? n + 1 : n;
 }

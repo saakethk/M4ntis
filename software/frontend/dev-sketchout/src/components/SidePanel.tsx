@@ -3,11 +3,13 @@ import { BLOCK_DEFS } from '../blocks/catalog';
 import type { BlockEdge, BlockNode, BlockType } from '../blocks/types';
 import type { Diagnostic } from '../flow/graph';
 import { toDocument, toIR } from '../flow/serialize';
+import { AssemblyPanel } from './AssemblyPanel';
 
-type Tab = 'diagnostics' | 'document' | 'ir' | 'block' | 'catalog';
+type Tab = 'diagnostics' | 'assembly' | 'document' | 'ir' | 'block' | 'catalog';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'diagnostics', label: 'Checks' },
+  { id: 'assembly', label: 'Assembly' },
   { id: 'document', label: 'Flow JSON' },
   { id: 'ir', label: 'Compiler IR' },
   { id: 'block', label: 'Selected' },
@@ -83,6 +85,14 @@ export function SidePanel({
               </li>
             ))}
           </ul>
+        );
+      case 'assembly':
+        return (
+          <AssemblyPanel
+            documentJson={JSON.stringify({ ...toDocument(name, nodes, edges), savedAt: '' })}
+            slug={slug}
+            onFocusNode={onFocusNode}
+          />
         );
       case 'document':
         return <JsonView value={toDocument(name, nodes, edges)} filename={`${slug}.strategy.json`} />;
