@@ -1,23 +1,4 @@
-"""Load five years of Alpaca 1-minute bars into Timescale.
-
-Creates the ``stock_minute_bars`` hypertable if needed, pulls 1-minute bars
-from Alpaca, and copies them into Tiger Data with ``ON CONFLICT DO NOTHING``.
-
-A rerun does not insert a second copy of the same minute. The loader deletes
-exact duplicate ``(symbol, ts)`` rows when the table has no unique key, then
-creates a unique index on ``(symbol, ts)`` if that index is missing.
-``CREATE TABLE IF NOT EXISTS`` does not add a primary key to a table that
-already existed without one, and ``ON CONFLICT (symbol, ts)`` only skips a
-row when that unique index exists.
-
-Credentials are read from the repo-root ``.env`` file (``ALPACA_API_KEY``,
-``ALPACA_API_SECRET``, and ``TIGER_DB_PG*``). The default data feed is
-``iex``. Override it with ``ALPACA_DATA_FEED``. Secret values are never printed.
-
-When META is one of the requested tickers, bars before the 2022-06-09 rename
-are requested as FB and stored as META. A native META bar wins when both
-exist for the same minute. Bar times are stored as UTC ``timestamptz``.
-"""
+"""Load five years of Alpaca 1-minute bars into Timescale."""
 
 from __future__ import annotations
 
@@ -31,6 +12,8 @@ import psycopg
 import requests
 from dotenv import load_dotenv
 from psycopg.rows import dict_row
+
+load_dotenv()
 
 ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars"
 META_RENAME = datetime(2022, 6, 9, tzinfo=timezone.utc)
@@ -78,34 +61,6 @@ def collect_symbols(tickers: list[str], symbols_arg: str | None) -> list[str]:
         seen.add(symbol)
         ordered.append(symbol)
     return ordered
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Load five years of 1-minute Alpaca bars into the Timescale "
-            "hypertable stock_minute_bars."
-        ),
-        epilog=(
-            "examples:\n"
-            "  python software/database/load_minute_bars.py AAPL META NVDA\n"
-            "  python software/database/load_minute_bars.py --symbols AAPL,META\n"
-            "  python software/database/load_minute_bars.py NVDA --symbols AAPL,META"
-        ),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "tickers",
-        nargs="*",
-        metavar="TICKER",
-        help="Ticker symbols to load, for example AAPL META NVDA",
-    )
-    parser.add_argument(
-        "--symbols",
-        metavar="LIST",
-        help="Comma-separated ticker symbols, for example AAPL,META",
-    )
-    return parser
 
 
 def load_environment() -> str:
@@ -205,7 +160,7 @@ def split_sql(script: str) -> list[str]:
 def execute_sql_script(conn: psycopg.Connection, script: str) -> None:
     with conn.cursor() as cur:
         for statement in split_sql(script):
-            cur.execute(statement)
+            cur.execute(statement) # type: ignore
 
 
 def parse_bar_ts(value: str) -> datetime:
@@ -458,10 +413,10 @@ def print_summary(conn: psycopg.Connection, symbols: list[str]) -> None:
         raise RuntimeError(f"No bars stored for {', '.join(missing_symbols)}")
 
 
-def load_minute_bars(symbols: list[str]) -> None:
+def load_minute_bars(symbols: list[str], years_past: int = 5) -> None:
     feed = load_environment()
     end = datetime.now(timezone.utc).replace(second=0, microsecond=0)
-    start = end - timedelta(days=365 * 5)
+    start = end - timedelta(days=365 * years_past)
     map_fb_to_meta = "META" in symbols
 
     print(
@@ -507,15 +462,16 @@ def load_minute_bars(symbols: list[str]) -> None:
     finally:
         conn.close()
 
+def get_symbols(file_path: str) -> list[str]:
+    # reads a list of symbols in from a file path
 
-def main(argv: list[str] | None = None) -> None:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    symbols = collect_symbols(args.tickers, args.symbols)
-    if not symbols:
-        parser.error("at least one ticker is required")
-    load_minute_bars(symbols)
+    with open(file_path, "r") as f:
+        symbols = [item.replace("\n", "").strip() for item in f.readlines()]
+        return symbols
 
+    return []
 
 if __name__ == "__main__":
-    main()
+    
+    nasdaq_stocks = get_symbols("symbols/nasdaq.txt")
+    load_minute_bars(nasdaq_stocks, years_past=1)
