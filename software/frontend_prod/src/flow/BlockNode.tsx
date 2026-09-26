@@ -2,7 +2,7 @@ import { Handle, Position, useReactFlow, useStore, type NodeProps } from '@xyflo
 import { memo, useState } from 'react';
 import { BLOCK_DEFS, CATEGORIES, COMPARISON_OPERATORS, portsOf } from '../blocks/catalog';
 import { NUM_STOCK_BUFFERS, ticksToDuration } from '../blocks/hardware';
-import type { BlockNode as BlockNodeT, BlockType, ParamDef, ParamValue, PortDef } from '../blocks/types';
+import type { BlockDef, BlockNode as BlockNodeT, BlockType, ParamDef, ParamValue, PortDef } from '../blocks/types';
 import { START_NODE_ID } from './graph';
 
 const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
@@ -146,6 +146,92 @@ function ConditionPanel({
   );
 }
 
+function assignedSymbols(def: BlockDef, params: Record<string, ParamValue>): string[] {
+  return def.params
+    .filter((param) => param.key.startsWith('symbol'))
+    .map((param) => String(params[param.key] ?? param.default).trim())
+    .filter((symbol) => symbol.length > 0);
+}
+
+function bufferSymbol(def: BlockDef, params: Record<string, ParamValue>, symbols: string[]): string | null {
+  if (!def.params.some((param) => param.key === 'buffer')) return null;
+  const index = Number(params.buffer ?? 0);
+  const symbol = String(symbols[index] ?? '').trim();
+  return symbol || null;
+}
+
+/** Symbols this node holds or forwards. Buffer indexes resolve through the Start block's tickers. */
+function nodeSymbols(def: BlockDef, params: Record<string, ParamValue>, symbols: string[]): string[] {
+  const named = assignedSymbols(def, params);
+  if (named.length > 0) return named;
+  const fromBuffer = bufferSymbol(def, params, symbols);
+  return fromBuffer ? [fromBuffer] : [];
+}
+
+/**
+ * A pass-through / symbol source: every parameter is a buffer or ticker, so the node
+ * only holds or forwards a symbol. `current_price` is that block in the catalog.
+ */
+function isSymbolSource(def: BlockDef): boolean {
+  if (def.type === 'start' || def.params.length === 0) return false;
+  return def.params.every((param) => param.key === 'buffer' || param.key.startsWith('symbol'));
+}
+
+function SymbolText({ symbols }: { symbols: string[] }) {
+  if (symbols.length === 0) return <span className="symbol-text">—</span>;
+  return (
+    <span className="symbol-text">
+      {symbols.map((symbol, index) => (
+        <span key={`${symbol}-${index}`}>{symbol}</span>
+      ))}
+    </span>
+  );
+}
+
+function FlowHandles({ type }: { type: BlockType }) {
+  const execIn = portsOf(type, 'exec', 'in')[0];
+  const execOuts = portsOf(type, 'exec', 'out');
+  const dataIns = portsOf(type, 'data', 'in');
+  const dataOuts = portsOf(type, 'data', 'out');
+  const place = (index: number, count: number) =>
+    count > 1 ? { top: `${((index + 1) / (count + 1)) * 100}%` } : undefined;
+
+  return (
+    <>
+      {execIn && <Handle type="target" position={Position.Top} id={execIn.id} className="handle-exec" />}
+      {dataIns.map((port, index) => (
+        <Handle
+          key={port.id}
+          type="target"
+          position={Position.Left}
+          id={port.id}
+          className="handle-data"
+          style={place(index, dataIns.length)}
+        />
+      ))}
+      {dataOuts.map((port, index) => (
+        <Handle
+          key={port.id}
+          type="source"
+          position={Position.Right}
+          id={port.id}
+          className="handle-data"
+          style={place(index, dataOuts.length)}
+        />
+      ))}
+      {execOuts.length > 0 && (
+        <div className={`exec-outs ${execOuts.length > 1 ? 'multi' : ''}`}>
+          {execOuts.map((port) => (
+            <div className={`exec-out exec-out-${port.id.split(':')[1]}`} key={port.id}>
+              <Handle type="source" position={Position.Bottom} id={port.id} className="handle-exec" />
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 /** Start block's resolution and BUF0..BUF4 symbols, joined into one string so nodes only re-render when they change. */
 function useStrategyContext() {
   const joined = useStore((s) => {
@@ -162,6 +248,24 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
   const { updateNodeData } = useReactFlow();
   const { resolution, symbols } = useStrategyContext();
   if (!def) return <div className="block block-unknown">Unknown block: {type}</div>;
+
+  if (def.type === 'start') {
+    return (
+      <div className={['block', 'block-start', selected ? 'selected' : ''].join(' ')} aria-label="Start">
+        <SymbolText symbols={assignedSymbols(def, data.params)} />
+        <FlowHandles type={def.type} />
+      </div>
+    );
+  }
+
+  if (isSymbolSource(def)) {
+    return (
+      <div className={['block', 'block-symbol', `block-${def.type}`, selected ? 'selected' : ''].join(' ')}>
+        <SymbolText symbols={nodeSymbols(def, data.params, symbols)} />
+        <FlowHandles type={def.type} />
+      </div>
+    );
+  }
 
   const withSymbols = (p: ParamDef): ParamDef =>
     p.key === 'buffer' && p.type === 'select'

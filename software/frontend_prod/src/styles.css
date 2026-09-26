@@ -923,6 +923,36 @@ input:focus-visible {
   color: #64748b;
 }
 
+.strategy-editor .block.block-start {
+  width: auto;
+  min-width: 88px;
+  max-width: 240px;
+  padding: 12px 16px 10px;
+}
+
+.strategy-editor .block.block-symbol {
+  width: auto;
+  min-width: 64px;
+  padding: 8px 16px;
+  border-radius: 999px;
+}
+
+.strategy-editor .symbol-text {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f172a;
+}
+
+.strategy-editor .block-symbol .symbol-text {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .strategy-editor .block-header {
   display: flex;
   align-items: flex-start;
