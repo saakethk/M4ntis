@@ -51,6 +51,7 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
   const [saved, setSaved] = useState(false)
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
+  const [compiledLog, setCompiledLog] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition, getViewport } = useReactFlow()
 
@@ -152,6 +153,9 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
   )
 
   function compile() {
+    const text = JSON.stringify(toIR(nodes, edges), null, 2)
+    console.info(text)
+    setCompiledLog(text)
     const errors = analyze(nodes, edges).filter((item) => item.level === 'error')
     if (errors.length === 0) {
       showMessage('Compiled', false)
@@ -229,6 +233,11 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
             </button>
           </div>
         </div>
+        {compiledLog ? (
+          <pre className="compile-log" aria-label="Compiled strategy">
+            {compiledLog}
+          </pre>
+        ) : null}
         <div
           ref={canvasRef}
           className="editor-canvas"
