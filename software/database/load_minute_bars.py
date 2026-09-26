@@ -564,8 +564,8 @@ def get_symbols(file_path: str) -> list[str]:
 
 if __name__ == "__main__":
     
-    # nasdaq_stocks = get_symbols("symbols/nasdaq.txt")
-    # load_minute_bars(nasdaq_stocks, years_past=1)
+    nasdaq_stocks = get_symbols("symbols/nasdaq.txt")
+    load_minute_bars(nasdaq_stocks, years_past=1)
 
     sponsor_stocks = get_symbols("symbols/sponsors.txt")
     load_minute_bars(sponsor_stocks, years_past=5)
