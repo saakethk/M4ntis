@@ -33,10 +33,18 @@ def frontend_origins(frontend_port: int) -> list[str]:
     return origins
 
 
+# Vite may bind a port other than FRONTEND_PORT, and the page may be opened
+# as http or https on localhost, 127.0.0.1, or 0.0.0.0. Credentials forbid
+# allow_origins=["*"]; this regex echoes the request Origin for those hosts
+# on any port. Non-local origins stay rejected.
+LOCAL_ORIGIN_REGEX = r"https?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?"
+
+
 app = FastAPI(title="Mantis Backend")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins(FRONTEND_PORT),
+    allow_origin_regex=LOCAL_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],

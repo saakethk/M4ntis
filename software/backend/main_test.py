@@ -141,5 +141,48 @@ class EnvPortTest(unittest.TestCase):
         self.assertNotIn("*", origins)
 
 
+class LoginCorsPreflightTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.client = TestClient(main.app)
+
+    def _preflight(self, origin: str):
+        return self.client.options(
+            "/auth/login",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "Content-Type",
+            },
+        )
+
+    def test_local_dev_origins_pass_login_preflight(self) -> None:
+        origins = [
+            "http://localhost:8002",
+            "http://0.0.0.0:8002",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:49152",
+            "https://localhost:8443",
+        ]
+        for origin in origins:
+            with self.subTest(origin=origin):
+                response = self._preflight(origin)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.headers["access-control-allow-origin"], origin)
+                self.assertEqual(response.headers["access-control-allow-credentials"], "true")
+                allow_headers = response.headers["access-control-allow-headers"].lower()
+                self.assertIn("content-type", allow_headers)
+                allow_methods = response.headers["access-control-allow-methods"]
+                for method in ("GET", "POST", "PUT"):
+                    self.assertIn(method, allow_methods)
+
+    def test_non_local_origin_is_rejected(self) -> None:
+        for origin in ("https://evil.example", "http://localhost.evil.example"):
+            with self.subTest(origin=origin):
+                response = self._preflight(origin)
+                self.assertEqual(response.status_code, 400, response.text)
+                self.assertIn("Disallowed CORS origin", response.text)
+                self.assertNotEqual(response.headers.get("access-control-allow-origin"), origin)
+
+
 if __name__ == "__main__":
     unittest.main()
