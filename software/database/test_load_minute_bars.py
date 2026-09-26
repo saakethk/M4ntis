@@ -156,7 +156,8 @@ class SqlScriptTests(unittest.TestCase):
         self.assertEqual(len(statements), 1)
         self.assertIn("PARTITION BY symbol, ts", statements[0])
         self.assertIn("HAVING count(*) > 1", statements[0])
-        self.assertIn("decompress_chunk", statements[0])
+        self.assertIn("DISTINCT ON (symbol, ts)", statements[0])
+        self.assertIn("is_compressed", statements[0])
         self.assertIn("dedupe_stock_minute_bars", statements[0])
 
 
