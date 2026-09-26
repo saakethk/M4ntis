@@ -15,61 +15,30 @@ export type SavedStrategy = {
   name: string
 }
 
-export const STRATEGIES: Strategy[] = [
-  {
-    id: 'mean-reversion',
-    name: 'Mean Reversion / SPY',
-    status: 'active',
-    createdLabel: 'Created 2 weeks ago',
-    returnPct: 24.8,
-    maxDrawdownPct: 6.4,
-    lastBacktest: '2 hours ago',
-  },
-  {
-    id: 'trend-following',
-    name: 'Trend Following Tech',
-    status: 'ready',
-    createdLabel: 'Created 2 weeks ago',
-    returnPct: 18.2,
-    maxDrawdownPct: 8.5,
-    lastBacktest: '3 days ago',
-  },
-  {
-    id: 'volatility-breakout',
-    name: 'Volatility Breakout',
-    status: 'backtesting',
-    createdLabel: 'Created 2 weeks ago',
-    returnPct: null,
-    maxDrawdownPct: null,
-    lastBacktest: 'Running now',
-  },
-  {
-    id: 'arbitrage-experiment',
-    name: 'Arbitrage Experiment',
+export type PortfolioChoice = 'loading' | 'error' | 'get-started' | 'list'
+
+// Rows saved for this account. An empty list and a failed request both yield
+// no cards, so the built-in sample strategies are never shown in their place.
+export function portfolioStrategies(rows: readonly SavedStrategy[] | null): Strategy[] {
+  if (rows == null || rows.length === 0) return []
+  return rows.map((row) => ({
+    id: String(row.id),
+    name: row.name,
     status: 'draft',
-    createdLabel: 'Created 2 weeks ago',
+    createdLabel: 'Saved strategy',
     returnPct: null,
     maxDrawdownPct: null,
     lastBacktest: 'Never run',
-  },
-]
+  }))
+}
 
-// Sample cards stay on screen when the signed-in user has no saved rows, and
-// when GET /strategies fails (including 401). A non-empty list replaces them.
-export function portfolioStrategies(rows: readonly SavedStrategy[] | null): Strategy[] {
-  if (rows == null || rows.length === 0) return STRATEGIES
-  return rows.map((row, index) => {
-    const sample = STRATEGIES[index % STRATEGIES.length]
-    return {
-      id: String(row.id),
-      name: row.name,
-      status: sample.status,
-      createdLabel: sample.createdLabel,
-      returnPct: sample.returnPct,
-      maxDrawdownPct: sample.maxDrawdownPct,
-      lastBacktest: sample.lastBacktest,
-    }
-  })
+// Get Started is only the successful empty portfolio. A failed load stays an
+// error, and any saved row keeps the strategy list.
+export function portfolioChoice(input: { loading: boolean; failed: boolean; count: number }): PortfolioChoice {
+  if (input.loading) return 'loading'
+  if (input.failed) return 'error'
+  if (input.count === 0) return 'get-started'
+  return 'list'
 }
 
 export function formatPct(value: number): string {

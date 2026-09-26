@@ -32,6 +32,7 @@ type Props = {
   strategyId: number | null
   unavailable?: boolean
   onClose: () => void
+  onCreated?: (id: number) => void
 }
 
 function documentPayload(raw: unknown): unknown {
@@ -39,7 +40,7 @@ function documentPayload(raw: unknown): unknown {
   return JSON.parse(raw)
 }
 
-function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
+function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }: Props) {
   const blank = blankTemplate?.build() ?? { nodes: [], edges: [] }
   const [name, setName] = useState(strategyId == null && !unavailable ? 'Untitled strategy' : '')
   const [nodes, setNodes, onNodesChange] = useNodesState<BlockNodeT>(blank.nodes)
@@ -52,10 +53,14 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
   const canvasRef = useRef<HTMLDivElement>(null)
+  const skipFetchId = useRef<number | null>(null)
   const { screenToFlowPosition, getViewport } = useReactFlow()
 
   useEffect(() => {
     if (strategyId == null || unavailable) return
+    // The id just came back from the first save of this unsaved editor.
+    // Reloading here would replace the canvas the user is still editing.
+    if (skipFetchId.current === strategyId) return
     let ignore = false
     getStrategy(strategyId)
       .then((row) => {
@@ -174,11 +179,16 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
       const document = toDocument(trimmed, nodes, edges, getViewport())
       const ir = toIR(nodes, edges)
       const body = { name: trimmed, document, ir, visibility: 'private' as const }
-      const savedRow = storedId == null ? await createStrategy(body) : await updateStrategy(storedId, body)
+      const existingId = storedId
+      const savedRow = existingId == null ? await createStrategy(body) : await updateStrategy(existingId, body)
       setStoredId(savedRow.id)
       setSaved(true)
       setMessage(null)
       setMessageError(false)
+      if (existingId == null) {
+        skipFetchId.current = savedRow.id
+        onCreated?.(savedRow.id)
+      }
     } catch (error) {
       setSaved(false)
       showMessage(error instanceof Error ? error.message : 'Could not save', true)
@@ -194,7 +204,7 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
         <div className="canvas-bar">
           <div className="canvas-title">
             <button type="button" className="quiet" onClick={onClose}>
-              Strategies
+              Home
             </button>
             <input
               className="editor-name"
