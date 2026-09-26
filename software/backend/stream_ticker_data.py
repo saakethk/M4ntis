@@ -126,3 +126,17 @@ def stream_ticker_data(
                     yield dict(row)
     finally:
         conn.close()
+
+def test():
+    
+    ticker_gen = stream_ticker_data("AAPL", "1month")
+
+    num_ticks = 0
+    for tick in ticker_gen:
+        num_ticks += 1
+        print(tick)
+
+    print(num_ticks)
+
+if __name__ == "__main__":
+    test()
