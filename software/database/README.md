@@ -70,3 +70,18 @@ DDL: [`sql/stock_session_minutes.sql`](sql/stock_session_minutes.sql).
 
 Build with `python software/database/build_session_minutes.py AAPL META`.
 
+## stock_symbols
+
+Company name for each ticker the symbol search can return. One row per symbol.
+
+| Column | Type |
+| --- | --- |
+| symbol | TEXT PRIMARY KEY |
+| name | TEXT NOT NULL |
+
+A reload updates the name for the same symbol. The seed list is [`symbols/names.csv`](symbols/names.csv): the Nasdaq-100 names plus sponsor tickers that are not in that index (`V`, `GS`).
+
+DDL: [`sql/stock_symbols.sql`](sql/stock_symbols.sql).
+
+Load with `python software/database/load_stock_symbols.py`.
+
