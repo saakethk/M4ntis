@@ -1,0 +1,1151 @@
+{
+  "start": {
+    "type": "start",
+    "label": "Start",
+    "category": "structure",
+    "description": "Entry point, runs once. Wherever the exec chain dead-ends, the compiler appends UPDATEALLSTOCKBUFFERS + JMP LOOP.",
+    "ports": [
+      {
+        "id": "exec:out",
+        "kind": "exec",
+        "direction": "out",
+        "label": "each tick"
+      }
+    ],
+    "params": [
+      {
+        "key": "startingBalance",
+        "label": "Starting Balance",
+        "type": "number",
+        "default": 100000,
+        "min": 0
+      }
+    ],
+    "compilesTo": "SETBALANCE (once)",
+    "status": "confirmed",
+    "system": true
+  },
+  "current_price": {
+    "type": "current_price",
+    "label": "Current Price",
+    "category": "reserved",
+    "description": "Latest price of the stock in the selected buffer.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      }
+    ],
+    "compilesTo": "GETSTOCKPRICE",
+    "status": "confirmed"
+  },
+  "sum_last_n": {
+    "type": "sum_last_n",
+    "label": "Sum of Last N Days",
+    "category": "reserved",
+    "description": "Sum of the last N daily prices in the buffer.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      },
+      {
+        "key": "n",
+        "label": "N (days)",
+        "type": "number",
+        "default": 20,
+        "min": 1,
+        "max": 1260,
+        "integer": true
+      }
+    ],
+    "compilesTo": "GETSUMPRICEBEFORE",
+    "status": "confirmed"
+  },
+  "price_n_days_ago": {
+    "type": "price_n_days_ago",
+    "label": "Price N Days Ago",
+    "category": "reserved",
+    "description": "Price of the stock N days before the current tick.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      },
+      {
+        "key": "n",
+        "label": "N (days)",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "max": 1260,
+        "integer": true
+      }
+    ],
+    "compilesTo": "—",
+    "status": "blocked",
+    "statusNote": "No confirmed opcode. Required by Momentum."
+  },
+  "constant": {
+    "type": "constant",
+    "label": "Constant",
+    "category": "reserved",
+    "description": "Literal number.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [
+      {
+        "key": "value",
+        "label": "Value",
+        "type": "number",
+        "default": 0
+      }
+    ],
+    "compilesTo": "LOAD_IMM (deduped / cached)",
+    "status": "confirmed"
+  },
+  "set_var": {
+    "type": "set_var",
+    "label": "Set Variable",
+    "category": "variables",
+    "description": "Store a value into a hardware variable slot.",
+    "ports": [
+      {
+        "id": "exec:in",
+        "kind": "exec",
+        "direction": "in"
+      },
+      {
+        "id": "data:value",
+        "kind": "data",
+        "direction": "in",
+        "label": "value"
+      },
+      {
+        "id": "exec:out",
+        "kind": "exec",
+        "direction": "out",
+        "label": "next"
+      }
+    ],
+    "params": [
+      {
+        "key": "slot",
+        "label": "Slot",
+        "type": "select",
+        "default": "VAR1",
+        "options": [
+          {
+            "value": "VAR1",
+            "label": "VAR1"
+          },
+          {
+            "value": "VAR2",
+            "label": "VAR2"
+          },
+          {
+            "value": "VAR3",
+            "label": "VAR3"
+          },
+          {
+            "value": "VAR4",
+            "label": "VAR4"
+          },
+          {
+            "value": "VAR5",
+            "label": "VAR5"
+          },
+          {
+            "value": "VAR6",
+            "label": "VAR6"
+          },
+          {
+            "value": "VAR7",
+            "label": "VAR7"
+          },
+          {
+            "value": "VAR8",
+            "label": "VAR8"
+          }
+        ]
+      }
+    ],
+    "compilesTo": "ASSIGNVAR",
+    "status": "confirmed"
+  },
+  "get_var": {
+    "type": "get_var",
+    "label": "Get Variable",
+    "category": "variables",
+    "description": "Read a hardware variable slot.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [
+      {
+        "key": "slot",
+        "label": "Slot",
+        "type": "select",
+        "default": "VAR1",
+        "options": [
+          {
+            "value": "VAR1",
+            "label": "VAR1"
+          },
+          {
+            "value": "VAR2",
+            "label": "VAR2"
+          },
+          {
+            "value": "VAR3",
+            "label": "VAR3"
+          },
+          {
+            "value": "VAR4",
+            "label": "VAR4"
+          },
+          {
+            "value": "VAR5",
+            "label": "VAR5"
+          },
+          {
+            "value": "VAR6",
+            "label": "VAR6"
+          },
+          {
+            "value": "VAR7",
+            "label": "VAR7"
+          },
+          {
+            "value": "VAR8",
+            "label": "VAR8"
+          }
+        ]
+      }
+    ],
+    "compilesTo": "GETVAR",
+    "status": "confirmed"
+  },
+  "add": {
+    "type": "add",
+    "label": "Add",
+    "category": "math",
+    "description": "A + B",
+    "ports": [
+      {
+        "id": "data:a",
+        "kind": "data",
+        "direction": "in",
+        "label": "A"
+      },
+      {
+        "id": "data:b",
+        "kind": "data",
+        "direction": "in",
+        "label": "B"
+      },
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [],
+    "compilesTo": "ADD",
+    "status": "confirmed",
+    "statusNote": "Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM."
+  },
+  "subtract": {
+    "type": "subtract",
+    "label": "Subtract",
+    "category": "math",
+    "description": "A − B",
+    "ports": [
+      {
+        "id": "data:a",
+        "kind": "data",
+        "direction": "in",
+        "label": "A"
+      },
+      {
+        "id": "data:b",
+        "kind": "data",
+        "direction": "in",
+        "label": "B"
+      },
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [],
+    "compilesTo": "SUB",
+    "status": "confirmed",
+    "statusNote": "Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM."
+  },
+  "multiply": {
+    "type": "multiply",
+    "label": "Multiply",
+    "category": "math",
+    "description": "A × B",
+    "ports": [
+      {
+        "id": "data:a",
+        "kind": "data",
+        "direction": "in",
+        "label": "A"
+      },
+      {
+        "id": "data:b",
+        "kind": "data",
+        "direction": "in",
+        "label": "B"
+      },
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [],
+    "compilesTo": "MUL",
+    "status": "confirmed",
+    "statusNote": "Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM."
+  },
+  "divide": {
+    "type": "divide",
+    "label": "Divide",
+    "category": "math",
+    "description": "A ÷ B",
+    "ports": [
+      {
+        "id": "data:a",
+        "kind": "data",
+        "direction": "in",
+        "label": "A"
+      },
+      {
+        "id": "data:b",
+        "kind": "data",
+        "direction": "in",
+        "label": "B"
+      },
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [],
+    "compilesTo": "DIV",
+    "status": "confirmed",
+    "statusNote": "Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM."
+  },
+  "power": {
+    "type": "power",
+    "label": "Power",
+    "category": "math",
+    "description": "base ^ exponent",
+    "ports": [
+      {
+        "id": "data:base",
+        "kind": "data",
+        "direction": "in",
+        "label": "base"
+      },
+      {
+        "id": "data:exp",
+        "kind": "data",
+        "direction": "in",
+        "label": "exponent"
+      },
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [],
+    "compilesTo": "—",
+    "status": "blocked",
+    "statusNote": "No opcode seen. Flag for hardware team."
+  },
+  "root": {
+    "type": "root",
+    "label": "Root",
+    "category": "math",
+    "description": "base-th root of x",
+    "ports": [
+      {
+        "id": "data:x",
+        "kind": "data",
+        "direction": "in",
+        "label": "x"
+      },
+      {
+        "id": "data:base",
+        "kind": "data",
+        "direction": "in",
+        "label": "base"
+      },
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [],
+    "compilesTo": "—",
+    "status": "blocked",
+    "statusNote": "No opcode seen. Volatility needs this for sqrt."
+  },
+  "log": {
+    "type": "log",
+    "label": "Log",
+    "category": "math",
+    "description": "log of x in the given base",
+    "ports": [
+      {
+        "id": "data:x",
+        "kind": "data",
+        "direction": "in",
+        "label": "x"
+      },
+      {
+        "id": "data:base",
+        "kind": "data",
+        "direction": "in",
+        "label": "base"
+      },
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [],
+    "compilesTo": "—",
+    "status": "blocked",
+    "statusNote": "No opcode seen."
+  },
+  "if": {
+    "type": "if",
+    "label": "If / Else",
+    "category": "control",
+    "description": "Branch on a comparison. Compound logic: nest in Then for AND, chain in Else for OR.",
+    "ports": [
+      {
+        "id": "exec:in",
+        "kind": "exec",
+        "direction": "in"
+      },
+      {
+        "id": "data:a",
+        "kind": "data",
+        "direction": "in",
+        "label": "A"
+      },
+      {
+        "id": "data:b",
+        "kind": "data",
+        "direction": "in",
+        "label": "B"
+      },
+      {
+        "id": "exec:then",
+        "kind": "exec",
+        "direction": "out",
+        "label": "Then"
+      },
+      {
+        "id": "exec:else",
+        "kind": "exec",
+        "direction": "out",
+        "label": "Else"
+      }
+    ],
+    "params": [
+      {
+        "key": "operator",
+        "label": "Operator",
+        "type": "select",
+        "default": ">",
+        "options": [
+          {
+            "value": ">",
+            "label": ">",
+            "hint": "GT → BR"
+          },
+          {
+            "value": ">=",
+            "label": "≥",
+            "hint": "LT → BR, Then/Else swapped"
+          },
+          {
+            "value": "<",
+            "label": "<",
+            "hint": "LT → BR"
+          },
+          {
+            "value": "<=",
+            "label": "≤",
+            "hint": "GT → BR, Then/Else swapped"
+          },
+          {
+            "value": "==",
+            "label": "=",
+            "hint": "SUB → BR≠0, Then/Else swapped"
+          },
+          {
+            "value": "!=",
+            "label": "≠",
+            "hint": "SUB → BR≠0"
+          }
+        ]
+      }
+    ],
+    "compilesTo": "GT | LT | SUB → BR / JMP",
+    "status": "confirmed",
+    "condition": true
+  },
+  "for": {
+    "type": "for",
+    "label": "For (Range)",
+    "category": "control",
+    "description": "Runs Body for each i in [start, end) within ONE tick. For sub-calculations, not for walking back through history.",
+    "ports": [
+      {
+        "id": "exec:in",
+        "kind": "exec",
+        "direction": "in"
+      },
+      {
+        "id": "data:index",
+        "kind": "data",
+        "direction": "out",
+        "label": "i"
+      },
+      {
+        "id": "exec:body",
+        "kind": "exec",
+        "direction": "out",
+        "label": "Body ↻"
+      },
+      {
+        "id": "exec:after",
+        "kind": "exec",
+        "direction": "out",
+        "label": "After"
+      }
+    ],
+    "params": [
+      {
+        "key": "start",
+        "label": "Start",
+        "type": "number",
+        "default": 0,
+        "integer": true
+      },
+      {
+        "key": "end",
+        "label": "End",
+        "type": "number",
+        "default": 10,
+        "integer": true
+      },
+      {
+        "key": "step",
+        "label": "Step",
+        "type": "number",
+        "default": 1,
+        "integer": true
+      }
+    ],
+    "compilesTo": "ASSIGNVAR counter, GT/LT bound, ADD/SUB step, JMP back",
+    "status": "confirmed"
+  },
+  "buy": {
+    "type": "buy",
+    "label": "Buy",
+    "category": "trade",
+    "description": "Buy shares at the current price.",
+    "ports": [
+      {
+        "id": "exec:in",
+        "kind": "exec",
+        "direction": "in"
+      },
+      {
+        "id": "exec:out",
+        "kind": "exec",
+        "direction": "out",
+        "label": "next"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      },
+      {
+        "key": "quantity",
+        "label": "Quantity",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "integer": true
+      }
+    ],
+    "compilesTo": "GETSTOCKPRICE → MUL → UPDATEBALANCE(+) → EMITDECISION(qty, buf, 1)",
+    "status": "confirmed"
+  },
+  "sell": {
+    "type": "sell",
+    "label": "Sell",
+    "category": "trade",
+    "description": "Sell shares at the current price.",
+    "ports": [
+      {
+        "id": "exec:in",
+        "kind": "exec",
+        "direction": "in"
+      },
+      {
+        "id": "exec:out",
+        "kind": "exec",
+        "direction": "out",
+        "label": "next"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      },
+      {
+        "key": "quantity",
+        "label": "Quantity",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "integer": true
+      }
+    ],
+    "compilesTo": "GETSTOCKPRICE → MUL → SUB from R0 → UPDATEBALANCE(−) → EMITDECISION(qty, buf, 0)",
+    "status": "confirmed"
+  },
+  "sma": {
+    "type": "sma",
+    "label": "SMA",
+    "category": "composite",
+    "description": "Simple moving average over N days.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      },
+      {
+        "key": "n",
+        "label": "N (days)",
+        "type": "number",
+        "default": 20,
+        "min": 1,
+        "max": 1260,
+        "integer": true
+      }
+    ],
+    "compilesTo": "Sum of Last N Days ÷ N",
+    "status": "confirmed"
+  },
+  "momentum": {
+    "type": "momentum",
+    "label": "Momentum",
+    "category": "composite",
+    "description": "Fractional price change over N days.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      },
+      {
+        "key": "n",
+        "label": "N (days)",
+        "type": "number",
+        "default": 10,
+        "min": 1,
+        "max": 1260,
+        "integer": true
+      }
+    ],
+    "compilesTo": "(Current Price ÷ Price N Days Ago) − 1",
+    "status": "blocked",
+    "statusNote": "Blocked on \"Price N Days Ago\"."
+  },
+  "volatility": {
+    "type": "volatility",
+    "label": "Volatility",
+    "category": "composite",
+    "description": "Sample standard deviation of price over N days.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "value"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      },
+      {
+        "key": "n",
+        "label": "N (days)",
+        "type": "number",
+        "default": 20,
+        "min": 1,
+        "max": 1260,
+        "integer": true
+      }
+    ],
+    "compilesTo": "sqrt(Σ(price − mean)² / (N − 1))",
+    "status": "blocked",
+    "statusNote": "Blocked on a per-day price source (or sum-of-squares sibling to GETSUMPRICEBEFORE) and a sqrt/root opcode."
+  },
+  "mean_reversion_bands": {
+    "type": "mean_reversion_bands",
+    "label": "Mean Reversion Bands",
+    "category": "composite",
+    "description": "SMA ± k × Volatility. Pair with two If blocks: ≤ lower → Buy, ≥ upper → Sell.",
+    "ports": [
+      {
+        "id": "data:upper",
+        "kind": "data",
+        "direction": "out",
+        "label": "upper"
+      },
+      {
+        "id": "data:middle",
+        "kind": "data",
+        "direction": "out",
+        "label": "middle"
+      },
+      {
+        "id": "data:lower",
+        "kind": "data",
+        "direction": "out",
+        "label": "lower"
+      }
+    ],
+    "params": [
+      {
+        "key": "buffer",
+        "label": "Buffer",
+        "type": "select",
+        "default": 0,
+        "options": [
+          {
+            "value": 0,
+            "label": "BUF0"
+          },
+          {
+            "value": 1,
+            "label": "BUF1"
+          },
+          {
+            "value": 2,
+            "label": "BUF2"
+          },
+          {
+            "value": 3,
+            "label": "BUF3"
+          },
+          {
+            "value": 4,
+            "label": "BUF4"
+          },
+          {
+            "value": 5,
+            "label": "BUF5"
+          },
+          {
+            "value": 6,
+            "label": "BUF6"
+          },
+          {
+            "value": 7,
+            "label": "BUF7"
+          }
+        ]
+      },
+      {
+        "key": "n",
+        "label": "N (days)",
+        "type": "number",
+        "default": 20,
+        "min": 1,
+        "max": 1260,
+        "integer": true
+      },
+      {
+        "key": "k",
+        "label": "k (std devs)",
+        "type": "number",
+        "default": 2,
+        "min": 0,
+        "step": 0.1
+      }
+    ],
+    "compilesTo": "SMA ± k × Volatility",
+    "status": "blocked",
+    "statusNote": "Inherits Volatility's blockers."
+  }
+}

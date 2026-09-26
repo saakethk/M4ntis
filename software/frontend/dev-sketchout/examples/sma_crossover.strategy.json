@@ -1,0 +1,143 @@
+{
+  "schema": "m4ntis.strategy/v1",
+  "name": "SMA Crossover",
+  "savedAt": "2026-01-01T00:00:00.000Z",
+  "flow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "data": {
+          "params": {
+            "startingBalance": 100000
+          }
+        }
+      },
+      {
+        "id": "sma_fast",
+        "type": "sma",
+        "position": {
+          "x": -420,
+          "y": 120
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "n": 10
+          }
+        }
+      },
+      {
+        "id": "sma_slow",
+        "type": "sma",
+        "position": {
+          "x": -420,
+          "y": 300
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "n": 50
+          }
+        }
+      },
+      {
+        "id": "if_cross",
+        "type": "if",
+        "position": {
+          "x": 0,
+          "y": 170
+        },
+        "data": {
+          "params": {
+            "operator": ">"
+          }
+        }
+      },
+      {
+        "id": "buy",
+        "type": "buy",
+        "position": {
+          "x": -160,
+          "y": 440
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "quantity": 10
+          }
+        }
+      },
+      {
+        "id": "sell",
+        "type": "sell",
+        "position": {
+          "x": 160,
+          "y": 440
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "quantity": 10
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_start.exec:out__if_cross.exec:in",
+        "source": "start",
+        "sourceHandle": "exec:out",
+        "target": "if_cross",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_sma_fast.data:out__if_cross.data:a",
+        "source": "sma_fast",
+        "sourceHandle": "data:out",
+        "target": "if_cross",
+        "targetHandle": "data:a",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_sma_slow.data:out__if_cross.data:b",
+        "source": "sma_slow",
+        "sourceHandle": "data:out",
+        "target": "if_cross",
+        "targetHandle": "data:b",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_if_cross.exec:then__buy.exec:in",
+        "source": "if_cross",
+        "sourceHandle": "exec:then",
+        "target": "buy",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_if_cross.exec:else__sell.exec:in",
+        "source": "if_cross",
+        "sourceHandle": "exec:else",
+        "target": "sell",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      }
+    ]
+  }
+}

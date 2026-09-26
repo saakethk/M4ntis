@@ -1,0 +1,23 @@
+{
+  "schema": "m4ntis.strategy/v1",
+  "name": "Blank",
+  "savedAt": "2026-01-01T00:00:00.000Z",
+  "flow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "data": {
+          "params": {
+            "startingBalance": 100000
+          }
+        }
+      }
+    ],
+    "edges": []
+  }
+}

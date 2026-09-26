@@ -1,0 +1,215 @@
+{
+  "schema": "m4ntis.strategy-ir/v1",
+  "entry": "start",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "params": {
+        "startingBalance": 100000
+      },
+      "inputs": {},
+      "next": {
+        "out": "set_fast"
+      },
+      "compilesTo": "SETBALANCE (once)",
+      "status": "confirmed"
+    },
+    {
+      "id": "set_fast",
+      "type": "set_var",
+      "params": {
+        "slot": "VAR1"
+      },
+      "inputs": {
+        "value": {
+          "node": "sma_fast",
+          "port": "out"
+        }
+      },
+      "next": {
+        "out": "set_slow"
+      },
+      "compilesTo": "ASSIGNVAR",
+      "status": "confirmed"
+    },
+    {
+      "id": "set_slow",
+      "type": "set_var",
+      "params": {
+        "slot": "VAR2"
+      },
+      "inputs": {
+        "value": {
+          "node": "sma_slow",
+          "port": "out"
+        }
+      },
+      "next": {
+        "out": "if_trend"
+      },
+      "compilesTo": "ASSIGNVAR",
+      "status": "confirmed"
+    },
+    {
+      "id": "if_trend",
+      "type": "if",
+      "params": {
+        "operator": ">"
+      },
+      "inputs": {
+        "a": {
+          "node": "get_fast",
+          "port": "out"
+        },
+        "b": {
+          "node": "get_slow",
+          "port": "out"
+        }
+      },
+      "next": {
+        "then": "if_confirm_up",
+        "else": "if_confirm_down"
+      },
+      "compilesTo": "GT | LT | SUB → BR / JMP",
+      "status": "confirmed"
+    },
+    {
+      "id": "if_confirm_up",
+      "type": "if",
+      "params": {
+        "operator": ">"
+      },
+      "inputs": {
+        "a": {
+          "node": "price",
+          "port": "out"
+        },
+        "b": {
+          "node": "get_fast",
+          "port": "out"
+        }
+      },
+      "next": {
+        "then": "buy",
+        "else": null
+      },
+      "compilesTo": "GT | LT | SUB → BR / JMP",
+      "status": "confirmed"
+    },
+    {
+      "id": "if_confirm_down",
+      "type": "if",
+      "params": {
+        "operator": "<"
+      },
+      "inputs": {
+        "a": {
+          "node": "price",
+          "port": "out"
+        },
+        "b": {
+          "node": "get_slow",
+          "port": "out"
+        }
+      },
+      "next": {
+        "then": "sell",
+        "else": null
+      },
+      "compilesTo": "GT | LT | SUB → BR / JMP",
+      "status": "confirmed"
+    },
+    {
+      "id": "buy",
+      "type": "buy",
+      "params": {
+        "buffer": 0,
+        "quantity": 10
+      },
+      "inputs": {},
+      "next": {
+        "out": null
+      },
+      "compilesTo": "GETSTOCKPRICE → MUL → UPDATEBALANCE(+) → EMITDECISION(qty, buf, 1)",
+      "status": "confirmed"
+    },
+    {
+      "id": "sell",
+      "type": "sell",
+      "params": {
+        "buffer": 0,
+        "quantity": 10
+      },
+      "inputs": {},
+      "next": {
+        "out": null
+      },
+      "compilesTo": "GETSTOCKPRICE → MUL → SUB from R0 → UPDATEBALANCE(−) → EMITDECISION(qty, buf, 0)",
+      "status": "confirmed"
+    },
+    {
+      "id": "sma_fast",
+      "type": "sma",
+      "params": {
+        "buffer": 0,
+        "n": 12
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "Sum of Last N Days ÷ N",
+      "status": "confirmed"
+    },
+    {
+      "id": "sma_slow",
+      "type": "sma",
+      "params": {
+        "buffer": 0,
+        "n": 26
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "Sum of Last N Days ÷ N",
+      "status": "confirmed"
+    },
+    {
+      "id": "get_fast",
+      "type": "get_var",
+      "params": {
+        "slot": "VAR1"
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "GETVAR",
+      "status": "confirmed"
+    },
+    {
+      "id": "get_slow",
+      "type": "get_var",
+      "params": {
+        "slot": "VAR2"
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "GETVAR",
+      "status": "confirmed"
+    },
+    {
+      "id": "price",
+      "type": "current_price",
+      "params": {
+        "buffer": 0
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "GETSTOCKPRICE",
+      "status": "confirmed"
+    }
+  ],
+  "unreachable": [],
+  "variableSlots": [
+    "VAR1",
+    "VAR2"
+  ],
+  "blockedBlocks": []
+}

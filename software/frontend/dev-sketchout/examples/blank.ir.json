@@ -1,0 +1,22 @@
+{
+  "schema": "m4ntis.strategy-ir/v1",
+  "entry": "start",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "params": {
+        "startingBalance": 100000
+      },
+      "inputs": {},
+      "next": {
+        "out": null
+      },
+      "compilesTo": "SETBALANCE (once)",
+      "status": "confirmed"
+    }
+  ],
+  "unreachable": [],
+  "variableSlots": [],
+  "blockedBlocks": []
+}

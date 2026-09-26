@@ -1,0 +1,122 @@
+{
+  "schema": "m4ntis.strategy-ir/v1",
+  "entry": "start",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "params": {
+        "startingBalance": 100000
+      },
+      "inputs": {},
+      "next": {
+        "out": "if_lower"
+      },
+      "compilesTo": "SETBALANCE (once)",
+      "status": "confirmed"
+    },
+    {
+      "id": "if_lower",
+      "type": "if",
+      "params": {
+        "operator": "<="
+      },
+      "inputs": {
+        "a": {
+          "node": "price",
+          "port": "out"
+        },
+        "b": {
+          "node": "bands",
+          "port": "lower"
+        }
+      },
+      "next": {
+        "then": "buy",
+        "else": "if_upper"
+      },
+      "compilesTo": "GT | LT | SUB → BR / JMP",
+      "status": "confirmed"
+    },
+    {
+      "id": "buy",
+      "type": "buy",
+      "params": {
+        "buffer": 0,
+        "quantity": 10
+      },
+      "inputs": {},
+      "next": {
+        "out": null
+      },
+      "compilesTo": "GETSTOCKPRICE → MUL → UPDATEBALANCE(+) → EMITDECISION(qty, buf, 1)",
+      "status": "confirmed"
+    },
+    {
+      "id": "if_upper",
+      "type": "if",
+      "params": {
+        "operator": ">="
+      },
+      "inputs": {
+        "a": {
+          "node": "price",
+          "port": "out"
+        },
+        "b": {
+          "node": "bands",
+          "port": "upper"
+        }
+      },
+      "next": {
+        "then": "sell",
+        "else": null
+      },
+      "compilesTo": "GT | LT | SUB → BR / JMP",
+      "status": "confirmed"
+    },
+    {
+      "id": "sell",
+      "type": "sell",
+      "params": {
+        "buffer": 0,
+        "quantity": 10
+      },
+      "inputs": {},
+      "next": {
+        "out": null
+      },
+      "compilesTo": "GETSTOCKPRICE → MUL → SUB from R0 → UPDATEBALANCE(−) → EMITDECISION(qty, buf, 0)",
+      "status": "confirmed"
+    },
+    {
+      "id": "price",
+      "type": "current_price",
+      "params": {
+        "buffer": 0
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "GETSTOCKPRICE",
+      "status": "confirmed"
+    },
+    {
+      "id": "bands",
+      "type": "mean_reversion_bands",
+      "params": {
+        "buffer": 0,
+        "n": 20,
+        "k": 2
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "SMA ± k × Volatility",
+      "status": "blocked"
+    }
+  ],
+  "unreachable": [],
+  "variableSlots": [],
+  "blockedBlocks": [
+    "bands"
+  ]
+}
