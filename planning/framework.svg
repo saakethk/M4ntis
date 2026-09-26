@@ -5,7 +5,7 @@
 <rect width="100%" height="100%" fill="#F4F6F8"/>
 <text x="32.0" y="46.0" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="30" font-weight="700" text-anchor="start">M4ntis architecture</text>
 <text x="32.0" y="74.0" fill="#526072" font-family="Inter, Liberation Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Aligned to the repository. Postgres and Timescale on Tiger Data. FastAPI. Vite React. TradeCPU on a Spartan-7.</text>
-<text x="32.0" y="96.0" fill="#0F6E68" font-family="Inter, Liberation Sans, sans-serif" font-size="14" font-weight="500" text-anchor="start">Arrows are implemented flows. The FPGA path is not called by FastAPI. MongoDB is not used.</text>
+<text x="32.0" y="96.0" fill="#0F6E68" font-family="Inter, Liberation Sans, sans-serif" font-size="14" font-weight="500" text-anchor="start">Arrows are implemented flows. FastAPI calls the FPGA. MongoDB is not used.</text>
 <rect x="32.0" y="118.0" width="1190.7" height="597.5" rx="14" fill="#E6F4F3" stroke="#0F6E68" stroke-width="1.4"/>
 <text x="50.0" y="144.0" fill="#0F6E68" font-family="Inter, Liberation Sans, sans-serif" font-size="11" font-weight="600" text-anchor="start">INGEST</text>
 <text x="50.0" y="166.0" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="700" text-anchor="start">CLI loaders  ·  software/database</text>
@@ -79,7 +79,7 @@
 <text x="1276.7" y="811.5" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="13.5" font-weight="400" text-anchor="start">Strategies: private is owner-only. Public is viewable by any signed-in user. Only the owner updates. Copy inserts a new private row. The editor always sends private.</text>
 <text x="1276.7" y="832.0" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="13.5" font-weight="400" text-anchor="start">POST /discussions takes body, optional strategy_id, optional parent_id. If the author owns a private strategy, visibility becomes public.</text>
 <text x="1276.7" y="852.5" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="13.5" font-weight="400" text-anchor="start">POST /backtests takes user_id and strategy_id. user_id must be the session user. It snapshots strategy_versions and writes a fixed AAPL buy then sell plus cash and equity. It</text>
-<text x="1276.7" y="871.0" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="13.5" font-weight="400" text-anchor="start">does not read minute bars and does not talk to the FPGA. Response includes dummy: true.</text>
+<text x="1276.7" y="871.0" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="13.5" font-weight="400" text-anchor="start">does not read minute bars. Response includes dummy: true.</text>
 <rect x="1260.7" y="913.5" width="1158.7" height="94.0" rx="10" fill="#FFFFFF" stroke="#D5DCE6" stroke-width="1.25"/>
 <rect x="1260.7" y="913.5" width="4.0" height="94.0" rx="0" fill="#8E4B12" stroke="none" stroke-width="0"/>
 <rect x="1260.7" y="921.5" width="4.0" height="78.0" rx="0" fill="#8E4B12" stroke="none" stroke-width="1"/>
@@ -116,14 +116,17 @@
 <text x="2489.3" y="599.0" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="13.5" font-weight="400" text-anchor="start">Host to board: LOAD_PROGRAM, TICK. Board to host: DECISION_EVENT, EMIT_BALANCE.</text>
 <text x="2489.3" y="619.5" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="13.5" font-weight="400" text-anchor="start">hardware/sim Icarus testbenches (stage 1–6, ALU, register file, top). checkpoints/run_checkpoint.tcl is Vivado synth, place, and route with no bitstream.</text>
 <text x="2489.3" y="638.0" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="13.5" font-weight="400" text-anchor="start">hardware/python/bringup_test.py and balance_test.py speak UART.</text>
-<text x="2489.3" y="658.5" fill="#526072" font-family="Inter, Liberation Sans, sans-serif" font-size="12.5" font-weight="400" text-anchor="start">README: RTL is simulated and timing-closed at 50 MHz. Physical UART bring-up is in progress. FastAPI does not call this path.</text>
+<text x="2489.3" y="658.5" fill="#526072" font-family="Inter, Liberation Sans, sans-serif" font-size="12.5" font-weight="400" text-anchor="start">README: RTL is simulated and timing-closed at 50 MHz. Physical UART bring-up is in progress. FastAPI calls the FPGA.</text>
 <line x1="68.0" y1="723.5" x2="68.0" y2="1082.5" stroke="#0F6E68" stroke-width="1.7"/>
 <path d="M 63.5 1081.5 L 68.0 1089.5 L 72.5 1081.5" fill="none" stroke="#0F6E68" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="80.0" y="743.5" fill="#0F6E68" font-family="Inter, Liberation Sans, sans-serif" font-size="13" font-weight="600" text-anchor="start">loaders write rows</text>
 <line x1="1280.7" y1="1031.5" x2="1280.7" y2="1082.5" stroke="#8E4B12" stroke-width="1.7"/>
 <path d="M 1276.2 1081.5 L 1280.7 1089.5 L 1285.2 1081.5" fill="none" stroke="#8E4B12" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="1292.7" y="1051.5" fill="#8E4B12" font-family="Inter, Liberation Sans, sans-serif" font-size="13" font-weight="600" text-anchor="start">API reads and writes</text>
-<text x="2479.3" y="732.0" fill="#8A5A14" font-family="Inter, Liberation Sans, sans-serif" font-size="13" font-weight="600" text-anchor="start">No database arrow. POST /backtests does not drive the FPGA.</text>
+<line x1="2436.0" y1="780.0" x2="3052.0" y2="780.0" stroke="#5C3D86" stroke-width="2.25" stroke-linecap="round"/>
+<line x1="3052.0" y1="780.0" x2="3052.0" y2="716.0" stroke="#5C3D86" stroke-width="2.25" stroke-linecap="round"/>
+<path d="M 3046.5 716.0 L 3052.0 704.0 L 3057.5 716.0" fill="none" stroke="#5C3D86" stroke-width="2.25" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="2744.0" y="764.0" fill="#5C3D86" font-family="Inter, Liberation Sans, sans-serif" font-size="16" font-weight="600" text-anchor="middle">FastAPI calls the FPGA</text>
 <rect x="32.0" y="1095.5" width="3616.0" height="374.5" rx="14" fill="#E7F0FA" stroke="#1D4E89" stroke-width="1.4"/>
 <text x="50.0" y="1121.5" fill="#1D4E89" font-family="Inter, Liberation Sans, sans-serif" font-size="11" font-weight="600" text-anchor="start">DATABASE</text>
 <text x="50.0" y="1143.5" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="700" text-anchor="start">Postgres + TimescaleDB on Tiger Data</text>

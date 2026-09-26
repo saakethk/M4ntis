@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1804" height="700" viewBox="0 0 1804 700" role="img" aria-labelledby="title desc">
   <title id="title">M4ntis overview</title>
-  <desc id="desc">High-level architecture: Alpaca market data loads into Tiger Data, the Vite React app calls FastAPI, and FastAPI reads and writes the database. The TradeCPU FPGA is not on that path.</desc>
+  <desc id="desc">High-level architecture: Alpaca market data loads into Tiger Data, the Vite React app calls FastAPI, FastAPI reads and writes the database, and FastAPI calls the FPGA.</desc>
   <rect width="1804" height="700" fill="#F4F6F8"/>
 
   <text x="36" y="58" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="34" font-weight="700">M4ntis overview</text>
-  <text x="36" y="96" fill="#526072" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Market data is loaded into the database. The web app calls the API.</text>
+  <text x="36" y="96" fill="#526072" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Market data is loaded into the database. The web app calls the API. FastAPI calls the FPGA.</text>
 
   <!-- Market data -->
   <rect x="36" y="140" width="340" height="210" rx="16" fill="#FFFFFF" stroke="#0F6E68" stroke-width="2"/>
@@ -50,11 +50,13 @@
   <text x="1452" y="264" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Portfolio and React Flow</text>
   <text x="1452" y="292" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">strategy editor</text>
 
-  <!-- FPGA, off the request path -->
-  <text x="1400" y="548" fill="#5C3D86" font-family="Inter, Liberation Sans, sans-serif" font-size="22" font-weight="600" text-anchor="end">Off the web request path</text>
-  <rect x="1428" y="430" width="340" height="220" rx="16" fill="#FFFFFF" stroke="#5C3D86" stroke-width="2" stroke-dasharray="8 6"/>
+  <!-- FastAPI calls the FPGA -->
+  <line x1="1134" y1="358" x2="1134" y2="540" stroke="#3A3694" stroke-width="2.25" stroke-linecap="round"/>
+  <line x1="1134" y1="540" x2="1414" y2="540" stroke="#3A3694" stroke-width="2.25" stroke-linecap="round"/>
+  <polygon points="1428,540 1414,534 1414,546" fill="#3A3694"/>
+  <text x="1274" y="522" fill="#3A3694" font-family="Inter, Liberation Sans, sans-serif" font-size="16" font-weight="600" text-anchor="middle">FastAPI calls the FPGA</text>
+  <rect x="1428" y="430" width="340" height="220" rx="16" fill="#FFFFFF" stroke="#5C3D86" stroke-width="2"/>
   <text x="1452" y="486" fill="#5C3D86" font-family="Inter, Liberation Sans, sans-serif" font-size="28" font-weight="700">FPGA</text>
   <text x="1452" y="530" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">TradeCPU on the</text>
   <text x="1452" y="558" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Urbana board</text>
-  <text x="1452" y="604" fill="#8A5A14" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="600">FastAPI does not call it</text>
 </svg>
