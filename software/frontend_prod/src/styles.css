@@ -121,8 +121,7 @@ button.user-btn:hover {
   font-size: 14px;
 }
 
-.user-menu-email,
-.user-menu-balance {
+.user-menu-email {
   margin-top: 2px;
   color: #64748b;
   font-size: 13px;
