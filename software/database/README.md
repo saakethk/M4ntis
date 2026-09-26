@@ -111,3 +111,34 @@ DDL: [`sql/users.sql`](sql/users.sql).
 
 Create both tables with `python software/database/load_users.py`.
 
+## strategies
+
+One saved strategy per row, owned by `user_id`. `document` is the React Flow file `m4ntis.strategy/v1`. `ir` is the compiled `m4ntis.strategy-ir/v1` and may be null. The owner does not need a `strategy_shares` row.
+
+| Column | Type |
+| --- | --- |
+| id | BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY |
+| user_id | BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE |
+| name | TEXT NOT NULL |
+| document | JSONB NOT NULL |
+| ir | JSONB |
+| updated_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
+| created_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
+
+## strategy_shares
+
+Grants another user `view` or `edit` on the same strategy. The owner remains `strategies.user_id`.
+
+| Column | Type |
+| --- | --- |
+| strategy_id | BIGINT NOT NULL REFERENCES strategies (id) ON DELETE CASCADE |
+| user_id | BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE |
+| role | TEXT NOT NULL CHECK (role IN ('view', 'edit')) |
+| created_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
+
+Primary key: `(strategy_id, user_id)`.
+
+DDL: [`sql/strategies.sql`](sql/strategies.sql).
+
+Users must already exist (`python software/database/load_users.py` first) because of the foreign key. Then create both tables with `python software/database/load_strategies.py`.
+
