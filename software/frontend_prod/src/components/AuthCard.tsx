@@ -3,7 +3,13 @@ import { login, register, type User } from '../api'
 
 type Mode = 'signin' | 'register'
 
-export function AuthCard({ onSignedIn }: { onSignedIn: (user: User) => void }) {
+export function AuthCard({
+  onSignedIn,
+  notice = null,
+}: {
+  onSignedIn: (user: User) => void
+  notice?: string | null
+}) {
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -76,9 +82,9 @@ export function AuthCard({ onSignedIn }: { onSignedIn: (user: User) => void }) {
             required
           />
         </label>
-        {error ? (
+        {error || notice ? (
           <p className="form-error" role="alert">
-            {error}
+            {error ?? notice}
           </p>
         ) : null}
         <button type="submit" className="primary" disabled={pending}>

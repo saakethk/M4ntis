@@ -6,17 +6,39 @@ export type User = {
   email: string
 }
 
-const API_BASE = 'http://localhost:8001'
+const DEFAULT_API_BASE = 'http://localhost:8001'
+const SESSION_TIMEOUT_MS = 5000
+
+// The page may be opened at 0.0.0.0:8002, but API calls stay on the backend.
+function resolveApiBase(value: string | undefined): string {
+  const trimmed = value?.trim() ?? ''
+  if (!trimmed) return DEFAULT_API_BASE
+  try {
+    const url = new URL(trimmed)
+    if (url.hostname === '0.0.0.0') return DEFAULT_API_BASE
+  } catch {
+    return DEFAULT_API_BASE
+  }
+  return trimmed.replace(/\/+$/, '')
+}
+
+const API_BASE = resolveApiBase(import.meta.env.VITE_API_BASE)
 
 export async function getMe(): Promise<User | null> {
-  let response: Response
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), SESSION_TIMEOUT_MS)
   try {
-    response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+    const response = await fetch(`${API_BASE}/auth/me`, {
+      credentials: 'include',
+      signal: controller.signal,
+    })
+    if (response.status === 401 || !response.ok) return null
+    return (await response.json()) as User
   } catch {
-    return null
+    throw new Error('Could not reach the server.')
+  } finally {
+    clearTimeout(timer)
   }
-  if (response.status === 401 || !response.ok) return null
-  return (await response.json()) as User
 }
 
 export function login(email: string, password: string): Promise<User> {
