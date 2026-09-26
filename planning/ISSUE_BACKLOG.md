@@ -1,6 +1,6 @@
 # Prioritized GitHub issues
 
-Derived from [planning/README.md](./README.md). The repo currently has planning notes and empty `software/`, `hardware/`, and `integration/` folders. No application code, schemas, or GitHub issues exist yet.
+Derived from [planning/README.md](./README.md). These items are open on GitHub as issues [#3](https://github.com/saakethk/gt_hacks_fall_26/issues/3) through [#23](https://github.com/saakethk/gt_hacks_fall_26/issues/23). The repo still has planning notes and empty `software/`, `hardware/`, and `integration/` folders.
 
 Priority follows what must exist before the next layer can be built:
 
@@ -17,29 +17,29 @@ Suggested labels: `enhancement`, plus `priority/p0` through `priority/p3`, and `
 
 | ID | Priority | Title | Depends on |
 | --- | --- | --- | --- |
-| 1 | P0 | Bootstrap the application database | — |
-| 2 | P0 | User schema and authentication API | 1 |
-| 3 | P0 | Private algorithm storage API | 1, 2 |
-| 4 | P1 | Market data schema and historical bars | 1 |
-| 5 | P1 | Backtest result schema | 1, 3 |
-| 6 | P1 | Dummy backtest API | 3, 4, 5 |
-| 7 | P1 | Discussion API | 2, 3, 4 |
-| 8 | P1 | Algorithm home | 3 |
-| 9 | P1 | React Flow sandbox | 3, 8 |
-| 10 | P1 | Backtest results UI | 6, 9 |
-| 11 | P1 | Discussion UI | 7, 8 |
-| 12 | P2 | Publish and share algorithms | 3 |
-| 13 | P2 | Backtested revision history | 6, 8 |
-| 14 | P2 | Algorithm home statistics | 7, 8, 12 |
-| 15 | P2 | In-sandbox agent assistance | 9 |
-| 16 | P2 | AI backtest summary and tips | 10 |
-| 17 | P2 | Placebo deploy | 9 |
-| 18 | P3 | Optional alpha metric | 5, 6 |
-| 19 | P3 | Compile a strategy graph to FPGA assembly | 9 |
-| 20 | P3 | Flash the FPGA and collect a run | 19 |
-| 21 | P3 | Run backtests on the FPGA | 6, 20 |
+| 1 | P0 | [#3 Bootstrap the application database](https://github.com/saakethk/gt_hacks_fall_26/issues/3) | — |
+| 2 | P0 | [#4 User schema and authentication API](https://github.com/saakethk/gt_hacks_fall_26/issues/4) | #3 |
+| 3 | P0 | [#5 Private algorithm storage API](https://github.com/saakethk/gt_hacks_fall_26/issues/5) | #3, #4 |
+| 4 | P1 | [#6 Market data schema and historical bars](https://github.com/saakethk/gt_hacks_fall_26/issues/6) | #3 |
+| 5 | P1 | [#7 Backtest result schema](https://github.com/saakethk/gt_hacks_fall_26/issues/7) | #3, #5 |
+| 6 | P1 | [#8 Dummy backtest API](https://github.com/saakethk/gt_hacks_fall_26/issues/8) | #5, #6, #7 |
+| 7 | P1 | [#9 Discussion API](https://github.com/saakethk/gt_hacks_fall_26/issues/9) | #4, #5, #6 |
+| 8 | P1 | [#10 Algorithm home](https://github.com/saakethk/gt_hacks_fall_26/issues/10) | #5 |
+| 9 | P1 | [#11 React Flow sandbox](https://github.com/saakethk/gt_hacks_fall_26/issues/11) | #5, #10 |
+| 10 | P1 | [#12 Backtest results UI](https://github.com/saakethk/gt_hacks_fall_26/issues/12) | #8, #11 |
+| 11 | P1 | [#13 Discussion UI](https://github.com/saakethk/gt_hacks_fall_26/issues/13) | #9, #10 |
+| 12 | P2 | [#14 Publish and share algorithms](https://github.com/saakethk/gt_hacks_fall_26/issues/14) | #5 |
+| 13 | P2 | [#15 Backtested revision history](https://github.com/saakethk/gt_hacks_fall_26/issues/15) | #8, #10 |
+| 14 | P2 | [#16 Algorithm home statistics](https://github.com/saakethk/gt_hacks_fall_26/issues/16) | #9, #10, #14 |
+| 15 | P2 | [#17 In-sandbox agent assistance](https://github.com/saakethk/gt_hacks_fall_26/issues/17) | #11 |
+| 16 | P2 | [#18 AI backtest summary and tips](https://github.com/saakethk/gt_hacks_fall_26/issues/18) | #12 |
+| 17 | P2 | [#19 Placebo deploy](https://github.com/saakethk/gt_hacks_fall_26/issues/19) | #11 |
+| 18 | P3 | [#20 Optional alpha metric](https://github.com/saakethk/gt_hacks_fall_26/issues/20) | #7, #8 |
+| 19 | P3 | [#21 Compile a strategy graph to FPGA assembly](https://github.com/saakethk/gt_hacks_fall_26/issues/21) | #11 |
+| 20 | P3 | [#22 Flash the FPGA and collect a run](https://github.com/saakethk/gt_hacks_fall_26/issues/22) | #21 |
+| 21 | P3 | [#23 Run backtests on the FPGA](https://github.com/saakethk/gt_hacks_fall_26/issues/23) | #8, #22 |
 
-Issues 4 and 2 can proceed in parallel after issue 1. Frontend issues 8 and 11 can start against mocked responses, but they are not done until they call the real endpoints.
+[#6](https://github.com/saakethk/gt_hacks_fall_26/issues/6) and [#4](https://github.com/saakethk/gt_hacks_fall_26/issues/4) can proceed in parallel after [#3](https://github.com/saakethk/gt_hacks_fall_26/issues/3). Frontend issues [#10](https://github.com/saakethk/gt_hacks_fall_26/issues/10) and [#13](https://github.com/saakethk/gt_hacks_fall_26/issues/13) can start against mocked responses, but they are not done until they call the real endpoints.
 
 ---
 
@@ -61,7 +61,7 @@ Issues 4 and 2 can proceed in parallel after issue 1. Frontend issues 8 and 11 c
 
 **Priority:** P0  
 **Labels:** `enhancement`, `priority/p0`, `area/backend`  
-**Depends on:** 1
+**Depends on:** [#3](https://github.com/saakethk/gt_hacks_fall_26/issues/3)
 
 Plan endpoints: `/create_user`, `/authenticate_user`, `/delete_user`.
 
@@ -76,7 +76,7 @@ Plan endpoints: `/create_user`, `/authenticate_user`, `/delete_user`.
 
 **Priority:** P0  
 **Labels:** `enhancement`, `priority/p0`, `area/backend`  
-**Depends on:** 1, 2
+**Depends on:** [#3](https://github.com/saakethk/gt_hacks_fall_26/issues/3), [#4](https://github.com/saakethk/gt_hacks_fall_26/issues/4)
 
 Plan endpoints: `/create_algorithm`, `/update_algorithm`. Strategies are confidential: a signed-in user may access only their own.
 
@@ -91,7 +91,7 @@ Plan endpoints: `/create_algorithm`, `/update_algorithm`. Strategies are confide
 
 **Priority:** P1  
 **Labels:** `enhancement`, `priority/p1`, `area/backend`  
-**Depends on:** 1
+**Depends on:** [#3](https://github.com/saakethk/gt_hacks_fall_26/issues/3)
 
 The plan calls for a market-data schema (tickers) and historical bars for a subset of relevant stocks, loaded into the database.
 
@@ -105,7 +105,7 @@ The plan calls for a market-data schema (tickers) and historical bars for a subs
 
 **Priority:** P1  
 **Labels:** `enhancement`, `priority/p1`, `area/backend`  
-**Depends on:** 1, 3
+**Depends on:** [#3](https://github.com/saakethk/gt_hacks_fall_26/issues/3), [#5](https://github.com/saakethk/gt_hacks_fall_26/issues/5)
 
 Store naive backtest output: orders, balance, and overall performance derived from those two. Metrics from the plan:
 
@@ -118,7 +118,7 @@ Store naive backtest output: orders, balance, and overall performance derived fr
 - gross P&L
 - distribution of trade returns
 
-Alpha is issue 18, not part of this schema's required columns.
+Alpha is [#20](https://github.com/saakethk/gt_hacks_fall_26/issues/20), not part of this schema's required columns.
 
 **Acceptance criteria**
 
@@ -130,16 +130,16 @@ Alpha is issue 18, not part of this schema's required columns.
 
 **Priority:** P1  
 **Labels:** `enhancement`, `priority/p1`, `area/backend`  
-**Depends on:** 3, 4, 5
+**Depends on:** [#5](https://github.com/saakethk/gt_hacks_fall_26/issues/5), [#6](https://github.com/saakethk/gt_hacks_fall_26/issues/6), [#7](https://github.com/saakethk/gt_hacks_fall_26/issues/7)
 
 Plan endpoints: `/backtest_algorithm`, `/view_backtest_orders`, `/view_backtest_balance`, `/view_backtest_metrics`.
 
-This is the stand-in execution path. FPGA execution replaces the dummy engine in issue 21 without changing these read endpoints.
+This is the stand-in execution path. FPGA execution replaces the dummy engine in [#23](https://github.com/saakethk/gt_hacks_fall_26/issues/23) without changing these read endpoints.
 
 **Acceptance criteria**
 
 - An owner can run a backtest for one of their algorithms against loaded market data.
-- The run persists dummy orders, a balance series, and the metrics from issue 5.
+- The run persists dummy orders, a balance series, and the metrics from [#7](https://github.com/saakethk/gt_hacks_fall_26/issues/7).
 - The three view endpoints return only that owner's run.
 - A second run does not destroy the previous run's stored rows.
 
@@ -147,7 +147,7 @@ This is the stand-in execution path. FPGA execution replaces the dummy engine in
 
 **Priority:** P1  
 **Labels:** `enhancement`, `priority/p1`, `area/backend`  
-**Depends on:** 2, 3, 4
+**Depends on:** [#4](https://github.com/saakethk/gt_hacks_fall_26/issues/4), [#5](https://github.com/saakethk/gt_hacks_fall_26/issues/5), [#6](https://github.com/saakethk/gt_hacks_fall_26/issues/6)
 
 Plan endpoints: `/create_post`, `/comment_post`, `/like_post`. A post references an algorithm or a stock.
 
@@ -162,7 +162,7 @@ Plan endpoints: `/create_post`, `/comment_post`, `/like_post`. A post references
 
 **Priority:** P1  
 **Labels:** `enhancement`, `priority/p1`, `area/frontend`  
-**Depends on:** 3
+**Depends on:** [#5](https://github.com/saakethk/gt_hacks_fall_26/issues/5)
 
 The home screen is where a user creates more than one sandbox and opens one to edit.
 
@@ -176,7 +176,7 @@ The home screen is where a user creates more than one sandbox and opens one to e
 
 **Priority:** P1  
 **Labels:** `enhancement`, `priority/p1`, `area/frontend`  
-**Depends on:** 3, 8
+**Depends on:** [#5](https://github.com/saakethk/gt_hacks_fall_26/issues/5), [#10](https://github.com/saakethk/gt_hacks_fall_26/issues/10)
 
 The plan asks to finalize the blocks available on the canvas, then implement the node UI.
 
@@ -190,7 +190,7 @@ The plan asks to finalize the blocks available on the canvas, then implement the
 
 **Priority:** P1  
 **Labels:** `enhancement`, `priority/p1`, `area/frontend`  
-**Depends on:** 6, 9
+**Depends on:** [#8](https://github.com/saakethk/gt_hacks_fall_26/issues/8), [#11](https://github.com/saakethk/gt_hacks_fall_26/issues/11)
 
 From the sandbox, a user runs a backtest and inspects orders, balance, max drawdown, and the other stored metrics.
 
@@ -204,7 +204,7 @@ From the sandbox, a user runs a backtest and inspects orders, balance, max drawd
 
 **Priority:** P1  
 **Labels:** `enhancement`, `priority/p1`, `area/frontend`  
-**Depends on:** 7, 8
+**Depends on:** [#9](https://github.com/saakethk/gt_hacks_fall_26/issues/9), [#10](https://github.com/saakethk/gt_hacks_fall_26/issues/10)
 
 **Acceptance criteria**
 
@@ -216,7 +216,7 @@ From the sandbox, a user runs a backtest and inspects orders, balance, max drawd
 
 **Priority:** P2  
 **Labels:** `enhancement`, `priority/p2`, `area/backend`, `area/frontend`  
-**Depends on:** 3
+**Depends on:** [#5](https://github.com/saakethk/gt_hacks_fall_26/issues/5)
 
 Plan endpoints: `/publish_algorithm`, `/share_algorithm`.
 
@@ -231,7 +231,7 @@ Plan endpoints: `/publish_algorithm`, `/share_algorithm`.
 
 **Priority:** P2  
 **Labels:** `enhancement`, `priority/p2`, `area/backend`, `area/frontend`  
-**Depends on:** 6, 8
+**Depends on:** [#8](https://github.com/saakethk/gt_hacks_fall_26/issues/8), [#10](https://github.com/saakethk/gt_hacks_fall_26/issues/10)
 
 The plan says to keep iteration history and only save iterations that have been backtested.
 
@@ -245,7 +245,7 @@ The plan says to keep iteration history and only save iterations that have been 
 
 **Priority:** P2  
 **Labels:** `enhancement`, `priority/p2`, `area/frontend`  
-**Depends on:** 7, 8, 12
+**Depends on:** [#9](https://github.com/saakethk/gt_hacks_fall_26/issues/9), [#10](https://github.com/saakethk/gt_hacks_fall_26/issues/10), [#14](https://github.com/saakethk/gt_hacks_fall_26/issues/14)
 
 The home screen shows total number of programs and overall statistics: post engagement, algorithm statuses, and similar rollups.
 
@@ -259,7 +259,7 @@ The home screen shows total number of programs and overall statistics: post enga
 
 **Priority:** P2  
 **Labels:** `enhancement`, `priority/p2`, `area/frontend`  
-**Depends on:** 9
+**Depends on:** [#11](https://github.com/saakethk/gt_hacks_fall_26/issues/11)
 
 The sandbox should let a user prompt an inbuilt agent for help crafting an algorithm.
 
@@ -273,7 +273,7 @@ The sandbox should let a user prompt an inbuilt agent for help crafting an algor
 
 **Priority:** P2  
 **Labels:** `enhancement`, `priority/p2`, `area/frontend`  
-**Depends on:** 10
+**Depends on:** [#12](https://github.com/saakethk/gt_hacks_fall_26/issues/12)
 
 After a backtest, show an AI summary and improvement tips adjusted to the user's technical level.
 
@@ -287,7 +287,7 @@ After a backtest, show an AI summary and improvement tips adjusted to the user's
 
 **Priority:** P2  
 **Labels:** `enhancement`, `priority/p2`, `area/frontend`  
-**Depends on:** 9
+**Depends on:** [#11](https://github.com/saakethk/gt_hacks_fall_26/issues/11)
 
 The plan allows deploy to be a placebo.
 
@@ -301,7 +301,7 @@ The plan allows deploy to be a placebo.
 
 **Priority:** P3  
 **Labels:** `enhancement`, `priority/p3`, `area/backend`  
-**Depends on:** 5, 6
+**Depends on:** [#7](https://github.com/saakethk/gt_hacks_fall_26/issues/7), [#8](https://github.com/saakethk/gt_hacks_fall_26/issues/8)
 
 Alpha is optional and needs a Treasury risk-free rate. Skip this if the core demo is still open.
 
@@ -315,7 +315,7 @@ Alpha is optional and needs a Treasury risk-free rate. Skip this if the core dem
 
 **Priority:** P3  
 **Labels:** `enhancement`, `priority/p3`, `area/fpga`  
-**Depends on:** 9
+**Depends on:** [#11](https://github.com/saakethk/gt_hacks_fall_26/issues/11)
 
 Figure out how to convert a basic strategy, output as JSON from React Flow, into valid assembly.
 
@@ -329,7 +329,7 @@ Figure out how to convert a basic strategy, output as JSON from React Flow, into
 
 **Priority:** P3  
 **Labels:** `enhancement`, `priority/p3`, `area/fpga`  
-**Depends on:** 19
+**Depends on:** [#21](https://github.com/saakethk/gt_hacks_fall_26/issues/21)
 
 Figure out how to flash the FPGA with the assembly, run it, and get results back.
 
@@ -343,7 +343,7 @@ Figure out how to flash the FPGA with the assembly, run it, and get results back
 
 **Priority:** P3  
 **Labels:** `enhancement`, `priority/p3`, `area/fpga`, `area/backend`  
-**Depends on:** 6, 20
+**Depends on:** [#8](https://github.com/saakethk/gt_hacks_fall_26/issues/8), [#22](https://github.com/saakethk/gt_hacks_fall_26/issues/22)
 
 Integrate the FPGA path into the backtest function, still saving orders and balance through the existing schema.
 
