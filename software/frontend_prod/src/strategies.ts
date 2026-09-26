@@ -10,6 +10,11 @@ export type Strategy = {
   lastBacktest: string
 }
 
+export type SavedStrategy = {
+  id: number
+  name: string
+}
+
 export const STRATEGIES: Strategy[] = [
   {
     id: 'mean-reversion',
@@ -48,6 +53,24 @@ export const STRATEGIES: Strategy[] = [
     lastBacktest: 'Never run',
   },
 ]
+
+// Sample cards stay on screen when the signed-in user has no saved rows, and
+// when GET /strategies fails (including 401). A non-empty list replaces them.
+export function portfolioStrategies(rows: readonly SavedStrategy[] | null): Strategy[] {
+  if (rows == null || rows.length === 0) return STRATEGIES
+  return rows.map((row, index) => {
+    const sample = STRATEGIES[index % STRATEGIES.length]
+    return {
+      id: String(row.id),
+      name: row.name,
+      status: sample.status,
+      createdLabel: sample.createdLabel,
+      returnPct: sample.returnPct,
+      maxDrawdownPct: sample.maxDrawdownPct,
+      lastBacktest: sample.lastBacktest,
+    }
+  })
+}
 
 export function formatPct(value: number): string {
   const text = value.toFixed(1)
