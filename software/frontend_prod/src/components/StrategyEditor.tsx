@@ -19,7 +19,7 @@ import { createStrategy, getStrategy, updateStrategy } from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, isBlockType } from '../blocks/catalog'
 import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/types'
 import { BlockNode } from '../flow/BlockNode'
-import { analyze, checkConnection, connect, makeNode } from '../flow/graph'
+import { START_NODE_ID, analyze, checkConnection, connect, makeNode } from '../flow/graph'
 import { fromDocument, toDocument, toIR } from '../flow/serialize'
 import { TEMPLATES } from '../flow/templates'
 import { BlockPalette, DRAG_MIME } from './BlockPalette'
@@ -27,6 +27,31 @@ import { BlockPalette, DRAG_MIME } from './BlockPalette'
 const nodeTypes: NodeTypes = Object.fromEntries(BLOCK_TYPES.map((type) => [type, BlockNode]))
 
 const blankTemplate = TEMPLATES.find((template) => template.id === 'blank')
+
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+  const tag = target.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
+}
+
+function isProtectedNode(node: BlockNodeT) {
+  if (node.id === START_NODE_ID || node.type === 'start' || node.deletable === false) return true
+  return isBlockType(node.type) && BLOCK_DEFS[node.type].system === true
+}
+
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill="none">
+      <path
+        d="M4 7h16M9 7V5h6v2M18.5 7l-.8 12.2a1.5 1.5 0 0 1-1.5 1.4H7.8a1.5 1.5 0 0 1-1.5-1.4L5.5 7M10 11v6M14 11v6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 type Props = {
   strategyId: number | null
@@ -156,6 +181,30 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }:
     [addBlock, screenToFlowPosition],
   )
 
+  const deleteSelected = useCallback(() => {
+    const doomed = nodes.filter((node) => node.selected && !isProtectedNode(node))
+    if (doomed.length === 0) return
+    const ids = new Set(doomed.map((node) => node.id))
+    setNodes((current) => current.filter((node) => !ids.has(node.id)))
+    setEdges((current) => current.filter((edge) => !ids.has(edge.source) && !ids.has(edge.target)))
+    setSaved(false)
+  }, [nodes, setEdges, setNodes])
+
+  useEffect(() => {
+    if (!loaded) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (isTypingTarget(event.target)) return
+      event.preventDefault()
+      deleteSelected()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [deleteSelected, loaded])
+
+  const canDelete = nodes.some((node) => node.selected && !isProtectedNode(node))
+
   function compile() {
     const errors = analyze(nodes, edges).filter((item) => item.level === 'error')
     if (errors.length === 0) {
@@ -223,6 +272,16 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }:
                 {message}
               </p>
             ) : null}
+            <button
+              type="button"
+              className="quiet icon-button"
+              aria-label="Delete selected block"
+              title="Delete selected block"
+              onClick={deleteSelected}
+              disabled={!loaded || !canDelete}
+            >
+              <TrashIcon />
+            </button>
             <button type="button" className="quiet" onClick={compile} disabled={!loaded}>
               Compile
             </button>
@@ -259,7 +318,7 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }:
               minZoom={0.2}
               snapToGrid
               snapGrid={[10, 10]}
-              deleteKeyCode={['Backspace', 'Delete']}
+              deleteKeyCode={null}
               colorMode="light"
               proOptions={{ hideAttribution: true }}
             >

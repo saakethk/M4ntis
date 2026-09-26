@@ -713,15 +713,15 @@ input:focus-visible {
 }
 
 .strategy-editor {
-  --cat-structure: #334155;
+  --cat-structure: #3d9a4a;
   --cat-reserved: #3d9a4a;
-  --cat-variables: #64748b;
-  --cat-math: #475569;
+  --cat-variables: #3d9a4a;
+  --cat-math: #3d9a4a;
   --cat-control: #3d9a4a;
-  --cat-trade: #0f172a;
+  --cat-trade: #3d9a4a;
   --cat-composite: #3d9a4a;
   --exec: #3d9a4a;
-  --data: #475569;
+  --data: #3d9a4a;
   height: calc(100vh - 64px);
   min-height: 0;
   display: flex;
@@ -847,6 +847,20 @@ input:focus-visible {
   opacity: 0.6;
 }
 
+.icon-button {
+  width: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-button:hover:not(:disabled) {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+
 .editor-note {
   max-width: 320px;
   margin: 0;
@@ -897,50 +911,119 @@ input:focus-visible {
   background: #f8fafc;
 }
 
-.strategy-editor .cat-structure { --cat-color: var(--cat-structure); }
-.strategy-editor .cat-reserved { --cat-color: var(--cat-reserved); }
-.strategy-editor .cat-variables { --cat-color: var(--cat-variables); }
-.strategy-editor .cat-math { --cat-color: var(--cat-math); }
-.strategy-editor .cat-control { --cat-color: var(--cat-control); }
-.strategy-editor .cat-trade { --cat-color: var(--cat-trade); }
-.strategy-editor .cat-composite { --cat-color: var(--cat-composite); }
+.strategy-editor .react-flow__node {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.strategy-editor .react-flow__node.selected,
+.strategy-editor .react-flow__node:focus,
+.strategy-editor .react-flow__node:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
 
 .strategy-editor .block {
-  width: 220px;
+  position: relative;
+  width: 248px;
   background: #fff;
-  border: 1px solid #e5e7eb;
-  border-top: 3px solid var(--cat-color, #3d9a4a);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e6e8ee;
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 24px rgba(15, 23, 42, 0.05);
   font-size: 12px;
   color: #0f172a;
 }
 
 .strategy-editor .block.selected {
   border-color: #3d9a4a;
-  box-shadow: 0 0 0 2px rgba(61, 154, 74, 0.22);
+  box-shadow: 0 0 0 3px rgba(61, 154, 74, 0.16), 0 10px 24px rgba(15, 23, 42, 0.05);
 }
 
 .strategy-editor .block.blocked {
   border-style: dashed;
-  border-top-style: solid;
 }
 
-.strategy-editor .block-buy { --cat-color: #3d9a4a; }
-.strategy-editor .block-sell { --cat-color: #e11d48; }
+.strategy-editor .block.blocked.selected {
+  border-style: solid;
+}
+
+.strategy-editor .block-unknown {
+  width: 220px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e6e8ee;
+  border-radius: 14px;
+  color: #64748b;
+}
 
 .strategy-editor .block-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  padding: 8px 12px 6px;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 4px;
+}
+
+.strategy-editor .block-glyph {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #f3faf4;
+  color: #3d9a4a;
+}
+
+.strategy-editor .block-sell .block-glyph {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.strategy-editor .block-heading {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 1px;
+}
+
+.strategy-editor .block-type {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #3d9a4a;
+}
+
+.strategy-editor .block-sell .block-type {
+  color: #e11d48;
 }
 
 .strategy-editor .block-title {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.25;
   color: #0f172a;
+}
+
+.strategy-editor .block-summary {
+  margin: 0;
+  padding: 2px 12px 8px 50px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.strategy-editor .block-header .badge {
+  margin-left: auto;
+  flex: none;
 }
 
 .strategy-editor .badge {
@@ -957,18 +1040,18 @@ input:focus-visible {
 
 .strategy-editor .block-params {
   display: grid;
-  gap: 6px;
-  padding: 2px 12px 8px;
+  gap: 8px;
+  padding: 2px 12px 10px 50px;
 }
 
 .strategy-editor label.param {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 96px;
-  align-items: center;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
   font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
+  font-weight: 600;
+  color: #475569;
 }
 
 .strategy-editor .param-label {
@@ -985,20 +1068,21 @@ input:focus-visible {
 
 .strategy-editor .param-input {
   width: 100%;
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fff;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #e6e8ee;
+  border-radius: 8px;
+  background: #f8fafc;
   color: #0f172a;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   box-shadow: none;
 }
 
 .strategy-editor select.param-input {
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .strategy-editor .param-input:focus {
@@ -1008,7 +1092,9 @@ input:focus-visible {
 }
 
 .strategy-editor .block-ports {
-  padding: 2px 0 8px;
+  margin-top: 2px;
+  padding: 6px 0 10px;
+  border-top: 1px solid #f1f3f6;
 }
 
 .strategy-editor .port-row {
@@ -1021,8 +1107,11 @@ input:focus-visible {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 0 14px;
+  min-height: 22px;
+  padding: 0 16px;
   color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .strategy-editor .port-out {
@@ -1132,8 +1221,9 @@ input:focus-visible {
 }
 
 .strategy-editor .react-flow__handle.handle-exec {
-  width: 14px;
-  height: 10px;
+  z-index: 2;
+  width: 16px;
+  height: 12px;
   min-width: 0;
   min-height: 0;
   border: none;
@@ -1143,15 +1233,17 @@ input:focus-visible {
 }
 
 .strategy-editor .react-flow__handle.handle-exec.react-flow__handle-top {
-  top: -2px;
+  top: -1px;
   transform: translate(-50%, -50%);
 }
 
 .strategy-editor .react-flow__handle.handle-data {
-  width: 11px;
-  height: 11px;
+  z-index: 2;
+  width: 12px;
+  height: 12px;
   border: 2px solid #fff;
-  background: #334155;
+  background: #3d9a4a;
+  box-shadow: 0 0 0 1px #cfe8d3;
 }
 
 .strategy-editor .react-flow__edge.edge-exec .react-flow__edge-path {
