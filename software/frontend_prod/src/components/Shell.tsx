@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User } from '../api'
-import { DUMMY_BALANCE, displayName } from '../strategies'
+import { displayName } from '../strategies'
 
 type Props = {
   user: User | null
   onLogout: () => void
   loggingOut: boolean
   logoutError: string | null
+  flush?: boolean
   children: ReactNode
 }
 
@@ -19,7 +20,7 @@ function UserGlyph() {
   )
 }
 
-export function Shell({ user, onLogout, loggingOut, logoutError, children }: Props) {
+export function Shell({ user, onLogout, loggingOut, logoutError, flush = false, children }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -52,8 +53,8 @@ export function Shell({ user, onLogout, loggingOut, logoutError, children }: Pro
           </span>
           <span className="word">M4ntis</span>
         </div>
-        <div className="user-slot" ref={menuRef}>
-          {user ? (
+        {user ? (
+          <div className="user-slot" ref={menuRef}>
             <button
               type="button"
               className="user-btn"
@@ -64,35 +65,30 @@ export function Shell({ user, onLogout, loggingOut, logoutError, children }: Pro
             >
               <UserGlyph />
             </button>
-          ) : (
-            <span className="user-btn" aria-hidden="true">
-              <UserGlyph />
-            </span>
-          )}
-          {user && menuOpen ? (
-            <div className="user-menu" role="menu">
-              <p className="user-menu-name">{displayName(user.email)}</p>
-              <p className="user-menu-email">{user.email}</p>
-              <p className="user-menu-balance">{DUMMY_BALANCE}</p>
-              {logoutError ? (
-                <p className="form-error" role="alert">
-                  {logoutError}
-                </p>
-              ) : null}
-              <button
-                type="button"
-                className="user-menu-signout"
-                role="menuitem"
-                onClick={onLogout}
-                disabled={loggingOut}
-              >
-                Sign out
-              </button>
-            </div>
-          ) : null}
-        </div>
+            {menuOpen ? (
+              <div className="user-menu" role="menu">
+                <p className="user-menu-name">{displayName(user.email)}</p>
+                <p className="user-menu-email">{user.email}</p>
+                {logoutError ? (
+                  <p className="form-error" role="alert">
+                    {logoutError}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  className="user-menu-signout"
+                  role="menuitem"
+                  onClick={onLogout}
+                  disabled={loggingOut}
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </header>
-      <main className="content">{children}</main>
+      <main className={flush ? 'content content-flush' : 'content'}>{children}</main>
     </div>
   )
 }
