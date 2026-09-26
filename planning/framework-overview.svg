@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1804" height="700" viewBox="0 0 1804 700" role="img" aria-labelledby="title desc">
+  <title id="title">M4ntis overview</title>
+  <desc id="desc">High-level architecture: Alpaca market data loads into Tiger Data, the Vite React app calls FastAPI, and FastAPI reads and writes the database. The TradeCPU FPGA is not on that path.</desc>
+  <rect width="1804" height="700" fill="#F4F6F8"/>
+
+  <text x="36" y="58" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="34" font-weight="700">M4ntis overview</text>
+  <text x="36" y="96" fill="#526072" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Market data is loaded into the database. The web app calls the API.</text>
+
+  <!-- Market data -->
+  <rect x="36" y="140" width="340" height="210" rx="16" fill="#FFFFFF" stroke="#0F6E68" stroke-width="2"/>
+  <text x="60" y="196" fill="#0F6E68" font-family="Inter, Liberation Sans, sans-serif" font-size="28" font-weight="700">Market data</text>
+  <text x="60" y="242" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Alpaca minute bars</text>
+  <text x="60" y="270" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">and the NYSE calendar</text>
+
+  <!-- ingest -->
+  <line x1="384" y1="245" x2="478" y2="245" stroke="#3C4858" stroke-width="2.25" stroke-linecap="round"/>
+  <polygon points="492,245 480,239 480,251" fill="#3C4858"/>
+  <text x="438" y="226" fill="#0F6E68" font-family="Inter, Liberation Sans, sans-serif" font-size="16" font-weight="600" text-anchor="middle">ingest</text>
+
+  <!-- Database -->
+  <rect x="500" y="140" width="340" height="210" rx="16" fill="#FFFFFF" stroke="#1D4E89" stroke-width="2"/>
+  <text x="524" y="196" fill="#1D4E89" font-family="Inter, Liberation Sans, sans-serif" font-size="28" font-weight="700">Database</text>
+  <text x="524" y="242" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Tiger Data</text>
+  <text x="524" y="270" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Postgres / Timescale</text>
+
+  <!-- reads and writes -->
+  <line x1="858" y1="245" x2="946" y2="245" stroke="#3C4858" stroke-width="2.25" stroke-linecap="round"/>
+  <polygon points="848,245 860,239 860,251" fill="#3C4858"/>
+  <polygon points="956,245 944,239 944,251" fill="#3C4858"/>
+  <text x="902" y="208" fill="#1D4E89" font-family="Inter, Liberation Sans, sans-serif" font-size="16" font-weight="600" text-anchor="middle">reads and</text>
+  <text x="902" y="228" fill="#1D4E89" font-family="Inter, Liberation Sans, sans-serif" font-size="16" font-weight="600" text-anchor="middle">writes</text>
+
+  <!-- API -->
+  <rect x="964" y="140" width="340" height="210" rx="16" fill="#FFFFFF" stroke="#3A3694" stroke-width="2"/>
+  <text x="988" y="188" fill="#3A3694" font-family="Inter, Liberation Sans, sans-serif" font-size="28" font-weight="700">API</text>
+  <text x="988" y="228" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="20" font-weight="600">FastAPI</text>
+  <text x="988" y="264" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Auth, symbols, strategies,</text>
+  <text x="988" y="292" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">discussions, and backtests</text>
+
+  <!-- calls -->
+  <line x1="1324" y1="245" x2="1412" y2="245" stroke="#3C4858" stroke-width="2.25" stroke-linecap="round"/>
+  <polygon points="1312,245 1324,239 1324,251" fill="#3C4858"/>
+  <text x="1366" y="226" fill="#8E4B12" font-family="Inter, Liberation Sans, sans-serif" font-size="16" font-weight="600" text-anchor="middle">calls</text>
+
+  <!-- Web -->
+  <rect x="1428" y="140" width="340" height="210" rx="16" fill="#FFFFFF" stroke="#8E4B12" stroke-width="2"/>
+  <text x="1452" y="188" fill="#8E4B12" font-family="Inter, Liberation Sans, sans-serif" font-size="28" font-weight="700">Web</text>
+  <text x="1452" y="228" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="20" font-weight="600">Vite React app</text>
+  <text x="1452" y="264" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Portfolio and React Flow</text>
+  <text x="1452" y="292" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">strategy editor</text>
+
+  <!-- FPGA, off the request path -->
+  <text x="1400" y="548" fill="#5C3D86" font-family="Inter, Liberation Sans, sans-serif" font-size="22" font-weight="600" text-anchor="end">Off the web request path</text>
+  <rect x="1428" y="430" width="340" height="220" rx="16" fill="#FFFFFF" stroke="#5C3D86" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="1452" y="486" fill="#5C3D86" font-family="Inter, Liberation Sans, sans-serif" font-size="28" font-weight="700">FPGA</text>
+  <text x="1452" y="530" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">TradeCPU on the</text>
+  <text x="1452" y="558" fill="#1C2430" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="400">Urbana board</text>
+  <text x="1452" y="604" fill="#8A5A14" font-family="Inter, Liberation Sans, sans-serif" font-size="18" font-weight="600">FastAPI does not call it</text>
+</svg>
