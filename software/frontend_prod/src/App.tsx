@@ -7,7 +7,6 @@ import { Shell, type Section } from './components/Shell'
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [ready, setReady] = useState(false)
-  const [sessionError, setSessionError] = useState<string | null>(null)
   const [section, setSection] = useState<Section>('strategies')
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
