@@ -111,6 +111,11 @@ def login(email: str, password: str) -> tuple[User, str]:
         if row is None or not verify_password(password, stored_hash):
             raise InvalidCredentials()
         user = User(int(row[0]), str(row[1]))
+        # The lookup (and SET TIME ZONE inside connect()) already opened a
+        # transaction. transaction() would only release a savepoint, and
+        # close() would roll the new session back, so the cookie from this
+        # response would 401 on the next request.
+        conn.commit()
         with conn.transaction():
             token = _insert_session(conn, user.id)
         return user, token
