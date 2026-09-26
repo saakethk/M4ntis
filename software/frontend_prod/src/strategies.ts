@@ -10,6 +10,8 @@ export type Strategy = {
   lastBacktest: string
 }
 
+export const DUMMY_BALANCE = '$10,000'
+
 export const STRATEGIES: Strategy[] = [
   {
     id: 'mean-reversion',
