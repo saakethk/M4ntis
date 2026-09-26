@@ -15,6 +15,7 @@ This is the code to expose the backend code like the FPGA interface and such to 
 - GET /strategies/{id} returns `document` and `ir` when the user owns the strategy or it is public, plus `owned`
 - PUT /strategies/{id} lets the owner update `name`, `document`, `ir`, or `visibility` (`private` or `public`) and returns `{ "id", "name", "visibility", "updated_at" }`
 - POST /strategies/{id}/copy creates a private copy owned by the signed-in user when they can view the original
+- POST /discussions with `{ "body", "strategy_id"?, "parent_id"? }` creates a post for the signed-in user. Returns `{ "id", "strategy_id", "strategy_made_public" }`. If the author owns `strategy_id` and it is private, the strategy becomes `public` (view-only) and `strategy_made_public` is true. A non-owner cannot publish someone else's private strategy.
 
 ## To Run
 1. cd software/backend

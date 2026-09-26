@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 
 import helpers.auth as auth
+import helpers.discussions as discussions
 import helpers.strategies as strategies
 from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, search_symbols
 
@@ -51,6 +52,13 @@ class StrategyUpdate(BaseModel):
     document: dict[str, Any] | None = None
     ir: dict[str, Any] | None = None
     visibility: str | None = None
+
+
+class DiscussionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    body: str
+    strategy_id: int | None = None
+    parent_id: int | None = None
 
 
 def _require_user(request: Request) -> auth.User:
@@ -232,6 +240,29 @@ def copy_strategy_route(strategy_id: int, request: Request) -> dict:
     except (RuntimeError, psycopg.Error) as exc:
         raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
     return {"id": new_id}
+
+
+@app.post("/discussions", status_code=201)
+def create_discussion_route(body: DiscussionCreate, request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        return discussions.create_post(
+            user.id,
+            body.body,
+            strategy_id=body.strategy_id,
+            parent_id=body.parent_id,
+        )
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except strategies.StrategyForbidden as exc:
+        raise HTTPException(
+            status_code=403,
+            detail="Only the owner can publish a private strategy",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Discussion database is unavailable") from exc
 
 
 if __name__ == "__main__":
