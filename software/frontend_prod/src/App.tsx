@@ -88,13 +88,7 @@ export default function App() {
   }
 
   return (
-    <Shell
-      user={user}
-      section={user ? section : 'strategies'}
-      onSection={setSection}
-      onLogout={handleLogout}
-      loggingOut={loggingOut}
-    >
+    <Shell user={user} section={user ? section : 'strategies'} onSection={setSection}>
       {main}
     </Shell>
   )
