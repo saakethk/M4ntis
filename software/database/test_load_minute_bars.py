@@ -2,14 +2,46 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 import unittest
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import load_minute_bars as loader
+
+
+@contextmanager
+def _capture_psycopg_warnings():
+    """Record psycopg warnings, including transaction rollback failures."""
+    records: list[logging.LogRecord] = []
+    handler = logging.Handler()
+    handler.setLevel(logging.DEBUG)
+    handler.emit = records.append
+    logger = logging.getLogger("psycopg")
+    previous = logger.level
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
+    try:
+        yield records
+    finally:
+        logger.removeHandler(handler)
+        logger.setLevel(previous)
+
+
+def _rollback_warnings(records: list[logging.LogRecord]) -> list[str]:
+    messages = []
+    for record in records:
+        message = record.getMessage()
+        if "error ignored in rollback" in message or (
+            "another command is already in progress" in message
+            and "rollback" in message
+        ):
+            messages.append(message)
+    return messages
 
 
 def _bar(timestamp: str, close: float, volume: int = 10) -> dict:
@@ -280,6 +312,149 @@ class PostgresDedupeTests(unittest.TestCase):
             """
         ).fetchone()[0]
         self.assertEqual(index_name, "stock_minute_bars_pkey")
+
+    def _stage_row(self, *, volume: object = 10):
+        return (
+            "AAPL",
+            datetime(2024, 1, 2, 14, 30, tzinfo=timezone.utc),
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            volume,
+            1,
+            1.0,
+            0,
+        )
+
+    def _create_bars_table(self, *, unique: bool) -> None:
+        self.conn.execute(
+            """
+            CREATE TABLE stock_minute_bars (
+                symbol TEXT NOT NULL,
+                ts TIMESTAMPTZ NOT NULL,
+                open DOUBLE PRECISION NOT NULL,
+                high DOUBLE PRECISION NOT NULL,
+                low DOUBLE PRECISION NOT NULL,
+                close DOUBLE PRECISION NOT NULL,
+                volume BIGINT NOT NULL,
+                trade_count BIGINT,
+                vwap DOUBLE PRECISION
+            )
+            """
+        )
+        if unique:
+            self.conn.execute(
+                """
+                ALTER TABLE stock_minute_bars
+                ADD PRIMARY KEY (symbol, ts)
+                """
+            )
+
+    def _assert_connection_usable(self) -> None:
+        self.assertTrue(self.conn.autocommit)
+        self.assertEqual(self.conn.info.transaction_status, 0)
+        self.assertEqual(self.conn.execute("SELECT 1").fetchone()[0], 1)
+        self.assertFalse(self.conn.pgconn.pipeline_status)
+
+    def test_failed_copy_does_not_break_rollback(self) -> None:
+        self._create_bars_table(unique=True)
+        with _capture_psycopg_warnings() as records:
+            with self.assertRaises(loader.psycopg.Error):
+                loader.insert_rows(self.conn, [self._stage_row(volume="lots")])
+        self.assertEqual(_rollback_warnings(records), [])
+        self._assert_connection_usable()
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM stock_minute_bars").fetchone()[0],
+            0,
+        )
+
+    def test_failed_insert_does_not_break_rollback(self) -> None:
+        # COPY succeeds. INSERT fails because ON CONFLICT has no unique index.
+        self._create_bars_table(unique=False)
+        with _capture_psycopg_warnings() as records:
+            with self.assertRaises(loader.psycopg.Error):
+                loader.insert_rows(self.conn, [self._stage_row()])
+        self.assertEqual(_rollback_warnings(records), [])
+        self._assert_connection_usable()
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM stock_minute_bars").fetchone()[0],
+            0,
+        )
+
+    def test_copy_flush_failure_is_finished_before_rollback(self) -> None:
+        """A COPY flush that never reaches PQputCopyEnd must not block ROLLBACK.
+
+        psycopg buffers COPY rows and sends them from Copy.finish. If that
+        send fails, finish returns before put_copy_end and the connection
+        stays ACTIVE. transaction() would then log "another command is
+        already in progress" while rolling back.
+        """
+        from psycopg._copy import LibpqWriter
+
+        self._create_bars_table(unique=True)
+        original = LibpqWriter.write
+
+        def fail_flush(writer, data):
+            raise loader.psycopg.OperationalError(
+                "sending copy data failed: another command is already in progress"
+            )
+
+        LibpqWriter.write = fail_flush
+        try:
+            with _capture_psycopg_warnings() as records:
+                with self.assertRaises(loader.psycopg.OperationalError):
+                    loader.insert_rows(self.conn, [self._stage_row()])
+        finally:
+            LibpqWriter.write = original
+
+        self.assertEqual(_rollback_warnings(records), [])
+        self._assert_connection_usable()
+        inserted = loader.insert_rows(self.conn, [self._stage_row()])
+        self.assertEqual(inserted, 1)
+        self._assert_connection_usable()
+
+    def test_pipeline_mode_is_rejected_before_copy(self) -> None:
+        self._create_bars_table(unique=True)
+        with self.conn.pipeline():
+            with self.assertRaises(RuntimeError):
+                loader.insert_rows(self.conn, [self._stage_row()])
+        self._assert_connection_usable()
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM stock_minute_bars").fetchone()[0],
+            0,
+        )
+
+    def test_dedupe_helper_reads_its_result_before_the_next_command(self) -> None:
+        self.conn.execute(
+            """
+            CREATE TABLE stock_minute_bars (
+                symbol TEXT NOT NULL,
+                ts TIMESTAMP NOT NULL,
+                open DOUBLE PRECISION NOT NULL,
+                high DOUBLE PRECISION NOT NULL,
+                low DOUBLE PRECISION NOT NULL,
+                close DOUBLE PRECISION NOT NULL,
+                volume BIGINT NOT NULL,
+                trade_count BIGINT,
+                vwap DOUBLE PRECISION
+            )
+            """
+        )
+        self.conn.execute(
+            """
+            INSERT INTO stock_minute_bars
+            VALUES
+                ('AAPL', '2024-01-02 14:30:00', 1, 1, 1, 1, 10, 1, 1),
+                ('AAPL', '2024-01-02 14:30:00', 9, 9, 9, 9, 99, 9, 9)
+            """
+        )
+        self.assertEqual(loader.delete_duplicate_rows(self.conn), 1)
+        self.assertEqual(
+            self.conn.execute("SELECT count(*) FROM stock_minute_bars").fetchone()[0],
+            1,
+        )
+        self._assert_connection_usable()
 
 
 if __name__ == "__main__":
