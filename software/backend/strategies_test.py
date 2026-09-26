@@ -99,6 +99,100 @@ class VisibilityRulesTest(unittest.TestCase):
         self.assertIn("if existing is not None", loader)
 
 
+class _SessionStore:
+    """Committed rows a login connection can see. Uncommitted inserts stay invisible."""
+
+    def __init__(self, users: set[tuple[int, str, str]]) -> None:
+        self.users_by_email = {
+            email: (user_id, email, password_hash) for user_id, email, password_hash in users
+        }
+        self.sessions: dict[str, tuple[int, datetime]] = {}
+
+
+class _SessionResult:
+    def __init__(self, row: tuple | None) -> None:
+        self._row = row
+
+    def fetchone(self) -> tuple | None:
+        return self._row
+
+
+class _SessionTx:
+    def __init__(self, conn: "_SessionConn") -> None:
+        self.conn = conn
+        self.outer = False
+
+    def __enter__(self) -> "_SessionTx":
+        # psycopg only COMMITs when the connection was idle. Otherwise this
+        # is a savepoint and close() rolls the work back.
+        self.outer = self.conn.status == "idle"
+        if self.outer:
+            self.conn.status = "intrans"
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+        if exc_type is not None:
+            self.conn.rollback()
+            return False
+        if self.outer:
+            self.conn.commit()
+        return False
+
+
+class _SessionConn:
+    def __init__(self, store: _SessionStore, *, in_transaction: bool) -> None:
+        self.store = store
+        self.status = "intrans" if in_transaction else "idle"
+        self._pending: list[tuple[str, object]] = []
+        self.closed = False
+
+    def transaction(self) -> _SessionTx:
+        return _SessionTx(self)
+
+    def execute(self, sql: str, params: object = None) -> _SessionResult:
+        folded = " ".join(sql.split())
+        if self.status == "idle":
+            self.status = "intrans"
+        self._pending.append((folded, params))
+        if "password_hash" in folded:
+            email = params[0] if isinstance(params, tuple) else None
+            return _SessionResult(self.store.users_by_email.get(email))
+        if folded.startswith("INSERT INTO sessions"):
+            return _SessionResult(None)
+        if "FROM sessions" in folded:
+            token_hash = params[0] if isinstance(params, tuple) else None
+            found = self.store.sessions.get(token_hash)
+            if found is None:
+                return _SessionResult(None)
+            user_id, expires_at = found
+            if expires_at <= datetime.now(timezone.utc):
+                return _SessionResult(None)
+            for row in self.store.users_by_email.values():
+                if row[0] == user_id:
+                    return _SessionResult((row[0], row[1]))
+            return _SessionResult(None)
+        return _SessionResult(None)
+
+    def commit(self) -> None:
+        if self.status != "intrans":
+            return
+        for sql, params in self._pending:
+            if sql.startswith("INSERT INTO sessions") and isinstance(params, tuple):
+                token_hash, user_id, expires_at = params
+                self.store.sessions[str(token_hash)] = (int(user_id), expires_at)
+        self._pending = []
+        self.status = "idle"
+
+    def rollback(self) -> None:
+        self._pending = []
+        self.status = "idle"
+
+    def close(self) -> None:
+        if self.status == "intrans":
+            self.rollback()
+        self.closed = True
+
+
 class StrategyRoutesTest(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(main.app)
@@ -197,6 +291,44 @@ class StrategyRoutesTest(unittest.TestCase):
             )
         self.assertEqual(role.status_code, 422)
         self.assertEqual(share.status_code, 422)
+
+    def test_login_cookie_lists_strategies_and_a_missing_cookie_is_rejected(self) -> None:
+        password_hash = auth.hash_password("correct horse")
+        store = _SessionStore(
+            {(7, "person@example.com", password_hash)}
+        )
+
+        def connect() -> _SessionConn:
+            # connect() leaves SET TIME ZONE uncommitted, so login receives
+            # a connection that is already in a transaction.
+            return _SessionConn(store, in_transaction=True)
+
+        with patch.object(auth, "_connect", side_effect=connect):
+            logged_in = self.client.post(
+                "/auth/login",
+                json={"email": "person@example.com", "password": "correct horse"},
+            )
+        self.assertEqual(logged_in.status_code, 200)
+        self.assertEqual(logged_in.json(), {"id": 7, "email": "person@example.com"})
+        token = logged_in.cookies.get("session")
+        self.assertIsNotNone(token)
+        self.assertIn("path=/", logged_in.headers["set-cookie"].lower())
+        self.assertIn(auth._token_hash(token), store.sessions)
+
+        with (
+            patch.object(auth, "_connect", side_effect=connect),
+            patch.object(strategies, "list_strategies", return_value=[]) as listed,
+        ):
+            listed_response = self.client.get("/strategies")
+        self.assertEqual(listed_response.status_code, 200)
+        self.assertEqual(listed_response.json(), [])
+        listed.assert_called_once_with(7)
+
+        self.client.cookies.clear()
+        with patch.object(auth, "_connect", side_effect=connect):
+            missing = self.client.get("/strategies")
+        self.assertEqual(missing.status_code, 401)
+        self.assertEqual(missing.json()["detail"], "Not signed in")
 
     def test_list_returns_summaries_without_documents(self) -> None:
         summaries = [
