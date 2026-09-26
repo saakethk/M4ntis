@@ -138,7 +138,7 @@ Users must already exist (`python software/database/load_users.py` first) becaus
 
 ## discussion_posts
 
-A forum post. `parent_id` null is a top-level post. A non-null `parent_id` is a comment, including a reply to another comment. `strategy_id` is optional. Deleting that strategy sets `strategy_id` to null and leaves the post. `likes_count` is the stored counter. The app updates it when a `discussion_likes` row is inserted or deleted.
+A forum post. `parent_id` null is a top-level post. A non-null `parent_id` is a comment, including a reply to another comment. `strategy_id` is optional. Attaching a strategy publishes it for viewing: the owner's private strategy becomes public. Deleting that strategy sets `strategy_id` to null and leaves the post. `likes_count` is the stored counter. The app updates it when a `discussion_likes` row is inserted or deleted.
 
 | Column | Type |
 | --- | --- |
