@@ -18,6 +18,10 @@ import psycopg
 from dotenv import load_dotenv
 
 SQL_DIR = Path(__file__).resolve().parent / "sql"
+# A recycled ticker usually goes quiet for months. 60 skipped NYSE sessions
+# is about three months. The current listing starts after the last gap at
+# least this long.
+LISTING_GAP_SESSIONS = 60
 REQUIRED_ENV = (
     "TIGER_DB_PGHOST",
     "TIGER_DB_PGPORT",
@@ -42,10 +46,40 @@ WITH bars AS (
     WHERE symbol = %s
     ORDER BY date_trunc('minute', ts), ts
 ),
-active AS (
+active_all AS (
     SELECT DISTINCT m.session_date
     FROM trading_minutes AS m
     JOIN bars AS b ON b.ts = m.ts
+),
+ordered AS (
+    SELECT
+        session_date,
+        lag(session_date) OVER (ORDER BY session_date) AS prev_session
+    FROM active_all
+),
+gaps AS (
+    SELECT
+        ordered.session_date AS resume_on,
+        (
+            SELECT count(*)
+            FROM trading_days AS d
+            WHERE d.session_date > ordered.prev_session
+              AND d.session_date < ordered.session_date
+        ) AS skipped_sessions
+    FROM ordered
+    WHERE ordered.prev_session IS NOT NULL
+),
+listing AS (
+    SELECT COALESCE(
+        (SELECT max(resume_on) FROM gaps WHERE skipped_sessions >= %s),
+        DATE '-infinity'
+    ) AS start_on
+),
+active AS (
+    SELECT active_all.session_date
+    FROM active_all
+    CROSS JOIN listing
+    WHERE active_all.session_date >= listing.start_on
 ),
 joined AS (
     SELECT
@@ -183,7 +217,7 @@ def fill_symbol(conn: psycopg.Connection, symbol: str) -> int:
             "DELETE FROM stock_session_minutes WHERE symbol = %s",
             (symbol,),
         )
-        conn.execute(FILL_SQL, (symbol, symbol))
+        conn.execute(FILL_SQL, (symbol, LISTING_GAP_SESSIONS, symbol))
         stored = conn.execute(
             """
             SELECT count(*) FILTER (WHERE NOT is_filled) AS trades,
@@ -200,9 +234,18 @@ def fill_symbol(conn: psycopg.Connection, symbol: str) -> int:
             "SELECT count(*) FROM stock_minute_bars WHERE symbol = %s",
             (symbol,),
         ).fetchone()
+        first = conn.execute(
+            """
+            SELECT min(ts AT TIME ZONE 'America/New_York')::date
+            FROM stock_session_minutes
+            WHERE symbol = %s
+            """,
+            (symbol,),
+        ).fetchone()
     print(
         f"{symbol}: raw_bars={raw[0]} matched={stored[0]} "
-        f"sessions={stored[3]} carried={stored[1]} rows={stored[2]}"
+        f"sessions={stored[3]} carried={stored[1]} rows={stored[2]} "
+        f"listing_start={first[0]}"
     )
     return int(stored[2])
 
