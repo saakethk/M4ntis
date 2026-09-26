@@ -121,7 +121,7 @@ def stream_ticker_data(
         with conn.transaction():
             with conn.cursor(name="ticker_bars", row_factory=dict_row) as cur:
                 cur.itersize = 1000
-                cur.execute(query, params)
+                cur.execute(query, params) # type: ignore
                 for row in cur:
                     yield dict(row)
     finally:
