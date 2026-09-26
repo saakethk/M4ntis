@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { listStrategies, type StrategySummary } from '../api'
 import {
   STRATEGIES,
   formatDrawdown,
@@ -61,7 +62,20 @@ function metricText(value: number | null, format: (value: number) => string): st
   return value === null ? '–' : format(value)
 }
 
-function StrategyCard({ strategy }: { strategy: Strategy }) {
+function withDummyMetrics(row: StrategySummary, index: number): Strategy {
+  const sample = STRATEGIES[index % STRATEGIES.length]
+  return {
+    id: String(row.id),
+    name: row.name,
+    status: sample.status,
+    createdLabel: sample.createdLabel,
+    returnPct: sample.returnPct,
+    maxDrawdownPct: sample.maxDrawdownPct,
+    lastBacktest: sample.lastBacktest,
+  }
+}
+
+function StrategyCard({ strategy, onEdit }: { strategy: Strategy; onEdit: (id: string) => void }) {
   const returnClass =
     strategy.returnPct === null ? 'metric-value' : strategy.returnPct < 0 ? 'metric-value down' : 'metric-value up'
 
@@ -91,7 +105,7 @@ function StrategyCard({ strategy }: { strategy: Strategy }) {
         <p className="backtest-when">{strategy.lastBacktest}</p>
       </div>
       <div className="card-links">
-        <button type="button" className="text-btn strong">
+        <button type="button" className="text-btn strong" onClick={() => onEdit(strategy.id)}>
           Edit
         </button>
         <button type="button" className="text-btn">
@@ -102,11 +116,26 @@ function StrategyCard({ strategy }: { strategy: Strategy }) {
   )
 }
 
-export function Portfolio() {
+export function Portfolio({ onNew, onEdit }: { onNew: () => void; onEdit: (id: string) => void }) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [statusOpen, setStatusOpen] = useState(false)
+  const [strategies, setStrategies] = useState<Strategy[] | null>(null)
   const statusRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let ignore = false
+    listStrategies()
+      .then((rows) => {
+        if (!ignore) setStrategies(rows.map(withDummyMetrics))
+      })
+      .catch(() => {
+        if (!ignore) setStrategies(STRATEGIES)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   useEffect(() => {
     if (!statusOpen) return
@@ -126,7 +155,8 @@ export function Portfolio() {
 
   const selected = FILTERS.find((item) => item.id === status) ?? FILTERS[0]
   const needle = query.trim().toLowerCase()
-  const visible = STRATEGIES.filter((strategy) => {
+  const catalog = strategies ?? []
+  const visible = catalog.filter((strategy) => {
     const matchesName = needle.length === 0 || strategy.name.toLowerCase().includes(needle)
     const matchesStatus = status === 'all' || strategy.status === status
     return matchesName && matchesStatus
@@ -139,7 +169,7 @@ export function Portfolio() {
           <h1>My Strategies</h1>
           <p className="subtitle">Manage, test, and deploy automated trading models.</p>
         </div>
-        <button type="button" className="primary">
+        <button type="button" className="primary" onClick={onNew}>
           + New Strategy
         </button>
       </div>
@@ -187,11 +217,14 @@ export function Portfolio() {
         </div>
       </div>
       <div className="cards">
+        {strategies === null ? <p className="empty">Loading strategies…</p> : null}
         {visible.map((strategy) => (
-          <StrategyCard key={strategy.id} strategy={strategy} />
+          <StrategyCard key={strategy.id} strategy={strategy} onEdit={onEdit} />
         ))}
-        {visible.length === 0 ? <p className="empty">No strategies match.</p> : null}
-        <button type="button" className="add-card">
+        {strategies !== null && visible.length === 0 ? (
+          <p className="empty">{catalog.length === 0 ? 'No strategies yet.' : 'No strategies match.'}</p>
+        ) : null}
+        <button type="button" className="add-card" onClick={onNew}>
           <PlusIcon />
           <span className="add-title">Add new strategy</span>
           <span className="add-copy">

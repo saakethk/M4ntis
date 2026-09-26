@@ -7,6 +7,7 @@ type Props = {
   onLogout: () => void
   loggingOut: boolean
   logoutError: string | null
+  flush?: boolean
   children: ReactNode
 }
 
@@ -19,7 +20,7 @@ function UserGlyph() {
   )
 }
 
-export function Shell({ user, onLogout, loggingOut, logoutError, children }: Props) {
+export function Shell({ user, onLogout, loggingOut, logoutError, flush = false, children }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -92,7 +93,7 @@ export function Shell({ user, onLogout, loggingOut, logoutError, children }: Pro
           ) : null}
         </div>
       </header>
-      <main className="content">{children}</main>
+      <main className={flush ? 'content content-flush' : 'content'}>{children}</main>
     </div>
   )
 }

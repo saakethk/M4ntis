@@ -3,6 +3,9 @@ import { getMe, logout, type User } from './api'
 import { AuthCard } from './components/AuthCard'
 import { Portfolio } from './components/Portfolio'
 import { Shell } from './components/Shell'
+import { StrategyEditor } from './components/StrategyEditor'
+
+type Screen = { kind: 'home' } | { kind: 'new' } | { kind: 'edit'; id: number } | { kind: 'unavailable' }
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -10,6 +13,7 @@ export default function App() {
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
+  const [screen, setScreen] = useState<Screen>({ kind: 'home' })
 
   useEffect(() => {
     let ignore = false
@@ -38,6 +42,7 @@ export default function App() {
     try {
       await logout()
       setUser(null)
+      setScreen({ kind: 'home' })
     } catch (error) {
       setLogoutError(error instanceof Error ? error.message : 'Could not sign out.')
     } finally {
@@ -45,6 +50,12 @@ export default function App() {
     }
   }
 
+  function openStrategy(id: string) {
+    if (/^\d+$/.test(id)) setScreen({ kind: 'edit', id: Number(id) })
+    else setScreen({ kind: 'unavailable' })
+  }
+
+  const editorOpen = user != null && screen.kind !== 'home'
   let main
   if (!ready) {
     main = (
@@ -70,12 +81,26 @@ export default function App() {
         </div>
       </div>
     )
+  } else if (screen.kind === 'home') {
+    main = <Portfolio onNew={() => setScreen({ kind: 'new' })} onEdit={openStrategy} />
   } else {
-    main = <Portfolio />
+    main = (
+      <StrategyEditor
+        strategyId={screen.kind === 'edit' ? screen.id : null}
+        unavailable={screen.kind === 'unavailable'}
+        onClose={() => setScreen({ kind: 'home' })}
+      />
+    )
   }
 
   return (
-    <Shell user={user} onLogout={handleLogout} loggingOut={loggingOut} logoutError={logoutError}>
+    <Shell
+      user={user}
+      onLogout={handleLogout}
+      loggingOut={loggingOut}
+      logoutError={logoutError}
+      flush={editorOpen}
+    >
       {main}
     </Shell>
   )

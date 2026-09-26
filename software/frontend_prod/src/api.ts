@@ -78,6 +78,100 @@ async function postAuth(path: string, email: string, password: string): Promise<
   return (await response.json()) as User
 }
 
+export type StrategySummary = {
+  id: number
+  name: string
+  visibility: string
+  updated_at: string
+}
+
+export type StrategyRecord = {
+  id: number
+  name: string
+  document: unknown
+  ir: unknown
+}
+
+export type StrategyWrite = {
+  name: string
+  document: unknown
+  ir: unknown
+  visibility: 'private'
+}
+
+export function listStrategies(): Promise<StrategySummary[]> {
+  return requestJson('/strategies').then((body) => {
+    if (!Array.isArray(body)) throw new Error('Could not load strategies.')
+    return body.map(readSummary)
+  })
+}
+
+export function getStrategy(id: number): Promise<StrategyRecord> {
+  return requestJson(`/strategies/${id}`).then(readRecord)
+}
+
+export function createStrategy(body: StrategyWrite): Promise<StrategyRecord> {
+  return requestJson('/strategies', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }).then(readRecord)
+}
+
+export function updateStrategy(id: number, body: StrategyWrite): Promise<StrategyRecord> {
+  return requestJson(`/strategies/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  }).then(readRecord)
+}
+
+async function requestJson(path: string, init: RequestInit = {}): Promise<unknown> {
+  const headers = new Headers(init.headers)
+  if (init.body != null && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      credentials: 'include',
+      headers,
+    })
+  } catch {
+    throw new Error('Could not reach the server.')
+  }
+  if (!response.ok) throw new Error(await errorMessage(response))
+  return response.json()
+}
+
+function readSummary(body: unknown): StrategySummary {
+  const record = readRecord(body)
+  const row = body as { visibility?: unknown; updated_at?: unknown }
+  return {
+    id: record.id,
+    name: record.name,
+    visibility: typeof row.visibility === 'string' ? row.visibility : 'private',
+    updated_at: typeof row.updated_at === 'string' ? row.updated_at : '',
+  }
+}
+
+function readRecord(body: unknown): StrategyRecord {
+  if (!body || typeof body !== 'object') throw new Error('Strategy response was not valid.')
+  const row = body as { id?: unknown; name?: unknown; document?: unknown; ir?: unknown }
+  if (typeof row.name !== 'string') throw new Error('Strategy response was not valid.')
+  return {
+    id: readId(row.id),
+    name: row.name,
+    document: row.document,
+    ir: row.ir,
+  }
+}
+
+function readId(value: unknown): number {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value
+  if (typeof value === 'string' && /^\d+$/.test(value)) return Number(value)
+  throw new Error('Strategy response was not valid.')
+}
+
 async function errorMessage(response: Response): Promise<string> {
   try {
     const body = (await response.json()) as { detail?: unknown }
