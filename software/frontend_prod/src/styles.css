@@ -168,6 +168,13 @@ p {
   place-items: center;
 }
 
+.gate-stack {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .status-line {
   color: #8a9099;
 }
