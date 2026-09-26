@@ -97,6 +97,10 @@ def _require_user(request: Request) -> auth.User:
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
+    # Host-only (no Domain). The browser stores this for the host it called.
+    # SameSite=Lax is sent on same-site requests, which is how the Vite dev
+    # proxy keeps login and /auth/me together. Secure stays off so plain HTTP
+    # local dev can store the cookie. SameSite=None would require Secure.
     response.set_cookie(
         key=auth.SESSION_COOKIE,
         value=token,
