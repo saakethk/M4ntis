@@ -85,3 +85,29 @@ DDL: [`sql/stock_symbols.sql`](sql/stock_symbols.sql).
 
 Load with `python software/database/load_stock_symbols.py`.
 
+## users
+
+One account per email. `password_hash` is a scrypt hash, not the password.
+
+| Column | Type |
+| --- | --- |
+| id | BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY |
+| email | TEXT NOT NULL UNIQUE |
+| password_hash | TEXT NOT NULL |
+| created_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
+
+## sessions
+
+One row per signed-in browser. `token_hash` is the SHA-256 of the cookie value. The cookie itself is not stored.
+
+| Column | Type |
+| --- | --- |
+| token_hash | TEXT PRIMARY KEY |
+| user_id | BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE |
+| expires_at | TIMESTAMPTZ NOT NULL |
+| created_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
+
+DDL: [`sql/users.sql`](sql/users.sql).
+
+Create both tables with `python software/database/load_users.py`.
+
