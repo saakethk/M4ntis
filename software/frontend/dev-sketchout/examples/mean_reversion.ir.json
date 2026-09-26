@@ -6,13 +6,19 @@
       "id": "start",
       "type": "start",
       "params": {
-        "startingBalance": 100000
+        "startingBalance": 100000,
+        "resolution": "5m",
+        "symbol0": "AAPL",
+        "symbol1": "",
+        "symbol2": "",
+        "symbol3": "",
+        "symbol4": ""
       },
       "inputs": {},
       "next": {
         "out": "if_lower"
       },
-      "compilesTo": "SETBALANCE (once)",
+      "compilesTo": "SETBALANCE, warm-up, UPDATEALLSTOCKBUFFERS loop",
       "status": "confirmed"
     },
     {
@@ -35,7 +41,7 @@
         "then": "buy",
         "else": "if_upper"
       },
-      "compilesTo": "GT | LT | SUB → BR / JMP",
+      "compilesTo": "CMP_GT | CMP_LT | SUB → JMP_IF",
       "status": "confirmed"
     },
     {
@@ -49,7 +55,7 @@
       "next": {
         "out": null
       },
-      "compilesTo": "GETSTOCKPRICE → MUL → UPDATEBALANCE(+) → EMITDECISION(qty, buf, 1)",
+      "compilesTo": "GETSTOCKPRICE → MUL → UPDATEBALANCE (cash −= cost) → EMITDECISION(qty, buf, 1)",
       "status": "confirmed"
     },
     {
@@ -72,7 +78,7 @@
         "then": "sell",
         "else": null
       },
-      "compilesTo": "GT | LT | SUB → BR / JMP",
+      "compilesTo": "CMP_GT | CMP_LT | SUB → JMP_IF",
       "status": "confirmed"
     },
     {
@@ -86,7 +92,7 @@
       "next": {
         "out": null
       },
-      "compilesTo": "GETSTOCKPRICE → MUL → SUB from R0 → UPDATEBALANCE(−) → EMITDECISION(qty, buf, 0)",
+      "compilesTo": "GETSTOCKPRICE → MUL → negate → UPDATEBALANCE (cash += proceeds) → EMITDECISION(qty, buf, 0)",
       "status": "confirmed"
     },
     {
@@ -111,12 +117,10 @@
       "inputs": {},
       "next": {},
       "compilesTo": "SMA ± k × Volatility",
-      "status": "blocked"
+      "status": "confirmed"
     }
   ],
   "unreachable": [],
   "variableSlots": [],
-  "blockedBlocks": [
-    "bands"
-  ]
+  "blockedBlocks": []
 }

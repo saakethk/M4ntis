@@ -19,8 +19,8 @@ export type BlockCategory =
 export type BlockType =
   | 'start'
   | 'current_price'
-  | 'sum_last_n'
-  | 'price_n_days_ago'
+  | 'sum_n_ticks'
+  | 'price_n_ticks_ago'
   | 'constant'
   | 'set_var'
   | 'get_var'
@@ -29,7 +29,7 @@ export type BlockType =
   | 'multiply'
   | 'divide'
   | 'power'
-  | 'root'
+  | 'sqrt'
   | 'log'
   | 'if'
   | 'for'
@@ -67,6 +67,8 @@ export interface NumberParamDef extends ParamBase {
   max?: number;
   step?: number;
   integer?: boolean;
+  /** Lookback in ticks: the node shows the equivalent time span at the strategy's resolution. */
+  ticks?: boolean;
 }
 
 export interface SelectParamDef extends ParamBase {
@@ -92,6 +94,8 @@ export interface BlockDef {
   system?: boolean;
   /** If-block: the data inputs + operator are rendered as an inline condition panel. */
   condition?: boolean;
+  /** Ticks of buffer history the block reads: 1, N, or N+1 (N = its `n` param). */
+  history?: '1' | 'n' | 'n+1';
 }
 
 export type BlockData = {

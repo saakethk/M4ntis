@@ -5,17 +5,23 @@ Built with React + TypeScript + Vite and [`@xyflow/react`](https://reactflow.dev
 
 ```bash
 npm install
-npm run dev               # http://localhost:5173
+npm run dev               # http://localhost:5173 (also serves POST /api/compile)
 npm run build
 npm run export:examples   # regenerate examples/*.json from the templates + catalog
 ```
+
+The **Assembly** tab compiles the current graph as you edit it. In dev, Vite pipes the strategy document
+into `python3 -m tradecpu compile - --json` (from `../../compiler`). Set `TRADECPU_PYTHON` to use a
+different interpreter. You can download the listing, the `.hex` words and the manifest from the tab.
 
 ## Layout
 
 | Path | What it is |
 | --- | --- |
 | `src/blocks/catalog.ts` | **Single source of truth** for every block: ports, params, opcode, hardware status |
-| `src/blocks/hardware.ts` | Hardware limits (buffer count, variable slots, max lookback) |
+| `src/blocks/hardware.ts` | Hardware limits (5 stock buffers × 30 ticks, 15 variable slots, 512 words) and resolutions |
+| `src/blocks/symbols.ts` | NASDAQ-100 tickers offered on the Start block |
+| `src/components/AssemblyPanel.tsx` | Live compile via `/api/compile` |
 | `src/flow/BlockNode.tsx` | One generic React Flow node that renders any block from its definition |
 | `src/flow/graph.ts` | Node/edge factories, connection rules, graph diagnostics |
 | `src/flow/serialize.ts` | Strategy document (save/load) and compiler IR |
@@ -33,13 +39,21 @@ npm run export:examples   # regenerate examples/*.json from the templates + cata
   dead-ends, and a For body loops back implicitly.
 - Comparisons are not values. They only exist inside the If block's condition panel. AND = nest an If
   in Then, OR = chain an If in Else.
-- `Start` is auto-placed and can't be moved or deleted.
-- Blocks with no confirmed opcode (`Price N Days Ago`, `Power`, `Root`, `Log`, `Momentum`,
-  `Volatility`, `Mean Reversion Bands`) can be placed but show **NEEDS HW** and raise a compile error.
+- `Start` is auto-placed and can't be moved or deleted. It sets the starting balance, the
+  **resolution** (1m, 5m, 15m, 30m, 1h or 1d; one tick = one bar) and which NASDAQ-100 symbol feeds
+  each stock buffer `BUF0`..`BUF4`.
+- Lookbacks are in **ticks**, not days. `Sum of Last N Ticks` and `SMA` allow N ≤ 30, and
+  `Price N Ticks Ago` and `Momentum` allow N ≤ 29 because the hardware buffer holds 30 ticks. Each N
+  field shows how much time it covers at the chosen resolution.
+- A strategy trades only after its longest lookback has filled. The compiler adds a warm-up of
+  (history − 1) ticks.
+- `Log` is the only block with no hardware lowering. It shows **NEEDS HW** and fails to compile.
 
 The **Checks** tab lists live diagnostics: blocked blocks, unconnected inputs, blocks unreachable from
-Start, variables read but never set, slot overflow (For loops use a hidden counter slot), and
-strategies that never trade. Click a diagnostic to jump to its block.
+Start, stock buffers used without an assigned symbol, variables read but never set, slot overflow (For
+loops use a hidden counter slot), the warm-up length, and strategies that never trade. Click a
+diagnostic to jump to its block. The **Assembly** tab shows the compiler's own diagnostics, including
+program size.
 
 ## JSON formats
 
@@ -58,8 +72,9 @@ Handle ids are `"<kind>:<port>"`, so the port kind can be read straight off an e
   "savedAt": "2026-01-01T00:00:00.000Z",
   "flow": {
     "nodes": [
-      { "id": "start", "type": "start", "position": { "x": 0, "y": 0 },
-        "data": { "params": { "startingBalance": 100000 } } },
+      { "id": "start", "type": "start", "position": { "x": 0, "y": -200 },
+        "data": { "params": { "startingBalance": 100000, "resolution": "5m",
+                              "symbol0": "AAPL", "symbol1": "", "symbol2": "", "symbol3": "", "symbol4": "" } } },
       { "id": "sma_fast", "type": "sma", "position": { "x": -420, "y": 120 },
         "data": { "params": { "buffer": 0, "n": 10 } } },
       { "id": "if_cross", "type": "if", "position": { "x": 0, "y": 170 },
@@ -100,7 +115,7 @@ into a tick end (or a For loop-back).
       "inputs": { "a": { "node": "sma_fast", "port": "out" },
                   "b": { "node": "sma_slow", "port": "out" } },
       "next": { "then": "buy", "else": "sell" },
-      "compilesTo": "GT | LT | SUB → BR / JMP", "status": "confirmed" },
+      "compilesTo": "CMP_GT | CMP_LT | SUB → JMP_IF", "status": "confirmed" },
     { "id": "buy", "type": "buy", "params": { "buffer": 0, "quantity": 10 },
       "inputs": {}, "next": { "out": null }, "...": "..." }
   ],
@@ -119,21 +134,23 @@ ports, params with defaults and ranges, opcode mapping, and status.
 
 | Type | Exec in | Exec out | Data in | Data out | Params |
 | --- | --- | --- | --- | --- | --- |
-| `start` | | `out` | | | `startingBalance` |
+| `start` | | `out` | | | `startingBalance`, `resolution`, `symbol0`..`symbol4` |
 | `current_price` | | | | `out` | `buffer` |
-| `sum_last_n` | | | | `out` | `buffer`, `n` |
-| `price_n_days_ago` ⚠ | | | | `out` | `buffer`, `n` |
+| `sum_n_ticks` | | | | `out` | `buffer`, `n` (1–30) |
+| `price_n_ticks_ago` | | | | `out` | `buffer`, `n` (1–29) |
 | `constant` | | | | `out` | `value` |
-| `set_var` | `in` | `out` | `value` | | `slot` |
+| `set_var` | `in` | `out` | `value` | | `slot` (`VAR1`..`VAR15`) |
 | `get_var` | | | | `out` | `slot` |
 | `add` `subtract` `multiply` `divide` | | | `a`, `b` | `out` | |
-| `power` ⚠ | | | `base`, `exp` | `out` | |
-| `root` ⚠ / `log` ⚠ | | | `x`, `base` | `out` | |
+| `power` | | | `base` | `out` | `exponent` (0–8) |
+| `sqrt` | | | `x` | `out` | |
+| `log` ⚠ | | | `x`, `base` | `out` | |
 | `if` | `in` | `then`, `else` | `a`, `b` | | `operator` (`>` `>=` `<` `<=` `==` `!=`) |
 | `for` | `in` | `body`, `after` | | `index` | `start`, `end`, `step` |
 | `buy` / `sell` | `in` | `out` | | | `buffer`, `quantity` |
-| `sma` | | | | `out` | `buffer`, `n` |
-| `momentum` ⚠ / `volatility` ⚠ | | | | `out` | `buffer`, `n` |
-| `mean_reversion_bands` ⚠ | | | | `upper`, `middle`, `lower` | `buffer`, `n`, `k` |
+| `sma` | | | | `out` | `buffer`, `n` (1–30) |
+| `momentum` | | | | `out` | `buffer`, `n` (1–29) |
+| `volatility` | | | | `out` | `buffer`, `n` (2–30) |
+| `mean_reversion_bands` | | | | `upper`, `middle`, `lower` | `buffer`, `n` (2–30), `k` |
 
-⚠ = no confirmed hardware opcode yet.
+⚠ = no hardware lowering; fails to compile.

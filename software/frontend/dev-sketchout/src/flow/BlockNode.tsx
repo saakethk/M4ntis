@@ -1,7 +1,9 @@
-import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useReactFlow, useStore, type NodeProps } from '@xyflow/react';
 import { memo, useState } from 'react';
 import { BLOCK_DEFS, COMPARISON_OPERATORS, portsOf } from '../blocks/catalog';
+import { NUM_STOCK_BUFFERS, ticksToDuration } from '../blocks/hardware';
 import type { BlockNode as BlockNodeT, BlockType, ParamDef, ParamValue, PortDef } from '../blocks/types';
+import { START_NODE_ID } from './graph';
 
 function NumberField({
   def,
@@ -43,14 +45,19 @@ function ParamField({
   def,
   value,
   onChange,
+  hint,
 }: {
   def: ParamDef;
   value: ParamValue;
   onChange: (v: ParamValue) => void;
+  hint?: string;
 }) {
   return (
     <label className="param">
-      <span className="param-label">{def.label}</span>
+      <span className="param-label">
+        {def.label}
+        {hint && <span className="param-hint">{hint}</span>}
+      </span>
       {def.type === 'number' ? (
         <NumberField def={def} value={Number(value)} onChange={onChange} />
       ) : (
@@ -125,10 +132,33 @@ function ConditionPanel({
   );
 }
 
+/** Start block's resolution and BUF0..BUF4 symbols, joined into one string so nodes only re-render when they change. */
+function useStrategyContext() {
+  const joined = useStore((s) => {
+    const p = s.nodeLookup.get(START_NODE_ID)?.data?.params as Record<string, ParamValue> | undefined;
+    const symbols = Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => p?.[`symbol${i}`] ?? '');
+    return [p?.resolution ?? '', ...symbols].join('|');
+  });
+  const [resolution, ...symbols] = joined.split('|');
+  return { resolution, symbols };
+}
+
 function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
   const def = BLOCK_DEFS[type as BlockType];
   const { updateNodeData } = useReactFlow();
+  const { resolution, symbols } = useStrategyContext();
   if (!def) return <div className="block block-unknown">Unknown block: {type}</div>;
+
+  const withSymbols = (p: ParamDef): ParamDef =>
+    p.key === 'buffer' && p.type === 'select'
+      ? {
+          ...p,
+          options: p.options.map((o) => ({
+            ...o,
+            label: symbols[Number(o.value)] ? `${o.label} · ${symbols[Number(o.value)]}` : `${o.label} (unassigned)`,
+          })),
+        }
+      : p;
 
   const setParam = (key: string, value: ParamValue) =>
     updateNodeData(id, { params: { ...data.params, [key]: value } });
@@ -173,14 +203,19 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
 
       {params.length > 0 && (
         <div className="block-params">
-          {params.map((p) => (
-            <ParamField
-              key={p.key}
-              def={p}
-              value={data.params[p.key] ?? p.default}
-              onChange={(v) => setParam(p.key, v)}
-            />
-          ))}
+          {params.map((p) => {
+            const value = data.params[p.key] ?? p.default;
+            const hint = p.type === 'number' && p.ticks ? ticksToDuration(Number(value), resolution) : undefined;
+            return (
+              <ParamField
+                key={p.key}
+                def={withSymbols(p)}
+                value={value}
+                hint={hint}
+                onChange={(v) => setParam(p.key, v)}
+              />
+            );
+          })}
         </div>
       )}
 

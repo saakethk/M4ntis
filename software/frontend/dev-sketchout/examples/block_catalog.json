@@ -3,7 +3,7 @@
     "type": "start",
     "label": "Start",
     "category": "structure",
-    "description": "Entry point, runs once. Wherever the exec chain dead-ends, the compiler appends UPDATEALLSTOCKBUFFERS + JMP LOOP.",
+    "description": "Runs once per tick. The compiler adds the tick loop, warm-up and per-tick acknowledgement around the chain.",
     "ports": [
       {
         "id": "exec:out",
@@ -15,13 +15,2126 @@
     "params": [
       {
         "key": "startingBalance",
-        "label": "Starting Balance",
+        "label": "Starting Balance ($)",
         "type": "number",
         "default": 100000,
-        "min": 0
+        "min": 0,
+        "max": 21000000
+      },
+      {
+        "key": "resolution",
+        "label": "Resolution",
+        "type": "select",
+        "default": "5m",
+        "options": [
+          {
+            "value": "1m",
+            "label": "1 minute"
+          },
+          {
+            "value": "5m",
+            "label": "5 minutes"
+          },
+          {
+            "value": "15m",
+            "label": "15 minutes"
+          },
+          {
+            "value": "30m",
+            "label": "30 minutes"
+          },
+          {
+            "value": "1h",
+            "label": "1 hour"
+          },
+          {
+            "value": "1d",
+            "label": "1 day"
+          }
+        ]
+      },
+      {
+        "key": "symbol0",
+        "label": "BUF0",
+        "type": "select",
+        "default": "AAPL",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "AAPL",
+            "label": "AAPL"
+          },
+          {
+            "value": "ABNB",
+            "label": "ABNB"
+          },
+          {
+            "value": "ADBE",
+            "label": "ADBE"
+          },
+          {
+            "value": "ADI",
+            "label": "ADI"
+          },
+          {
+            "value": "ADP",
+            "label": "ADP"
+          },
+          {
+            "value": "ADSK",
+            "label": "ADSK"
+          },
+          {
+            "value": "AEP",
+            "label": "AEP"
+          },
+          {
+            "value": "ALAB",
+            "label": "ALAB"
+          },
+          {
+            "value": "ALNY",
+            "label": "ALNY"
+          },
+          {
+            "value": "AMAT",
+            "label": "AMAT"
+          },
+          {
+            "value": "AMD",
+            "label": "AMD"
+          },
+          {
+            "value": "AMGN",
+            "label": "AMGN"
+          },
+          {
+            "value": "AMZN",
+            "label": "AMZN"
+          },
+          {
+            "value": "APP",
+            "label": "APP"
+          },
+          {
+            "value": "ARM",
+            "label": "ARM"
+          },
+          {
+            "value": "ASML",
+            "label": "ASML"
+          },
+          {
+            "value": "AVGO",
+            "label": "AVGO"
+          },
+          {
+            "value": "AXON",
+            "label": "AXON"
+          },
+          {
+            "value": "BKNG",
+            "label": "BKNG"
+          },
+          {
+            "value": "BKR",
+            "label": "BKR"
+          },
+          {
+            "value": "CCEP",
+            "label": "CCEP"
+          },
+          {
+            "value": "CDNS",
+            "label": "CDNS"
+          },
+          {
+            "value": "CEG",
+            "label": "CEG"
+          },
+          {
+            "value": "CMCSA",
+            "label": "CMCSA"
+          },
+          {
+            "value": "COST",
+            "label": "COST"
+          },
+          {
+            "value": "CPRT",
+            "label": "CPRT"
+          },
+          {
+            "value": "CRWD",
+            "label": "CRWD"
+          },
+          {
+            "value": "CRWV",
+            "label": "CRWV"
+          },
+          {
+            "value": "CSCO",
+            "label": "CSCO"
+          },
+          {
+            "value": "CSX",
+            "label": "CSX"
+          },
+          {
+            "value": "CTAS",
+            "label": "CTAS"
+          },
+          {
+            "value": "DASH",
+            "label": "DASH"
+          },
+          {
+            "value": "DDOG",
+            "label": "DDOG"
+          },
+          {
+            "value": "DXCM",
+            "label": "DXCM"
+          },
+          {
+            "value": "EXC",
+            "label": "EXC"
+          },
+          {
+            "value": "FANG",
+            "label": "FANG"
+          },
+          {
+            "value": "FAST",
+            "label": "FAST"
+          },
+          {
+            "value": "FER",
+            "label": "FER"
+          },
+          {
+            "value": "FTNT",
+            "label": "FTNT"
+          },
+          {
+            "value": "GEHC",
+            "label": "GEHC"
+          },
+          {
+            "value": "GILD",
+            "label": "GILD"
+          },
+          {
+            "value": "GOOG",
+            "label": "GOOG"
+          },
+          {
+            "value": "GOOGL",
+            "label": "GOOGL"
+          },
+          {
+            "value": "HON",
+            "label": "HON"
+          },
+          {
+            "value": "HONA",
+            "label": "HONA"
+          },
+          {
+            "value": "IDXX",
+            "label": "IDXX"
+          },
+          {
+            "value": "INTC",
+            "label": "INTC"
+          },
+          {
+            "value": "INTU",
+            "label": "INTU"
+          },
+          {
+            "value": "ISRG",
+            "label": "ISRG"
+          },
+          {
+            "value": "KDP",
+            "label": "KDP"
+          },
+          {
+            "value": "KLAC",
+            "label": "KLAC"
+          },
+          {
+            "value": "LIN",
+            "label": "LIN"
+          },
+          {
+            "value": "LITE",
+            "label": "LITE"
+          },
+          {
+            "value": "LRCX",
+            "label": "LRCX"
+          },
+          {
+            "value": "MAR",
+            "label": "MAR"
+          },
+          {
+            "value": "MCHP",
+            "label": "MCHP"
+          },
+          {
+            "value": "MDLZ",
+            "label": "MDLZ"
+          },
+          {
+            "value": "MELI",
+            "label": "MELI"
+          },
+          {
+            "value": "META",
+            "label": "META"
+          },
+          {
+            "value": "MNST",
+            "label": "MNST"
+          },
+          {
+            "value": "MPWR",
+            "label": "MPWR"
+          },
+          {
+            "value": "MRVL",
+            "label": "MRVL"
+          },
+          {
+            "value": "MSFT",
+            "label": "MSFT"
+          },
+          {
+            "value": "MSTR",
+            "label": "MSTR"
+          },
+          {
+            "value": "MU",
+            "label": "MU"
+          },
+          {
+            "value": "NBIS",
+            "label": "NBIS"
+          },
+          {
+            "value": "NFLX",
+            "label": "NFLX"
+          },
+          {
+            "value": "NVDA",
+            "label": "NVDA"
+          },
+          {
+            "value": "NXPI",
+            "label": "NXPI"
+          },
+          {
+            "value": "ODFL",
+            "label": "ODFL"
+          },
+          {
+            "value": "ORLY",
+            "label": "ORLY"
+          },
+          {
+            "value": "PANW",
+            "label": "PANW"
+          },
+          {
+            "value": "PAYX",
+            "label": "PAYX"
+          },
+          {
+            "value": "PCAR",
+            "label": "PCAR"
+          },
+          {
+            "value": "PDD",
+            "label": "PDD"
+          },
+          {
+            "value": "PEP",
+            "label": "PEP"
+          },
+          {
+            "value": "PLTR",
+            "label": "PLTR"
+          },
+          {
+            "value": "PYPL",
+            "label": "PYPL"
+          },
+          {
+            "value": "QCOM",
+            "label": "QCOM"
+          },
+          {
+            "value": "REGN",
+            "label": "REGN"
+          },
+          {
+            "value": "RKLB",
+            "label": "RKLB"
+          },
+          {
+            "value": "ROP",
+            "label": "ROP"
+          },
+          {
+            "value": "ROST",
+            "label": "ROST"
+          },
+          {
+            "value": "SBUX",
+            "label": "SBUX"
+          },
+          {
+            "value": "SHOP",
+            "label": "SHOP"
+          },
+          {
+            "value": "SNDK",
+            "label": "SNDK"
+          },
+          {
+            "value": "SNPS",
+            "label": "SNPS"
+          },
+          {
+            "value": "SPCX",
+            "label": "SPCX"
+          },
+          {
+            "value": "STX",
+            "label": "STX"
+          },
+          {
+            "value": "TER",
+            "label": "TER"
+          },
+          {
+            "value": "TMUS",
+            "label": "TMUS"
+          },
+          {
+            "value": "TRI",
+            "label": "TRI"
+          },
+          {
+            "value": "TSLA",
+            "label": "TSLA"
+          },
+          {
+            "value": "TTWO",
+            "label": "TTWO"
+          },
+          {
+            "value": "TXN",
+            "label": "TXN"
+          },
+          {
+            "value": "VRTX",
+            "label": "VRTX"
+          },
+          {
+            "value": "WBD",
+            "label": "WBD"
+          },
+          {
+            "value": "WDAY",
+            "label": "WDAY"
+          },
+          {
+            "value": "WDC",
+            "label": "WDC"
+          },
+          {
+            "value": "WMT",
+            "label": "WMT"
+          },
+          {
+            "value": "XEL",
+            "label": "XEL"
+          }
+        ]
+      },
+      {
+        "key": "symbol1",
+        "label": "BUF1",
+        "type": "select",
+        "default": "",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "AAPL",
+            "label": "AAPL"
+          },
+          {
+            "value": "ABNB",
+            "label": "ABNB"
+          },
+          {
+            "value": "ADBE",
+            "label": "ADBE"
+          },
+          {
+            "value": "ADI",
+            "label": "ADI"
+          },
+          {
+            "value": "ADP",
+            "label": "ADP"
+          },
+          {
+            "value": "ADSK",
+            "label": "ADSK"
+          },
+          {
+            "value": "AEP",
+            "label": "AEP"
+          },
+          {
+            "value": "ALAB",
+            "label": "ALAB"
+          },
+          {
+            "value": "ALNY",
+            "label": "ALNY"
+          },
+          {
+            "value": "AMAT",
+            "label": "AMAT"
+          },
+          {
+            "value": "AMD",
+            "label": "AMD"
+          },
+          {
+            "value": "AMGN",
+            "label": "AMGN"
+          },
+          {
+            "value": "AMZN",
+            "label": "AMZN"
+          },
+          {
+            "value": "APP",
+            "label": "APP"
+          },
+          {
+            "value": "ARM",
+            "label": "ARM"
+          },
+          {
+            "value": "ASML",
+            "label": "ASML"
+          },
+          {
+            "value": "AVGO",
+            "label": "AVGO"
+          },
+          {
+            "value": "AXON",
+            "label": "AXON"
+          },
+          {
+            "value": "BKNG",
+            "label": "BKNG"
+          },
+          {
+            "value": "BKR",
+            "label": "BKR"
+          },
+          {
+            "value": "CCEP",
+            "label": "CCEP"
+          },
+          {
+            "value": "CDNS",
+            "label": "CDNS"
+          },
+          {
+            "value": "CEG",
+            "label": "CEG"
+          },
+          {
+            "value": "CMCSA",
+            "label": "CMCSA"
+          },
+          {
+            "value": "COST",
+            "label": "COST"
+          },
+          {
+            "value": "CPRT",
+            "label": "CPRT"
+          },
+          {
+            "value": "CRWD",
+            "label": "CRWD"
+          },
+          {
+            "value": "CRWV",
+            "label": "CRWV"
+          },
+          {
+            "value": "CSCO",
+            "label": "CSCO"
+          },
+          {
+            "value": "CSX",
+            "label": "CSX"
+          },
+          {
+            "value": "CTAS",
+            "label": "CTAS"
+          },
+          {
+            "value": "DASH",
+            "label": "DASH"
+          },
+          {
+            "value": "DDOG",
+            "label": "DDOG"
+          },
+          {
+            "value": "DXCM",
+            "label": "DXCM"
+          },
+          {
+            "value": "EXC",
+            "label": "EXC"
+          },
+          {
+            "value": "FANG",
+            "label": "FANG"
+          },
+          {
+            "value": "FAST",
+            "label": "FAST"
+          },
+          {
+            "value": "FER",
+            "label": "FER"
+          },
+          {
+            "value": "FTNT",
+            "label": "FTNT"
+          },
+          {
+            "value": "GEHC",
+            "label": "GEHC"
+          },
+          {
+            "value": "GILD",
+            "label": "GILD"
+          },
+          {
+            "value": "GOOG",
+            "label": "GOOG"
+          },
+          {
+            "value": "GOOGL",
+            "label": "GOOGL"
+          },
+          {
+            "value": "HON",
+            "label": "HON"
+          },
+          {
+            "value": "HONA",
+            "label": "HONA"
+          },
+          {
+            "value": "IDXX",
+            "label": "IDXX"
+          },
+          {
+            "value": "INTC",
+            "label": "INTC"
+          },
+          {
+            "value": "INTU",
+            "label": "INTU"
+          },
+          {
+            "value": "ISRG",
+            "label": "ISRG"
+          },
+          {
+            "value": "KDP",
+            "label": "KDP"
+          },
+          {
+            "value": "KLAC",
+            "label": "KLAC"
+          },
+          {
+            "value": "LIN",
+            "label": "LIN"
+          },
+          {
+            "value": "LITE",
+            "label": "LITE"
+          },
+          {
+            "value": "LRCX",
+            "label": "LRCX"
+          },
+          {
+            "value": "MAR",
+            "label": "MAR"
+          },
+          {
+            "value": "MCHP",
+            "label": "MCHP"
+          },
+          {
+            "value": "MDLZ",
+            "label": "MDLZ"
+          },
+          {
+            "value": "MELI",
+            "label": "MELI"
+          },
+          {
+            "value": "META",
+            "label": "META"
+          },
+          {
+            "value": "MNST",
+            "label": "MNST"
+          },
+          {
+            "value": "MPWR",
+            "label": "MPWR"
+          },
+          {
+            "value": "MRVL",
+            "label": "MRVL"
+          },
+          {
+            "value": "MSFT",
+            "label": "MSFT"
+          },
+          {
+            "value": "MSTR",
+            "label": "MSTR"
+          },
+          {
+            "value": "MU",
+            "label": "MU"
+          },
+          {
+            "value": "NBIS",
+            "label": "NBIS"
+          },
+          {
+            "value": "NFLX",
+            "label": "NFLX"
+          },
+          {
+            "value": "NVDA",
+            "label": "NVDA"
+          },
+          {
+            "value": "NXPI",
+            "label": "NXPI"
+          },
+          {
+            "value": "ODFL",
+            "label": "ODFL"
+          },
+          {
+            "value": "ORLY",
+            "label": "ORLY"
+          },
+          {
+            "value": "PANW",
+            "label": "PANW"
+          },
+          {
+            "value": "PAYX",
+            "label": "PAYX"
+          },
+          {
+            "value": "PCAR",
+            "label": "PCAR"
+          },
+          {
+            "value": "PDD",
+            "label": "PDD"
+          },
+          {
+            "value": "PEP",
+            "label": "PEP"
+          },
+          {
+            "value": "PLTR",
+            "label": "PLTR"
+          },
+          {
+            "value": "PYPL",
+            "label": "PYPL"
+          },
+          {
+            "value": "QCOM",
+            "label": "QCOM"
+          },
+          {
+            "value": "REGN",
+            "label": "REGN"
+          },
+          {
+            "value": "RKLB",
+            "label": "RKLB"
+          },
+          {
+            "value": "ROP",
+            "label": "ROP"
+          },
+          {
+            "value": "ROST",
+            "label": "ROST"
+          },
+          {
+            "value": "SBUX",
+            "label": "SBUX"
+          },
+          {
+            "value": "SHOP",
+            "label": "SHOP"
+          },
+          {
+            "value": "SNDK",
+            "label": "SNDK"
+          },
+          {
+            "value": "SNPS",
+            "label": "SNPS"
+          },
+          {
+            "value": "SPCX",
+            "label": "SPCX"
+          },
+          {
+            "value": "STX",
+            "label": "STX"
+          },
+          {
+            "value": "TER",
+            "label": "TER"
+          },
+          {
+            "value": "TMUS",
+            "label": "TMUS"
+          },
+          {
+            "value": "TRI",
+            "label": "TRI"
+          },
+          {
+            "value": "TSLA",
+            "label": "TSLA"
+          },
+          {
+            "value": "TTWO",
+            "label": "TTWO"
+          },
+          {
+            "value": "TXN",
+            "label": "TXN"
+          },
+          {
+            "value": "VRTX",
+            "label": "VRTX"
+          },
+          {
+            "value": "WBD",
+            "label": "WBD"
+          },
+          {
+            "value": "WDAY",
+            "label": "WDAY"
+          },
+          {
+            "value": "WDC",
+            "label": "WDC"
+          },
+          {
+            "value": "WMT",
+            "label": "WMT"
+          },
+          {
+            "value": "XEL",
+            "label": "XEL"
+          }
+        ]
+      },
+      {
+        "key": "symbol2",
+        "label": "BUF2",
+        "type": "select",
+        "default": "",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "AAPL",
+            "label": "AAPL"
+          },
+          {
+            "value": "ABNB",
+            "label": "ABNB"
+          },
+          {
+            "value": "ADBE",
+            "label": "ADBE"
+          },
+          {
+            "value": "ADI",
+            "label": "ADI"
+          },
+          {
+            "value": "ADP",
+            "label": "ADP"
+          },
+          {
+            "value": "ADSK",
+            "label": "ADSK"
+          },
+          {
+            "value": "AEP",
+            "label": "AEP"
+          },
+          {
+            "value": "ALAB",
+            "label": "ALAB"
+          },
+          {
+            "value": "ALNY",
+            "label": "ALNY"
+          },
+          {
+            "value": "AMAT",
+            "label": "AMAT"
+          },
+          {
+            "value": "AMD",
+            "label": "AMD"
+          },
+          {
+            "value": "AMGN",
+            "label": "AMGN"
+          },
+          {
+            "value": "AMZN",
+            "label": "AMZN"
+          },
+          {
+            "value": "APP",
+            "label": "APP"
+          },
+          {
+            "value": "ARM",
+            "label": "ARM"
+          },
+          {
+            "value": "ASML",
+            "label": "ASML"
+          },
+          {
+            "value": "AVGO",
+            "label": "AVGO"
+          },
+          {
+            "value": "AXON",
+            "label": "AXON"
+          },
+          {
+            "value": "BKNG",
+            "label": "BKNG"
+          },
+          {
+            "value": "BKR",
+            "label": "BKR"
+          },
+          {
+            "value": "CCEP",
+            "label": "CCEP"
+          },
+          {
+            "value": "CDNS",
+            "label": "CDNS"
+          },
+          {
+            "value": "CEG",
+            "label": "CEG"
+          },
+          {
+            "value": "CMCSA",
+            "label": "CMCSA"
+          },
+          {
+            "value": "COST",
+            "label": "COST"
+          },
+          {
+            "value": "CPRT",
+            "label": "CPRT"
+          },
+          {
+            "value": "CRWD",
+            "label": "CRWD"
+          },
+          {
+            "value": "CRWV",
+            "label": "CRWV"
+          },
+          {
+            "value": "CSCO",
+            "label": "CSCO"
+          },
+          {
+            "value": "CSX",
+            "label": "CSX"
+          },
+          {
+            "value": "CTAS",
+            "label": "CTAS"
+          },
+          {
+            "value": "DASH",
+            "label": "DASH"
+          },
+          {
+            "value": "DDOG",
+            "label": "DDOG"
+          },
+          {
+            "value": "DXCM",
+            "label": "DXCM"
+          },
+          {
+            "value": "EXC",
+            "label": "EXC"
+          },
+          {
+            "value": "FANG",
+            "label": "FANG"
+          },
+          {
+            "value": "FAST",
+            "label": "FAST"
+          },
+          {
+            "value": "FER",
+            "label": "FER"
+          },
+          {
+            "value": "FTNT",
+            "label": "FTNT"
+          },
+          {
+            "value": "GEHC",
+            "label": "GEHC"
+          },
+          {
+            "value": "GILD",
+            "label": "GILD"
+          },
+          {
+            "value": "GOOG",
+            "label": "GOOG"
+          },
+          {
+            "value": "GOOGL",
+            "label": "GOOGL"
+          },
+          {
+            "value": "HON",
+            "label": "HON"
+          },
+          {
+            "value": "HONA",
+            "label": "HONA"
+          },
+          {
+            "value": "IDXX",
+            "label": "IDXX"
+          },
+          {
+            "value": "INTC",
+            "label": "INTC"
+          },
+          {
+            "value": "INTU",
+            "label": "INTU"
+          },
+          {
+            "value": "ISRG",
+            "label": "ISRG"
+          },
+          {
+            "value": "KDP",
+            "label": "KDP"
+          },
+          {
+            "value": "KLAC",
+            "label": "KLAC"
+          },
+          {
+            "value": "LIN",
+            "label": "LIN"
+          },
+          {
+            "value": "LITE",
+            "label": "LITE"
+          },
+          {
+            "value": "LRCX",
+            "label": "LRCX"
+          },
+          {
+            "value": "MAR",
+            "label": "MAR"
+          },
+          {
+            "value": "MCHP",
+            "label": "MCHP"
+          },
+          {
+            "value": "MDLZ",
+            "label": "MDLZ"
+          },
+          {
+            "value": "MELI",
+            "label": "MELI"
+          },
+          {
+            "value": "META",
+            "label": "META"
+          },
+          {
+            "value": "MNST",
+            "label": "MNST"
+          },
+          {
+            "value": "MPWR",
+            "label": "MPWR"
+          },
+          {
+            "value": "MRVL",
+            "label": "MRVL"
+          },
+          {
+            "value": "MSFT",
+            "label": "MSFT"
+          },
+          {
+            "value": "MSTR",
+            "label": "MSTR"
+          },
+          {
+            "value": "MU",
+            "label": "MU"
+          },
+          {
+            "value": "NBIS",
+            "label": "NBIS"
+          },
+          {
+            "value": "NFLX",
+            "label": "NFLX"
+          },
+          {
+            "value": "NVDA",
+            "label": "NVDA"
+          },
+          {
+            "value": "NXPI",
+            "label": "NXPI"
+          },
+          {
+            "value": "ODFL",
+            "label": "ODFL"
+          },
+          {
+            "value": "ORLY",
+            "label": "ORLY"
+          },
+          {
+            "value": "PANW",
+            "label": "PANW"
+          },
+          {
+            "value": "PAYX",
+            "label": "PAYX"
+          },
+          {
+            "value": "PCAR",
+            "label": "PCAR"
+          },
+          {
+            "value": "PDD",
+            "label": "PDD"
+          },
+          {
+            "value": "PEP",
+            "label": "PEP"
+          },
+          {
+            "value": "PLTR",
+            "label": "PLTR"
+          },
+          {
+            "value": "PYPL",
+            "label": "PYPL"
+          },
+          {
+            "value": "QCOM",
+            "label": "QCOM"
+          },
+          {
+            "value": "REGN",
+            "label": "REGN"
+          },
+          {
+            "value": "RKLB",
+            "label": "RKLB"
+          },
+          {
+            "value": "ROP",
+            "label": "ROP"
+          },
+          {
+            "value": "ROST",
+            "label": "ROST"
+          },
+          {
+            "value": "SBUX",
+            "label": "SBUX"
+          },
+          {
+            "value": "SHOP",
+            "label": "SHOP"
+          },
+          {
+            "value": "SNDK",
+            "label": "SNDK"
+          },
+          {
+            "value": "SNPS",
+            "label": "SNPS"
+          },
+          {
+            "value": "SPCX",
+            "label": "SPCX"
+          },
+          {
+            "value": "STX",
+            "label": "STX"
+          },
+          {
+            "value": "TER",
+            "label": "TER"
+          },
+          {
+            "value": "TMUS",
+            "label": "TMUS"
+          },
+          {
+            "value": "TRI",
+            "label": "TRI"
+          },
+          {
+            "value": "TSLA",
+            "label": "TSLA"
+          },
+          {
+            "value": "TTWO",
+            "label": "TTWO"
+          },
+          {
+            "value": "TXN",
+            "label": "TXN"
+          },
+          {
+            "value": "VRTX",
+            "label": "VRTX"
+          },
+          {
+            "value": "WBD",
+            "label": "WBD"
+          },
+          {
+            "value": "WDAY",
+            "label": "WDAY"
+          },
+          {
+            "value": "WDC",
+            "label": "WDC"
+          },
+          {
+            "value": "WMT",
+            "label": "WMT"
+          },
+          {
+            "value": "XEL",
+            "label": "XEL"
+          }
+        ]
+      },
+      {
+        "key": "symbol3",
+        "label": "BUF3",
+        "type": "select",
+        "default": "",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "AAPL",
+            "label": "AAPL"
+          },
+          {
+            "value": "ABNB",
+            "label": "ABNB"
+          },
+          {
+            "value": "ADBE",
+            "label": "ADBE"
+          },
+          {
+            "value": "ADI",
+            "label": "ADI"
+          },
+          {
+            "value": "ADP",
+            "label": "ADP"
+          },
+          {
+            "value": "ADSK",
+            "label": "ADSK"
+          },
+          {
+            "value": "AEP",
+            "label": "AEP"
+          },
+          {
+            "value": "ALAB",
+            "label": "ALAB"
+          },
+          {
+            "value": "ALNY",
+            "label": "ALNY"
+          },
+          {
+            "value": "AMAT",
+            "label": "AMAT"
+          },
+          {
+            "value": "AMD",
+            "label": "AMD"
+          },
+          {
+            "value": "AMGN",
+            "label": "AMGN"
+          },
+          {
+            "value": "AMZN",
+            "label": "AMZN"
+          },
+          {
+            "value": "APP",
+            "label": "APP"
+          },
+          {
+            "value": "ARM",
+            "label": "ARM"
+          },
+          {
+            "value": "ASML",
+            "label": "ASML"
+          },
+          {
+            "value": "AVGO",
+            "label": "AVGO"
+          },
+          {
+            "value": "AXON",
+            "label": "AXON"
+          },
+          {
+            "value": "BKNG",
+            "label": "BKNG"
+          },
+          {
+            "value": "BKR",
+            "label": "BKR"
+          },
+          {
+            "value": "CCEP",
+            "label": "CCEP"
+          },
+          {
+            "value": "CDNS",
+            "label": "CDNS"
+          },
+          {
+            "value": "CEG",
+            "label": "CEG"
+          },
+          {
+            "value": "CMCSA",
+            "label": "CMCSA"
+          },
+          {
+            "value": "COST",
+            "label": "COST"
+          },
+          {
+            "value": "CPRT",
+            "label": "CPRT"
+          },
+          {
+            "value": "CRWD",
+            "label": "CRWD"
+          },
+          {
+            "value": "CRWV",
+            "label": "CRWV"
+          },
+          {
+            "value": "CSCO",
+            "label": "CSCO"
+          },
+          {
+            "value": "CSX",
+            "label": "CSX"
+          },
+          {
+            "value": "CTAS",
+            "label": "CTAS"
+          },
+          {
+            "value": "DASH",
+            "label": "DASH"
+          },
+          {
+            "value": "DDOG",
+            "label": "DDOG"
+          },
+          {
+            "value": "DXCM",
+            "label": "DXCM"
+          },
+          {
+            "value": "EXC",
+            "label": "EXC"
+          },
+          {
+            "value": "FANG",
+            "label": "FANG"
+          },
+          {
+            "value": "FAST",
+            "label": "FAST"
+          },
+          {
+            "value": "FER",
+            "label": "FER"
+          },
+          {
+            "value": "FTNT",
+            "label": "FTNT"
+          },
+          {
+            "value": "GEHC",
+            "label": "GEHC"
+          },
+          {
+            "value": "GILD",
+            "label": "GILD"
+          },
+          {
+            "value": "GOOG",
+            "label": "GOOG"
+          },
+          {
+            "value": "GOOGL",
+            "label": "GOOGL"
+          },
+          {
+            "value": "HON",
+            "label": "HON"
+          },
+          {
+            "value": "HONA",
+            "label": "HONA"
+          },
+          {
+            "value": "IDXX",
+            "label": "IDXX"
+          },
+          {
+            "value": "INTC",
+            "label": "INTC"
+          },
+          {
+            "value": "INTU",
+            "label": "INTU"
+          },
+          {
+            "value": "ISRG",
+            "label": "ISRG"
+          },
+          {
+            "value": "KDP",
+            "label": "KDP"
+          },
+          {
+            "value": "KLAC",
+            "label": "KLAC"
+          },
+          {
+            "value": "LIN",
+            "label": "LIN"
+          },
+          {
+            "value": "LITE",
+            "label": "LITE"
+          },
+          {
+            "value": "LRCX",
+            "label": "LRCX"
+          },
+          {
+            "value": "MAR",
+            "label": "MAR"
+          },
+          {
+            "value": "MCHP",
+            "label": "MCHP"
+          },
+          {
+            "value": "MDLZ",
+            "label": "MDLZ"
+          },
+          {
+            "value": "MELI",
+            "label": "MELI"
+          },
+          {
+            "value": "META",
+            "label": "META"
+          },
+          {
+            "value": "MNST",
+            "label": "MNST"
+          },
+          {
+            "value": "MPWR",
+            "label": "MPWR"
+          },
+          {
+            "value": "MRVL",
+            "label": "MRVL"
+          },
+          {
+            "value": "MSFT",
+            "label": "MSFT"
+          },
+          {
+            "value": "MSTR",
+            "label": "MSTR"
+          },
+          {
+            "value": "MU",
+            "label": "MU"
+          },
+          {
+            "value": "NBIS",
+            "label": "NBIS"
+          },
+          {
+            "value": "NFLX",
+            "label": "NFLX"
+          },
+          {
+            "value": "NVDA",
+            "label": "NVDA"
+          },
+          {
+            "value": "NXPI",
+            "label": "NXPI"
+          },
+          {
+            "value": "ODFL",
+            "label": "ODFL"
+          },
+          {
+            "value": "ORLY",
+            "label": "ORLY"
+          },
+          {
+            "value": "PANW",
+            "label": "PANW"
+          },
+          {
+            "value": "PAYX",
+            "label": "PAYX"
+          },
+          {
+            "value": "PCAR",
+            "label": "PCAR"
+          },
+          {
+            "value": "PDD",
+            "label": "PDD"
+          },
+          {
+            "value": "PEP",
+            "label": "PEP"
+          },
+          {
+            "value": "PLTR",
+            "label": "PLTR"
+          },
+          {
+            "value": "PYPL",
+            "label": "PYPL"
+          },
+          {
+            "value": "QCOM",
+            "label": "QCOM"
+          },
+          {
+            "value": "REGN",
+            "label": "REGN"
+          },
+          {
+            "value": "RKLB",
+            "label": "RKLB"
+          },
+          {
+            "value": "ROP",
+            "label": "ROP"
+          },
+          {
+            "value": "ROST",
+            "label": "ROST"
+          },
+          {
+            "value": "SBUX",
+            "label": "SBUX"
+          },
+          {
+            "value": "SHOP",
+            "label": "SHOP"
+          },
+          {
+            "value": "SNDK",
+            "label": "SNDK"
+          },
+          {
+            "value": "SNPS",
+            "label": "SNPS"
+          },
+          {
+            "value": "SPCX",
+            "label": "SPCX"
+          },
+          {
+            "value": "STX",
+            "label": "STX"
+          },
+          {
+            "value": "TER",
+            "label": "TER"
+          },
+          {
+            "value": "TMUS",
+            "label": "TMUS"
+          },
+          {
+            "value": "TRI",
+            "label": "TRI"
+          },
+          {
+            "value": "TSLA",
+            "label": "TSLA"
+          },
+          {
+            "value": "TTWO",
+            "label": "TTWO"
+          },
+          {
+            "value": "TXN",
+            "label": "TXN"
+          },
+          {
+            "value": "VRTX",
+            "label": "VRTX"
+          },
+          {
+            "value": "WBD",
+            "label": "WBD"
+          },
+          {
+            "value": "WDAY",
+            "label": "WDAY"
+          },
+          {
+            "value": "WDC",
+            "label": "WDC"
+          },
+          {
+            "value": "WMT",
+            "label": "WMT"
+          },
+          {
+            "value": "XEL",
+            "label": "XEL"
+          }
+        ]
+      },
+      {
+        "key": "symbol4",
+        "label": "BUF4",
+        "type": "select",
+        "default": "",
+        "options": [
+          {
+            "value": "",
+            "label": "—"
+          },
+          {
+            "value": "AAPL",
+            "label": "AAPL"
+          },
+          {
+            "value": "ABNB",
+            "label": "ABNB"
+          },
+          {
+            "value": "ADBE",
+            "label": "ADBE"
+          },
+          {
+            "value": "ADI",
+            "label": "ADI"
+          },
+          {
+            "value": "ADP",
+            "label": "ADP"
+          },
+          {
+            "value": "ADSK",
+            "label": "ADSK"
+          },
+          {
+            "value": "AEP",
+            "label": "AEP"
+          },
+          {
+            "value": "ALAB",
+            "label": "ALAB"
+          },
+          {
+            "value": "ALNY",
+            "label": "ALNY"
+          },
+          {
+            "value": "AMAT",
+            "label": "AMAT"
+          },
+          {
+            "value": "AMD",
+            "label": "AMD"
+          },
+          {
+            "value": "AMGN",
+            "label": "AMGN"
+          },
+          {
+            "value": "AMZN",
+            "label": "AMZN"
+          },
+          {
+            "value": "APP",
+            "label": "APP"
+          },
+          {
+            "value": "ARM",
+            "label": "ARM"
+          },
+          {
+            "value": "ASML",
+            "label": "ASML"
+          },
+          {
+            "value": "AVGO",
+            "label": "AVGO"
+          },
+          {
+            "value": "AXON",
+            "label": "AXON"
+          },
+          {
+            "value": "BKNG",
+            "label": "BKNG"
+          },
+          {
+            "value": "BKR",
+            "label": "BKR"
+          },
+          {
+            "value": "CCEP",
+            "label": "CCEP"
+          },
+          {
+            "value": "CDNS",
+            "label": "CDNS"
+          },
+          {
+            "value": "CEG",
+            "label": "CEG"
+          },
+          {
+            "value": "CMCSA",
+            "label": "CMCSA"
+          },
+          {
+            "value": "COST",
+            "label": "COST"
+          },
+          {
+            "value": "CPRT",
+            "label": "CPRT"
+          },
+          {
+            "value": "CRWD",
+            "label": "CRWD"
+          },
+          {
+            "value": "CRWV",
+            "label": "CRWV"
+          },
+          {
+            "value": "CSCO",
+            "label": "CSCO"
+          },
+          {
+            "value": "CSX",
+            "label": "CSX"
+          },
+          {
+            "value": "CTAS",
+            "label": "CTAS"
+          },
+          {
+            "value": "DASH",
+            "label": "DASH"
+          },
+          {
+            "value": "DDOG",
+            "label": "DDOG"
+          },
+          {
+            "value": "DXCM",
+            "label": "DXCM"
+          },
+          {
+            "value": "EXC",
+            "label": "EXC"
+          },
+          {
+            "value": "FANG",
+            "label": "FANG"
+          },
+          {
+            "value": "FAST",
+            "label": "FAST"
+          },
+          {
+            "value": "FER",
+            "label": "FER"
+          },
+          {
+            "value": "FTNT",
+            "label": "FTNT"
+          },
+          {
+            "value": "GEHC",
+            "label": "GEHC"
+          },
+          {
+            "value": "GILD",
+            "label": "GILD"
+          },
+          {
+            "value": "GOOG",
+            "label": "GOOG"
+          },
+          {
+            "value": "GOOGL",
+            "label": "GOOGL"
+          },
+          {
+            "value": "HON",
+            "label": "HON"
+          },
+          {
+            "value": "HONA",
+            "label": "HONA"
+          },
+          {
+            "value": "IDXX",
+            "label": "IDXX"
+          },
+          {
+            "value": "INTC",
+            "label": "INTC"
+          },
+          {
+            "value": "INTU",
+            "label": "INTU"
+          },
+          {
+            "value": "ISRG",
+            "label": "ISRG"
+          },
+          {
+            "value": "KDP",
+            "label": "KDP"
+          },
+          {
+            "value": "KLAC",
+            "label": "KLAC"
+          },
+          {
+            "value": "LIN",
+            "label": "LIN"
+          },
+          {
+            "value": "LITE",
+            "label": "LITE"
+          },
+          {
+            "value": "LRCX",
+            "label": "LRCX"
+          },
+          {
+            "value": "MAR",
+            "label": "MAR"
+          },
+          {
+            "value": "MCHP",
+            "label": "MCHP"
+          },
+          {
+            "value": "MDLZ",
+            "label": "MDLZ"
+          },
+          {
+            "value": "MELI",
+            "label": "MELI"
+          },
+          {
+            "value": "META",
+            "label": "META"
+          },
+          {
+            "value": "MNST",
+            "label": "MNST"
+          },
+          {
+            "value": "MPWR",
+            "label": "MPWR"
+          },
+          {
+            "value": "MRVL",
+            "label": "MRVL"
+          },
+          {
+            "value": "MSFT",
+            "label": "MSFT"
+          },
+          {
+            "value": "MSTR",
+            "label": "MSTR"
+          },
+          {
+            "value": "MU",
+            "label": "MU"
+          },
+          {
+            "value": "NBIS",
+            "label": "NBIS"
+          },
+          {
+            "value": "NFLX",
+            "label": "NFLX"
+          },
+          {
+            "value": "NVDA",
+            "label": "NVDA"
+          },
+          {
+            "value": "NXPI",
+            "label": "NXPI"
+          },
+          {
+            "value": "ODFL",
+            "label": "ODFL"
+          },
+          {
+            "value": "ORLY",
+            "label": "ORLY"
+          },
+          {
+            "value": "PANW",
+            "label": "PANW"
+          },
+          {
+            "value": "PAYX",
+            "label": "PAYX"
+          },
+          {
+            "value": "PCAR",
+            "label": "PCAR"
+          },
+          {
+            "value": "PDD",
+            "label": "PDD"
+          },
+          {
+            "value": "PEP",
+            "label": "PEP"
+          },
+          {
+            "value": "PLTR",
+            "label": "PLTR"
+          },
+          {
+            "value": "PYPL",
+            "label": "PYPL"
+          },
+          {
+            "value": "QCOM",
+            "label": "QCOM"
+          },
+          {
+            "value": "REGN",
+            "label": "REGN"
+          },
+          {
+            "value": "RKLB",
+            "label": "RKLB"
+          },
+          {
+            "value": "ROP",
+            "label": "ROP"
+          },
+          {
+            "value": "ROST",
+            "label": "ROST"
+          },
+          {
+            "value": "SBUX",
+            "label": "SBUX"
+          },
+          {
+            "value": "SHOP",
+            "label": "SHOP"
+          },
+          {
+            "value": "SNDK",
+            "label": "SNDK"
+          },
+          {
+            "value": "SNPS",
+            "label": "SNPS"
+          },
+          {
+            "value": "SPCX",
+            "label": "SPCX"
+          },
+          {
+            "value": "STX",
+            "label": "STX"
+          },
+          {
+            "value": "TER",
+            "label": "TER"
+          },
+          {
+            "value": "TMUS",
+            "label": "TMUS"
+          },
+          {
+            "value": "TRI",
+            "label": "TRI"
+          },
+          {
+            "value": "TSLA",
+            "label": "TSLA"
+          },
+          {
+            "value": "TTWO",
+            "label": "TTWO"
+          },
+          {
+            "value": "TXN",
+            "label": "TXN"
+          },
+          {
+            "value": "VRTX",
+            "label": "VRTX"
+          },
+          {
+            "value": "WBD",
+            "label": "WBD"
+          },
+          {
+            "value": "WDAY",
+            "label": "WDAY"
+          },
+          {
+            "value": "WDC",
+            "label": "WDC"
+          },
+          {
+            "value": "WMT",
+            "label": "WMT"
+          },
+          {
+            "value": "XEL",
+            "label": "XEL"
+          }
+        ]
       }
     ],
-    "compilesTo": "SETBALANCE (once)",
+    "compilesTo": "SETBALANCE, warm-up, UPDATEALLSTOCKBUFFERS loop",
     "status": "confirmed",
     "system": true
   },
@@ -29,7 +2142,7 @@
     "type": "current_price",
     "label": "Current Price",
     "category": "reserved",
-    "description": "Latest price of the stock in the selected buffer.",
+    "description": "Price at the current tick.",
     "ports": [
       {
         "id": "data:out",
@@ -41,7 +2154,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -64,30 +2177,19 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       }
     ],
     "compilesTo": "GETSTOCKPRICE",
-    "status": "confirmed"
+    "status": "confirmed",
+    "history": "1"
   },
-  "sum_last_n": {
-    "type": "sum_last_n",
-    "label": "Sum of Last N Days",
+  "sum_n_ticks": {
+    "type": "sum_n_ticks",
+    "label": "Sum of Last N Ticks",
     "category": "reserved",
-    "description": "Sum of the last N daily prices in the buffer.",
+    "description": "Sum of the N most recent prices, including the current tick.",
     "ports": [
       {
         "id": "data:out",
@@ -99,7 +2201,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -122,39 +2224,29 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       },
       {
         "key": "n",
-        "label": "N (days)",
+        "label": "N (ticks)",
         "type": "number",
         "default": 20,
         "min": 1,
-        "max": 1260,
-        "integer": true
+        "max": 30,
+        "integer": true,
+        "ticks": true
       }
     ],
     "compilesTo": "GETSUMPRICEBEFORE",
-    "status": "confirmed"
+    "status": "confirmed",
+    "history": "n"
   },
-  "price_n_days_ago": {
-    "type": "price_n_days_ago",
-    "label": "Price N Days Ago",
+  "price_n_ticks_ago": {
+    "type": "price_n_ticks_ago",
+    "label": "Price N Ticks Ago",
     "category": "reserved",
-    "description": "Price of the stock N days before the current tick.",
+    "description": "Price N ticks before the current one.",
     "ports": [
       {
         "id": "data:out",
@@ -166,7 +2258,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -189,40 +2281,29 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       },
       {
         "key": "n",
-        "label": "N (days)",
+        "label": "N (ticks)",
         "type": "number",
         "default": 10,
         "min": 1,
-        "max": 1260,
-        "integer": true
+        "max": 29,
+        "integer": true,
+        "ticks": true
       }
     ],
-    "compilesTo": "—",
-    "status": "blocked",
-    "statusNote": "No confirmed opcode. Required by Momentum."
+    "compilesTo": "GETSTOCKPRICEBEFORE",
+    "status": "confirmed",
+    "history": "n+1"
   },
   "constant": {
     "type": "constant",
     "label": "Constant",
     "category": "reserved",
-    "description": "Literal number.",
+    "description": "Literal number. Prices are in dollars, so 150.25 means $150.25.",
     "ports": [
       {
         "id": "data:out",
@@ -239,14 +2320,14 @@
         "default": 0
       }
     ],
-    "compilesTo": "LOAD_IMM (deduped / cached)",
+    "compilesTo": "LOAD_IMM (scaled to fixed point)",
     "status": "confirmed"
   },
   "set_var": {
     "type": "set_var",
     "label": "Set Variable",
     "category": "variables",
-    "description": "Store a value into a hardware variable slot.",
+    "description": "Store a value into a hardware variable slot (16-bit signed).",
     "ports": [
       {
         "id": "exec:in",
@@ -304,6 +2385,34 @@
           {
             "value": "VAR8",
             "label": "VAR8"
+          },
+          {
+            "value": "VAR9",
+            "label": "VAR9"
+          },
+          {
+            "value": "VAR10",
+            "label": "VAR10"
+          },
+          {
+            "value": "VAR11",
+            "label": "VAR11"
+          },
+          {
+            "value": "VAR12",
+            "label": "VAR12"
+          },
+          {
+            "value": "VAR13",
+            "label": "VAR13"
+          },
+          {
+            "value": "VAR14",
+            "label": "VAR14"
+          },
+          {
+            "value": "VAR15",
+            "label": "VAR15"
           }
         ]
       }
@@ -362,6 +2471,34 @@
           {
             "value": "VAR8",
             "label": "VAR8"
+          },
+          {
+            "value": "VAR9",
+            "label": "VAR9"
+          },
+          {
+            "value": "VAR10",
+            "label": "VAR10"
+          },
+          {
+            "value": "VAR11",
+            "label": "VAR11"
+          },
+          {
+            "value": "VAR12",
+            "label": "VAR12"
+          },
+          {
+            "value": "VAR13",
+            "label": "VAR13"
+          },
+          {
+            "value": "VAR14",
+            "label": "VAR14"
+          },
+          {
+            "value": "VAR15",
+            "label": "VAR15"
           }
         ]
       }
@@ -396,8 +2533,7 @@
     ],
     "params": [],
     "compilesTo": "ADD",
-    "status": "confirmed",
-    "statusNote": "Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM."
+    "status": "confirmed"
   },
   "subtract": {
     "type": "subtract",
@@ -426,8 +2562,7 @@
     ],
     "params": [],
     "compilesTo": "SUB",
-    "status": "confirmed",
-    "statusNote": "Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM."
+    "status": "confirmed"
   },
   "multiply": {
     "type": "multiply",
@@ -456,8 +2591,7 @@
     ],
     "params": [],
     "compilesTo": "MUL",
-    "status": "confirmed",
-    "statusNote": "Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM."
+    "status": "confirmed"
   },
   "divide": {
     "type": "divide",
@@ -485,15 +2619,15 @@
       }
     ],
     "params": [],
-    "compilesTo": "DIV",
+    "compilesTo": "MUL ×100 → DIV",
     "status": "confirmed",
-    "statusNote": "Every operand must resolve to a register: Constants feeding this block are routed through LOAD_IMM."
+    "statusNote": "Numerator is pre-scaled so ratios keep 2 decimals."
   },
   "power": {
     "type": "power",
     "label": "Power",
     "category": "math",
-    "description": "base ^ exponent",
+    "description": "base ^ exponent (whole-number exponent).",
     "ports": [
       {
         "id": "data:base",
@@ -502,28 +2636,31 @@
         "label": "base"
       },
       {
-        "id": "data:exp",
-        "kind": "data",
-        "direction": "in",
-        "label": "exponent"
-      },
-      {
         "id": "data:out",
         "kind": "data",
         "direction": "out",
         "label": "value"
       }
     ],
-    "params": [],
-    "compilesTo": "—",
-    "status": "blocked",
-    "statusNote": "No opcode seen. Flag for hardware team."
+    "params": [
+      {
+        "key": "exponent",
+        "label": "Exponent",
+        "type": "number",
+        "default": 2,
+        "min": 0,
+        "max": 8,
+        "integer": true
+      }
+    ],
+    "compilesTo": "repeated MUL",
+    "status": "confirmed"
   },
-  "root": {
-    "type": "root",
-    "label": "Root",
+  "sqrt": {
+    "type": "sqrt",
+    "label": "Square Root",
     "category": "math",
-    "description": "base-th root of x",
+    "description": "√x, to 2 decimal places.",
     "ports": [
       {
         "id": "data:x",
@@ -532,12 +2669,6 @@
         "label": "x"
       },
       {
-        "id": "data:base",
-        "kind": "data",
-        "direction": "in",
-        "label": "base"
-      },
-      {
         "id": "data:out",
         "kind": "data",
         "direction": "out",
@@ -545,9 +2676,8 @@
       }
     ],
     "params": [],
-    "compilesTo": "—",
-    "status": "blocked",
-    "statusNote": "No opcode seen. Volatility needs this for sqrt."
+    "compilesTo": "integer Newton loop (DIV, CMP_LT, JMP_IF)",
+    "status": "confirmed"
   },
   "log": {
     "type": "log",
@@ -577,7 +2707,7 @@
     "params": [],
     "compilesTo": "—",
     "status": "blocked",
-    "statusNote": "No opcode seen."
+    "statusNote": "No opcode and no practical integer expansion on this ISA."
   },
   "if": {
     "type": "if",
@@ -625,37 +2755,37 @@
           {
             "value": ">",
             "label": ">",
-            "hint": "GT → BR"
+            "hint": "CMP_GT → JMP_IF Then"
           },
           {
             "value": ">=",
             "label": "≥",
-            "hint": "LT → BR, Then/Else swapped"
+            "hint": "CMP_LT → JMP_IF Else"
           },
           {
             "value": "<",
             "label": "<",
-            "hint": "LT → BR"
+            "hint": "CMP_LT → JMP_IF Then"
           },
           {
             "value": "<=",
             "label": "≤",
-            "hint": "GT → BR, Then/Else swapped"
+            "hint": "CMP_GT → JMP_IF Else"
           },
           {
             "value": "==",
             "label": "=",
-            "hint": "SUB → BR≠0, Then/Else swapped"
+            "hint": "SUB → JMP_IF Else"
           },
           {
             "value": "!=",
             "label": "≠",
-            "hint": "SUB → BR≠0"
+            "hint": "SUB → JMP_IF Then"
           }
         ]
       }
     ],
-    "compilesTo": "GT | LT | SUB → BR / JMP",
+    "compilesTo": "CMP_GT | CMP_LT | SUB → JMP_IF",
     "status": "confirmed",
     "condition": true
   },
@@ -695,6 +2825,8 @@
         "label": "Start",
         "type": "number",
         "default": 0,
+        "min": -32768,
+        "max": 32767,
         "integer": true
       },
       {
@@ -702,6 +2834,8 @@
         "label": "End",
         "type": "number",
         "default": 10,
+        "min": -32768,
+        "max": 32767,
         "integer": true
       },
       {
@@ -709,10 +2843,12 @@
         "label": "Step",
         "type": "number",
         "default": 1,
+        "min": -32768,
+        "max": 32767,
         "integer": true
       }
     ],
-    "compilesTo": "ASSIGNVAR counter, GT/LT bound, ADD/SUB step, JMP back",
+    "compilesTo": "counter in a spare VAR, CMP_LT/GT bound, ADD step, JMP back",
     "status": "confirmed"
   },
   "buy": {
@@ -736,7 +2872,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -759,18 +2895,6 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       },
@@ -780,11 +2904,13 @@
         "type": "number",
         "default": 10,
         "min": 1,
+        "max": 32767,
         "integer": true
       }
     ],
-    "compilesTo": "GETSTOCKPRICE → MUL → UPDATEBALANCE(+) → EMITDECISION(qty, buf, 1)",
-    "status": "confirmed"
+    "compilesTo": "GETSTOCKPRICE → MUL → UPDATEBALANCE (cash −= cost) → EMITDECISION(qty, buf, 1)",
+    "status": "confirmed",
+    "history": "1"
   },
   "sell": {
     "type": "sell",
@@ -807,7 +2933,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -830,18 +2956,6 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       },
@@ -851,17 +2965,19 @@
         "type": "number",
         "default": 10,
         "min": 1,
+        "max": 32767,
         "integer": true
       }
     ],
-    "compilesTo": "GETSTOCKPRICE → MUL → SUB from R0 → UPDATEBALANCE(−) → EMITDECISION(qty, buf, 0)",
-    "status": "confirmed"
+    "compilesTo": "GETSTOCKPRICE → MUL → negate → UPDATEBALANCE (cash += proceeds) → EMITDECISION(qty, buf, 0)",
+    "status": "confirmed",
+    "history": "1"
   },
   "sma": {
     "type": "sma",
     "label": "SMA",
     "category": "composite",
-    "description": "Simple moving average over N days.",
+    "description": "Simple moving average over the last N ticks.",
     "ports": [
       {
         "id": "data:out",
@@ -873,7 +2989,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -896,39 +3012,29 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       },
       {
         "key": "n",
-        "label": "N (days)",
+        "label": "N (ticks)",
         "type": "number",
         "default": 20,
         "min": 1,
-        "max": 1260,
-        "integer": true
+        "max": 30,
+        "integer": true,
+        "ticks": true
       }
     ],
-    "compilesTo": "Sum of Last N Days ÷ N",
-    "status": "confirmed"
+    "compilesTo": "GETSUMPRICEBEFORE ÷ N",
+    "status": "confirmed",
+    "history": "n"
   },
   "momentum": {
     "type": "momentum",
     "label": "Momentum",
     "category": "composite",
-    "description": "Fractional price change over N days.",
+    "description": "Fractional change over N ticks: 0.05 = up 5%.",
     "ports": [
       {
         "id": "data:out",
@@ -940,7 +3046,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -963,40 +3069,29 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       },
       {
         "key": "n",
-        "label": "N (days)",
+        "label": "N (ticks)",
         "type": "number",
         "default": 10,
         "min": 1,
-        "max": 1260,
-        "integer": true
+        "max": 29,
+        "integer": true,
+        "ticks": true
       }
     ],
-    "compilesTo": "(Current Price ÷ Price N Days Ago) − 1",
-    "status": "blocked",
-    "statusNote": "Blocked on \"Price N Days Ago\"."
+    "compilesTo": "(price × 100 ÷ price N ticks ago) − 100",
+    "status": "confirmed",
+    "history": "n+1"
   },
   "volatility": {
     "type": "volatility",
     "label": "Volatility",
     "category": "composite",
-    "description": "Sample standard deviation of price over N days.",
+    "description": "Sample standard deviation of price over the last N ticks, in dollars.",
     "ports": [
       {
         "id": "data:out",
@@ -1008,7 +3103,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -1031,34 +3126,24 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       },
       {
         "key": "n",
-        "label": "N (days)",
+        "label": "N (ticks)",
         "type": "number",
         "default": 20,
-        "min": 1,
-        "max": 1260,
-        "integer": true
+        "min": 2,
+        "max": 30,
+        "integer": true,
+        "ticks": true
       }
     ],
-    "compilesTo": "sqrt(Σ(price − mean)² / (N − 1))",
-    "status": "blocked",
-    "statusNote": "Blocked on a per-day price source (or sum-of-squares sibling to GETSUMPRICEBEFORE) and a sqrt/root opcode."
+    "compilesTo": "unrolled Σ(price − mean)² ÷ (N − 1), integer sqrt",
+    "status": "confirmed",
+    "statusNote": "About 4N + 30 instructions per use; cache it in a variable if several blocks need it.",
+    "history": "n"
   },
   "mean_reversion_bands": {
     "type": "mean_reversion_bands",
@@ -1088,7 +3173,7 @@
     "params": [
       {
         "key": "buffer",
-        "label": "Buffer",
+        "label": "Stock",
         "type": "select",
         "default": 0,
         "options": [
@@ -1111,29 +3196,18 @@
           {
             "value": 4,
             "label": "BUF4"
-          },
-          {
-            "value": 5,
-            "label": "BUF5"
-          },
-          {
-            "value": 6,
-            "label": "BUF6"
-          },
-          {
-            "value": 7,
-            "label": "BUF7"
           }
         ]
       },
       {
         "key": "n",
-        "label": "N (days)",
+        "label": "N (ticks)",
         "type": "number",
         "default": 20,
-        "min": 1,
-        "max": 1260,
-        "integer": true
+        "min": 2,
+        "max": 30,
+        "integer": true,
+        "ticks": true
       },
       {
         "key": "k",
@@ -1141,11 +3215,13 @@
         "type": "number",
         "default": 2,
         "min": 0,
+        "max": 10,
         "step": 0.1
       }
     ],
     "compilesTo": "SMA ± k × Volatility",
-    "status": "blocked",
-    "statusNote": "Inherits Volatility's blockers."
+    "status": "confirmed",
+    "statusNote": "Upper and lower each expand Volatility; about 4N + 40 instructions per band used.",
+    "history": "n"
   }
 }

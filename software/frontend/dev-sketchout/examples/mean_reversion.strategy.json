@@ -1,6 +1,6 @@
 {
   "schema": "m4ntis.strategy/v1",
-  "name": "Mean Reversion Bands (blocked)",
+  "name": "Mean Reversion Bands",
   "savedAt": "2026-01-01T00:00:00.000Z",
   "flow": {
     "nodes": [
@@ -9,11 +9,17 @@
         "type": "start",
         "position": {
           "x": 0,
-          "y": 0
+          "y": -200
         },
         "data": {
           "params": {
-            "startingBalance": 100000
+            "startingBalance": 100000,
+            "resolution": "5m",
+            "symbol0": "AAPL",
+            "symbol1": "",
+            "symbol2": "",
+            "symbol3": "",
+            "symbol4": ""
           }
         }
       },

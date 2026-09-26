@@ -9,7 +9,7 @@ export interface Template {
 }
 
 const start = (balance = 100000) =>
-  makeNode('start', { x: 0, y: 0 }, { startingBalance: balance }, START_NODE_ID);
+  makeNode('start', { x: 0, y: -200 }, { startingBalance: balance }, START_NODE_ID);
 
 export const TEMPLATES: Template[] = [
   {
@@ -21,12 +21,12 @@ export const TEMPLATES: Template[] = [
   {
     id: 'sma_crossover',
     name: 'SMA Crossover',
-    description: 'Buy when the 10-day SMA is above the 50-day SMA, otherwise sell.',
+    description: 'Buy when the 10-tick SMA is above the 30-tick SMA, otherwise sell.',
     build: () => ({
       nodes: [
         start(),
         makeNode('sma', { x: -420, y: 120 }, { buffer: 0, n: 10 }, 'sma_fast'),
-        makeNode('sma', { x: -420, y: 300 }, { buffer: 0, n: 50 }, 'sma_slow'),
+        makeNode('sma', { x: -420, y: 300 }, { buffer: 0, n: 30 }, 'sma_slow'),
         makeNode('if', { x: 0, y: 170 }, { operator: '>' }, 'if_cross'),
         makeNode('buy', { x: -160, y: 440 }, { buffer: 0, quantity: 10 }, 'buy'),
         makeNode('sell', { x: 160, y: 440 }, { buffer: 0, quantity: 10 }, 'sell'),
@@ -82,9 +82,9 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: 'mean_reversion',
-    name: 'Mean Reversion Bands (blocked)',
+    name: 'Mean Reversion Bands',
     description:
-      'Buy at or below the lower band, sell at or above the upper band (chained Else = OR). Blocked on Volatility hardware support.',
+      'Buy at or below the lower band, sell at or above the upper band (chained Else = OR).',
     build: () => ({
       nodes: [
         start(),
