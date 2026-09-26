@@ -7,6 +7,11 @@ Run from the repository root:
 
 from __future__ import annotations
 
+import os
+import threading
+import time
+from pathlib import Path
+import uvicorn
 import psycopg
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -55,6 +60,4 @@ def get_symbol(symbol: str) -> dict:
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
