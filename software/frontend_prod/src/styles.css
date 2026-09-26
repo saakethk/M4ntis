@@ -510,11 +510,18 @@ button.user-btn:hover {
   min-height: 420px;
 }
 
-.gate-stack {
-  width: min(420px, 100%);
+.search {
+  width: 320px;
+  max-width: 100%;
+  height: 40px;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  color: #94a3b8;
 }
 
 .status-line {
@@ -538,9 +545,30 @@ button.user-btn:hover {
   border-bottom: 1px solid #e5e7eb;
 }
 
-.tabs button {
+.status-btn:hover,
+.status-menu button:hover {
+  background: #f8fafc;
+}
+
+.status-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  min-width: 160px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  z-index: 10;
+}
+
+.status-menu button {
+  width: 100%;
+  text-align: left;
   border: 0;
-  border-bottom: 2px solid transparent;
   background: transparent;
   margin-bottom: -1px;
   padding: 0 0 10px;
@@ -554,10 +582,26 @@ button.user-btn:hover {
   border-bottom-color: #0f172a;
 }
 
-form {
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.card,
+.add-card {
+  min-height: 400px;
+  border-radius: 16px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  padding: 20px 20px 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
 label:not(.search) {
