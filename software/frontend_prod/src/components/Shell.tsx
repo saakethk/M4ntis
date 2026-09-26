@@ -53,8 +53,8 @@ export function Shell({ user, onLogout, loggingOut, logoutError, flush = false, 
           </span>
           <span className="word">M4ntis</span>
         </div>
-        <div className="user-slot" ref={menuRef}>
-          {user ? (
+        {user ? (
+          <div className="user-slot" ref={menuRef}>
             <button
               type="button"
               className="user-btn"
@@ -65,32 +65,28 @@ export function Shell({ user, onLogout, loggingOut, logoutError, flush = false, 
             >
               <UserGlyph />
             </button>
-          ) : (
-            <span className="user-btn" aria-hidden="true">
-              <UserGlyph />
-            </span>
-          )}
-          {user && menuOpen ? (
-            <div className="user-menu" role="menu">
-              <p className="user-menu-name">{displayName(user.email)}</p>
-              <p className="user-menu-email">{user.email}</p>
-              {logoutError ? (
-                <p className="form-error" role="alert">
-                  {logoutError}
-                </p>
-              ) : null}
-              <button
-                type="button"
-                className="user-menu-signout"
-                role="menuitem"
-                onClick={onLogout}
-                disabled={loggingOut}
-              >
-                Sign out
-              </button>
-            </div>
-          ) : null}
-        </div>
+            {menuOpen ? (
+              <div className="user-menu" role="menu">
+                <p className="user-menu-name">{displayName(user.email)}</p>
+                <p className="user-menu-email">{user.email}</p>
+                {logoutError ? (
+                  <p className="form-error" role="alert">
+                    {logoutError}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  className="user-menu-signout"
+                  role="menuitem"
+                  onClick={onLogout}
+                  disabled={loggingOut}
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </header>
       <main className={flush ? 'content content-flush' : 'content'}>{children}</main>
     </div>
