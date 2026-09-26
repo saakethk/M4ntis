@@ -21,3 +21,19 @@ Unique key: `(symbol, ts)`, including the `ts` partition column. A reload does n
 DDL: [`sql/stock_minute_bars.sql`](sql/stock_minute_bars.sql). Dedupe: [`sql/dedupe_stock_minute_bars.sql`](sql/dedupe_stock_minute_bars.sql).
 
 Load bars with `python software/database/load_minute_bars.py AAPL`.
+
+## trading_days
+
+NYSE sessions from Alpaca's market calendar. One row per trading day, including early closes.
+
+| Column | Type |
+| --- | --- |
+| session_date | DATE PRIMARY KEY |
+| open_at | TIMESTAMPTZ NOT NULL |
+| close_at | TIMESTAMPTZ NOT NULL |
+
+`open_at` and `close_at` are the regular session in `America/New_York`. A reload updates the same date.
+
+DDL: [`sql/trading_days.sql`](sql/trading_days.sql).
+
+Load five years with `python software/database/load_trading_days.py`.
