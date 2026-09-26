@@ -1,0 +1,334 @@
+{
+  "schema": "m4ntis.strategy/v1",
+  "name": "Trend + Confirmation (nested AND)",
+  "savedAt": "2026-01-01T00:00:00.000Z",
+  "flow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "data": {
+          "params": {
+            "startingBalance": 100000
+          }
+        }
+      },
+      {
+        "id": "sma_fast",
+        "type": "sma",
+        "position": {
+          "x": -340,
+          "y": 140
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "n": 12
+          }
+        }
+      },
+      {
+        "id": "set_fast",
+        "type": "set_var",
+        "position": {
+          "x": 0,
+          "y": 150
+        },
+        "data": {
+          "params": {
+            "slot": "VAR1"
+          }
+        }
+      },
+      {
+        "id": "sma_slow",
+        "type": "sma",
+        "position": {
+          "x": -340,
+          "y": 330
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "n": 26
+          }
+        }
+      },
+      {
+        "id": "set_slow",
+        "type": "set_var",
+        "position": {
+          "x": 0,
+          "y": 340
+        },
+        "data": {
+          "params": {
+            "slot": "VAR2"
+          }
+        }
+      },
+      {
+        "id": "get_fast",
+        "type": "get_var",
+        "position": {
+          "x": -340,
+          "y": 520
+        },
+        "data": {
+          "params": {
+            "slot": "VAR1"
+          }
+        }
+      },
+      {
+        "id": "get_slow",
+        "type": "get_var",
+        "position": {
+          "x": -340,
+          "y": 660
+        },
+        "data": {
+          "params": {
+            "slot": "VAR2"
+          }
+        }
+      },
+      {
+        "id": "if_trend",
+        "type": "if",
+        "position": {
+          "x": 0,
+          "y": 540
+        },
+        "data": {
+          "params": {
+            "operator": ">"
+          }
+        }
+      },
+      {
+        "id": "price",
+        "type": "current_price",
+        "position": {
+          "x": -560,
+          "y": 900
+        },
+        "data": {
+          "params": {
+            "buffer": 0
+          }
+        }
+      },
+      {
+        "id": "if_confirm_up",
+        "type": "if",
+        "position": {
+          "x": -200,
+          "y": 900
+        },
+        "data": {
+          "params": {
+            "operator": ">"
+          }
+        }
+      },
+      {
+        "id": "if_confirm_down",
+        "type": "if",
+        "position": {
+          "x": 240,
+          "y": 900
+        },
+        "data": {
+          "params": {
+            "operator": "<"
+          }
+        }
+      },
+      {
+        "id": "buy",
+        "type": "buy",
+        "position": {
+          "x": -200,
+          "y": 1180
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "quantity": 10
+          }
+        }
+      },
+      {
+        "id": "sell",
+        "type": "sell",
+        "position": {
+          "x": 240,
+          "y": 1180
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "quantity": 10
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_start.exec:out__set_fast.exec:in",
+        "source": "start",
+        "sourceHandle": "exec:out",
+        "target": "set_fast",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_sma_fast.data:out__set_fast.data:value",
+        "source": "sma_fast",
+        "sourceHandle": "data:out",
+        "target": "set_fast",
+        "targetHandle": "data:value",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_set_fast.exec:out__set_slow.exec:in",
+        "source": "set_fast",
+        "sourceHandle": "exec:out",
+        "target": "set_slow",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_sma_slow.data:out__set_slow.data:value",
+        "source": "sma_slow",
+        "sourceHandle": "data:out",
+        "target": "set_slow",
+        "targetHandle": "data:value",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_set_slow.exec:out__if_trend.exec:in",
+        "source": "set_slow",
+        "sourceHandle": "exec:out",
+        "target": "if_trend",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_get_fast.data:out__if_trend.data:a",
+        "source": "get_fast",
+        "sourceHandle": "data:out",
+        "target": "if_trend",
+        "targetHandle": "data:a",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_get_slow.data:out__if_trend.data:b",
+        "source": "get_slow",
+        "sourceHandle": "data:out",
+        "target": "if_trend",
+        "targetHandle": "data:b",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_if_trend.exec:then__if_confirm_up.exec:in",
+        "source": "if_trend",
+        "sourceHandle": "exec:then",
+        "target": "if_confirm_up",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_if_trend.exec:else__if_confirm_down.exec:in",
+        "source": "if_trend",
+        "sourceHandle": "exec:else",
+        "target": "if_confirm_down",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_price.data:out__if_confirm_up.data:a",
+        "source": "price",
+        "sourceHandle": "data:out",
+        "target": "if_confirm_up",
+        "targetHandle": "data:a",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_get_fast.data:out__if_confirm_up.data:b",
+        "source": "get_fast",
+        "sourceHandle": "data:out",
+        "target": "if_confirm_up",
+        "targetHandle": "data:b",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_price.data:out__if_confirm_down.data:a",
+        "source": "price",
+        "sourceHandle": "data:out",
+        "target": "if_confirm_down",
+        "targetHandle": "data:a",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_get_slow.data:out__if_confirm_down.data:b",
+        "source": "get_slow",
+        "sourceHandle": "data:out",
+        "target": "if_confirm_down",
+        "targetHandle": "data:b",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_if_confirm_up.exec:then__buy.exec:in",
+        "source": "if_confirm_up",
+        "sourceHandle": "exec:then",
+        "target": "buy",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_if_confirm_down.exec:then__sell.exec:in",
+        "source": "if_confirm_down",
+        "sourceHandle": "exec:then",
+        "target": "sell",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      }
+    ]
+  }
+}

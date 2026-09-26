@@ -1,0 +1,97 @@
+{
+  "schema": "m4ntis.strategy-ir/v1",
+  "entry": "start",
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start",
+      "params": {
+        "startingBalance": 100000
+      },
+      "inputs": {},
+      "next": {
+        "out": "if_cross"
+      },
+      "compilesTo": "SETBALANCE (once)",
+      "status": "confirmed"
+    },
+    {
+      "id": "if_cross",
+      "type": "if",
+      "params": {
+        "operator": ">"
+      },
+      "inputs": {
+        "a": {
+          "node": "sma_fast",
+          "port": "out"
+        },
+        "b": {
+          "node": "sma_slow",
+          "port": "out"
+        }
+      },
+      "next": {
+        "then": "buy",
+        "else": "sell"
+      },
+      "compilesTo": "GT | LT | SUB → BR / JMP",
+      "status": "confirmed"
+    },
+    {
+      "id": "buy",
+      "type": "buy",
+      "params": {
+        "buffer": 0,
+        "quantity": 10
+      },
+      "inputs": {},
+      "next": {
+        "out": null
+      },
+      "compilesTo": "GETSTOCKPRICE → MUL → UPDATEBALANCE(+) → EMITDECISION(qty, buf, 1)",
+      "status": "confirmed"
+    },
+    {
+      "id": "sell",
+      "type": "sell",
+      "params": {
+        "buffer": 0,
+        "quantity": 10
+      },
+      "inputs": {},
+      "next": {
+        "out": null
+      },
+      "compilesTo": "GETSTOCKPRICE → MUL → SUB from R0 → UPDATEBALANCE(−) → EMITDECISION(qty, buf, 0)",
+      "status": "confirmed"
+    },
+    {
+      "id": "sma_fast",
+      "type": "sma",
+      "params": {
+        "buffer": 0,
+        "n": 10
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "Sum of Last N Days ÷ N",
+      "status": "confirmed"
+    },
+    {
+      "id": "sma_slow",
+      "type": "sma",
+      "params": {
+        "buffer": 0,
+        "n": 50
+      },
+      "inputs": {},
+      "next": {},
+      "compilesTo": "Sum of Last N Days ÷ N",
+      "status": "confirmed"
+    }
+  ],
+  "unreachable": [],
+  "variableSlots": [],
+  "blockedBlocks": []
+}

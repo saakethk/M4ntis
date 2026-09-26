@@ -1,0 +1,186 @@
+{
+  "schema": "m4ntis.strategy/v1",
+  "name": "Mean Reversion Bands (blocked)",
+  "savedAt": "2026-01-01T00:00:00.000Z",
+  "flow": {
+    "nodes": [
+      {
+        "id": "start",
+        "type": "start",
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "data": {
+          "params": {
+            "startingBalance": 100000
+          }
+        }
+      },
+      {
+        "id": "price",
+        "type": "current_price",
+        "position": {
+          "x": -460,
+          "y": 120
+        },
+        "data": {
+          "params": {
+            "buffer": 0
+          }
+        }
+      },
+      {
+        "id": "bands",
+        "type": "mean_reversion_bands",
+        "position": {
+          "x": -460,
+          "y": 270
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "n": 20,
+            "k": 2
+          }
+        }
+      },
+      {
+        "id": "if_lower",
+        "type": "if",
+        "position": {
+          "x": 0,
+          "y": 170
+        },
+        "data": {
+          "params": {
+            "operator": "<="
+          }
+        }
+      },
+      {
+        "id": "buy",
+        "type": "buy",
+        "position": {
+          "x": -160,
+          "y": 460
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "quantity": 10
+          }
+        }
+      },
+      {
+        "id": "if_upper",
+        "type": "if",
+        "position": {
+          "x": 160,
+          "y": 460
+        },
+        "data": {
+          "params": {
+            "operator": ">="
+          }
+        }
+      },
+      {
+        "id": "sell",
+        "type": "sell",
+        "position": {
+          "x": 160,
+          "y": 760
+        },
+        "data": {
+          "params": {
+            "buffer": 0,
+            "quantity": 10
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_start.exec:out__if_lower.exec:in",
+        "source": "start",
+        "sourceHandle": "exec:out",
+        "target": "if_lower",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_price.data:out__if_lower.data:a",
+        "source": "price",
+        "sourceHandle": "data:out",
+        "target": "if_lower",
+        "targetHandle": "data:a",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_bands.data:lower__if_lower.data:b",
+        "source": "bands",
+        "sourceHandle": "data:lower",
+        "target": "if_lower",
+        "targetHandle": "data:b",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_if_lower.exec:then__buy.exec:in",
+        "source": "if_lower",
+        "sourceHandle": "exec:then",
+        "target": "buy",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_if_lower.exec:else__if_upper.exec:in",
+        "source": "if_lower",
+        "sourceHandle": "exec:else",
+        "target": "if_upper",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      },
+      {
+        "id": "e_price.data:out__if_upper.data:a",
+        "source": "price",
+        "sourceHandle": "data:out",
+        "target": "if_upper",
+        "targetHandle": "data:a",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_bands.data:upper__if_upper.data:b",
+        "source": "bands",
+        "sourceHandle": "data:upper",
+        "target": "if_upper",
+        "targetHandle": "data:b",
+        "data": {
+          "kind": "data"
+        }
+      },
+      {
+        "id": "e_if_upper.exec:then__sell.exec:in",
+        "source": "if_upper",
+        "sourceHandle": "exec:then",
+        "target": "sell",
+        "targetHandle": "exec:in",
+        "data": {
+          "kind": "exec"
+        }
+      }
+    ]
+  }
+}
