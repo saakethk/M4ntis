@@ -11,7 +11,7 @@ import os
 import threading
 import time
 from pathlib import Path
-
+import uvicorn
 import psycopg
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
@@ -223,6 +223,4 @@ def get_symbol(symbol: str) -> SymbolResponse:
 
 
 if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
