@@ -113,32 +113,26 @@ Create both tables with `python software/database/load_users.py`.
 
 ## strategies
 
-One saved strategy per row, owned by `user_id`. `document` is the React Flow file `m4ntis.strategy/v1`. `ir` is the compiled `m4ntis.strategy-ir/v1` and may be null. The owner does not need a `strategy_shares` row.
+One saved strategy per row, owned by `user_id`. `document` is the React Flow file `m4ntis.strategy/v1`. `ir` is the compiled `m4ntis.strategy-ir/v1` and may be null.
+
+`visibility` is `private` or `public`. A private strategy is visible only to its owner. A public strategy can be viewed by anyone who is signed in. Only the owner (`strategies.user_id`) can update or delete the row.
+
+Another user gets their own strategy by copying. The copy is a new row with their `user_id`, `visibility` `private`, and the same `name`, `document`, and `ir`. The original row stays as it was.
 
 | Column | Type |
 | --- | --- |
 | id | BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY |
 | user_id | BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE |
 | name | TEXT NOT NULL |
+| visibility | TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'public')) |
 | document | JSONB NOT NULL |
 | ir | JSONB |
 | updated_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
 | created_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
 
-## strategy_shares
-
-Grants another user `view` or `edit` on the same strategy. The owner remains `strategies.user_id`.
-
-| Column | Type |
-| --- | --- |
-| strategy_id | BIGINT NOT NULL REFERENCES strategies (id) ON DELETE CASCADE |
-| user_id | BIGINT NOT NULL REFERENCES users (id) ON DELETE CASCADE |
-| role | TEXT NOT NULL CHECK (role IN ('view', 'edit')) |
-| created_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
-
-Primary key: `(strategy_id, user_id)`.
+Index: `strategies_user_id_idx` on `user_id`.
 
 DDL: [`sql/strategies.sql`](sql/strategies.sql).
 
-Users must already exist (`python software/database/load_users.py` first) because of the foreign key. Then create both tables with `python software/database/load_strategies.py`.
+Users must already exist (`python software/database/load_users.py` first) because of the foreign key. Then create the table with `python software/database/load_strategies.py`. If an older database still has `strategy_shares`, the loader drops it. If `strategies` already exists without `visibility`, the loader adds that column (default `private`) and adds the check constraint when it is missing.
 

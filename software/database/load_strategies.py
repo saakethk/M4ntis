@@ -1,9 +1,13 @@
-"""Create the strategies and strategy_shares tables.
+"""Create the strategies table.
 
 Run from the repository root after users exist:
 
     python software/database/load_users.py
     python software/database/load_strategies.py
+
+A public strategy can be viewed by any signed-in user. Another user copies
+it into a new private row they own. The loader drops strategy_shares when
+an older load created that table.
 """
 
 from __future__ import annotations
@@ -22,6 +26,12 @@ REQUIRED_ENV = (
     "TIGER_DB_PGUSER",
     "TIGER_DB_PGPASSWORD",
 )
+VISIBILITY_CHECK = "strategies_visibility_check"
+DROP_SHARES_SQL = "DROP TABLE IF EXISTS strategy_shares"
+ADD_VISIBILITY_SQL = (
+    "ALTER TABLE strategies "
+    "ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private'"
+)
 
 
 def find_repo_root() -> Path:
@@ -30,6 +40,27 @@ def find_repo_root() -> Path:
         if (candidate / ".git").exists():
             return candidate
     return Path.cwd().resolve()
+
+
+def _add_visibility_check_if_missing(conn: psycopg.Connection) -> None:
+    existing = conn.execute(
+        """
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = %s
+          AND conrelid = 'strategies'::regclass
+        """,
+        (VISIBILITY_CHECK,),
+    ).fetchone()
+    if existing is not None:
+        return
+    conn.execute(
+        """
+        ALTER TABLE strategies
+        ADD CONSTRAINT strategies_visibility_check
+        CHECK (visibility IN ('private', 'public'))
+        """
+    )
 
 
 def load_strategies() -> None:
@@ -56,7 +87,10 @@ def load_strategies() -> None:
             sql = statement.strip()
             if sql:
                 conn.execute(sql)
-        print("Created strategies and strategy_shares")
+        conn.execute(DROP_SHARES_SQL)
+        conn.execute(ADD_VISIBILITY_SQL)
+        _add_visibility_check_if_missing(conn)
+        print("Created strategies")
     finally:
         conn.close()
 

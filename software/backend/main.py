@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import uvicorn
 import psycopg
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import helpers.auth as auth
+import helpers.strategies as strategies
 from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, search_symbols
 
 app = FastAPI(title="Mantis Backend")
@@ -21,7 +24,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT"],
     allow_headers=["*"],
 )
 
@@ -29,6 +32,32 @@ app.add_middleware(
 class Credentials(BaseModel):
     email: str
     password: str
+
+
+class StrategyCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    document: dict[str, Any]
+    ir: dict[str, Any] | None = None
+
+
+class StrategyUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str | None = None
+    document: dict[str, Any] | None = None
+    ir: dict[str, Any] | None = None
+    visibility: str | None = None
+
+
+def _require_user(request: Request) -> auth.User:
+    token = request.cookies.get(auth.SESSION_COOKIE, "")
+    try:
+        user = auth.user_from_token(token)
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="User database is unavailable") from exc
+    if user is None:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    return user
 
 
 def _set_session_cookie(response: Response, token: str) -> None:
@@ -124,6 +153,76 @@ def me(request: Request) -> dict:
     if user is None:
         raise HTTPException(status_code=401, detail="Not signed in")
     return {"id": user.id, "email": user.email}
+
+
+@app.post("/strategies", status_code=201)
+def create_strategy_route(body: StrategyCreate, request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        return strategies.create_strategy(user.id, body.name, body.document, body.ir)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
+
+
+@app.get("/strategies")
+def list_strategies_route(request: Request) -> list:
+    user = _require_user(request)
+    try:
+        return strategies.list_strategies(user.id)
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
+
+
+@app.get("/strategies/{strategy_id}")
+def get_strategy_route(strategy_id: int, request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        return strategies.get_strategy(user.id, strategy_id)
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
+
+
+@app.put("/strategies/{strategy_id}")
+def update_strategy_route(strategy_id: int, body: StrategyUpdate, request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        visibility: Any = strategies.UNSET
+        if "visibility" in body.model_fields_set:
+            visibility = strategies.normalize_visibility(body.visibility)
+        return strategies.update_strategy(
+            user.id,
+            strategy_id,
+            name=body.name if "name" in body.model_fields_set else strategies.UNSET,
+            document=body.document if "document" in body.model_fields_set else strategies.UNSET,
+            ir=body.ir if "ir" in body.model_fields_set else strategies.UNSET,
+            visibility=visibility,
+        )
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except strategies.StrategyForbidden as exc:
+        raise HTTPException(
+            status_code=403, detail="Only the owner can change this strategy"
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
+
+
+@app.post("/strategies/{strategy_id}/copy", status_code=201)
+def copy_strategy_route(strategy_id: int, request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        new_id = strategies.copy_strategy(user.id, strategy_id)
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
+    return {"id": new_id}
 
 
 if __name__ == "__main__":
