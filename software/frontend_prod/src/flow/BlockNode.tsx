@@ -1,9 +1,23 @@
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from '@xyflow/react';
 import { memo, useState } from 'react';
-import { BLOCK_DEFS, COMPARISON_OPERATORS, portsOf } from '../blocks/catalog';
+import { BLOCK_DEFS, CATEGORIES, COMPARISON_OPERATORS, portsOf } from '../blocks/catalog';
 import { NUM_STOCK_BUFFERS, ticksToDuration } from '../blocks/hardware';
 import type { BlockNode as BlockNodeT, BlockType, ParamDef, ParamValue, PortDef } from '../blocks/types';
 import { START_NODE_ID } from './graph';
+
+const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((category) => [category.id, category.label]),
+);
+
+const GLYPHS: Record<string, string> = {
+  structure: 'M4 2.5h8v11H4z M6.5 6h3 M6.5 8.5h3 M6.5 11h2',
+  reserved: 'M2 12 5.2 7.2 8 9.4 14 3.5',
+  variables: 'M3 3.5h10v9H3z M3 6.5h10',
+  math: 'M8 3v10 M3 8h10',
+  control: 'M2.5 3h4.2v3.4H2.5z M9.3 9.6h4.2V13H9.3z M4.6 6.4v2.1h4.7',
+  trade: 'M8 2.8 13.2 13H2.8z',
+  composite: 'M1.5 8h2.4l1.5-3.4 2.4 6.8L9.4 8H14.5',
+};
 
 function NumberField({
   def,
@@ -185,13 +199,33 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
       )}
 
       <div className="block-header">
-        <span className="block-title">{def.label}</span>
+        <span className="block-glyph" aria-hidden="true">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <path
+              d={GLYPHS[def.category] ?? GLYPHS.structure}
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+        <div className="block-heading">
+          <span className="block-type">{CATEGORY_LABELS[def.category] ?? def.category}</span>
+          <span className="block-title">{def.label}</span>
+        </div>
         {def.status === 'blocked' && (
           <span className="badge badge-blocked" title={def.statusNote}>
             needs HW
           </span>
         )}
       </div>
+
+      {def.description ? (
+        <p className="block-summary" title={def.description}>
+          {def.description}
+        </p>
+      ) : null}
 
       {def.condition && (
         <ConditionPanel
