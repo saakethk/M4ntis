@@ -42,6 +42,7 @@ class StrategyCreate(BaseModel):
     name: str
     document: dict[str, Any]
     ir: dict[str, Any] | None = None
+    visibility: str | None = None
 
 
 class StrategyUpdate(BaseModel):
@@ -162,7 +163,12 @@ def me(request: Request) -> dict:
 def create_strategy_route(body: StrategyCreate, request: Request) -> dict:
     user = _require_user(request)
     try:
-        return strategies.create_strategy(user.id, body.name, body.document, body.ir)
+        visibility: Any = strategies.PRIVATE
+        if "visibility" in body.model_fields_set:
+            visibility = strategies.normalize_visibility(body.visibility)
+        return strategies.create_strategy(
+            user.id, body.name, body.document, body.ir, visibility
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (RuntimeError, psycopg.Error) as exc:
