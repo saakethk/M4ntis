@@ -193,6 +193,7 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
         selected ? 'selected' : '',
         def.status === 'blocked' ? 'blocked' : '',
       ].join(' ')}
+      title={def.description || undefined}
     >
       {execIn && (
         <Handle type="target" position={Position.Top} id={execIn.id} className="handle-exec" />
@@ -220,12 +221,6 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
           </span>
         )}
       </div>
-
-      {def.description ? (
-        <p className="block-summary" title={def.description}>
-          {def.description}
-        </p>
-      ) : null}
 
       {def.condition && (
         <ConditionPanel
