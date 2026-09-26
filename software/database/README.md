@@ -51,7 +51,7 @@ DDL: [`sql/trading_minutes.sql`](sql/trading_minutes.sql).
 
 ## stock_session_minutes
 
-Forward-filled minute bars for a naive backtest that fills at the current close. A minute with no trade copies the previous close into open, high, low, and close, and stores volume 0. `is_filled` is true for those copied minutes. The prior session's close is the price at the next open. Timescale hypertable on `ts`.
+Forward-filled minute bars for a naive backtest that fills at the current close. Only sessions that contain at least one real bar for the symbol are stored. A gap of 60 or more NYSE sessions is treated as a recycled ticker, and bars before the last such gap are ignored. Inside a kept session, a minute with no trade copies the previous close into open, high, low, and close, and stores volume 0. `is_filled` is true for those copied minutes. Timescale hypertable on `ts`.
 
 | Column | Type |
 | --- | --- |
