@@ -153,9 +153,11 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
   )
 
   function compile() {
-    const text = JSON.stringify(toIR(nodes, edges), null, 2)
-    console.info(text)
-    setCompiledLog(text)
+    const raw = JSON.stringify(toDocument(name.trim(), nodes, edges, getViewport()))
+    const compiled = JSON.stringify(toIR(nodes, edges), null, 2)
+    console.info(raw)
+    console.info(compiled)
+    setCompiledLog(`raw\n${raw}\n\ncompiled\n${compiled}`)
     const errors = analyze(nodes, edges).filter((item) => item.level === 'error')
     if (errors.length === 0) {
       showMessage('Compiled', false)
@@ -234,7 +236,7 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
           </div>
         </div>
         {compiledLog ? (
-          <pre className="compile-log" aria-label="Compiled strategy">
+          <pre className="compile-log" aria-label="Strategy JSON">
             {compiledLog}
           </pre>
         ) : null}
