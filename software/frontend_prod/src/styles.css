@@ -1,6 +1,6 @@
 :root {
-  color: #16181d;
-  background: #f4f5f7;
+  color: #14171c;
+  background: #fff;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.45;
   font-synthesis: none;
@@ -14,6 +14,7 @@
 
 body {
   margin: 0;
+  background: #fff;
 }
 
 button,
@@ -30,12 +31,13 @@ p {
 .app {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 228px 1fr;
+  background: #fff;
 }
 
 .sidebar {
   background: #fff;
-  border-right: 1px solid #e6e8ee;
+  border-right: 1px solid #e7e9ee;
   padding: 22px 14px;
   display: flex;
   flex-direction: column;
@@ -50,20 +52,21 @@ p {
 }
 
 .mark {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
-  background: #178a45;
+  background: #3d9a4a;
   color: #fff;
   display: grid;
   place-items: center;
   font-weight: 700;
+  font-size: 0.95rem;
   letter-spacing: -0.03em;
 }
 
 .word {
-  font-weight: 700;
-  font-size: 1.05rem;
+  font-weight: 650;
+  font-size: 0.95rem;
   letter-spacing: -0.02em;
 }
 
@@ -74,27 +77,34 @@ p {
 }
 
 .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   text-align: left;
   border: 0;
   background: transparent;
-  color: #5c6370;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 0.75rem;
+  color: #8a9099;
+  border-radius: 9px;
+  padding: 9px 12px;
+  font-size: 0.72rem;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
 }
 
+.nav-item svg {
+  flex: none;
+}
+
 .nav-item:hover {
-  background: #f3f5f7;
-  color: #16181d;
+  background: #f4f6f8;
+  color: #14171c;
 }
 
 .nav-item.active {
-  background: #eef8f2;
-  color: #178a45;
+  background: #e7f6eb;
+  color: #2f7d3c;
 }
 
 .nav-item[aria-disabled='true'] {
@@ -103,13 +113,14 @@ p {
 
 .nav-item[aria-disabled='true']:hover {
   background: transparent;
-  color: #5c6370;
+  color: #8a9099;
 }
 
 .main {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  background: #f6f7f9;
 }
 
 .topbar {
@@ -117,15 +128,16 @@ p {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  padding: 0 28px;
+  padding: 0 36px;
   background: #fff;
-  border-bottom: 1px solid #e6e8ee;
+  border-bottom: 1px solid #e7e9ee;
 }
 
 .session {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  font-size: 0.92rem;
 }
 
 .session-name {
@@ -133,7 +145,7 @@ p {
 }
 
 .session-balance {
-  color: #3d4350;
+  color: #6d7380;
   font-variant-numeric: tabular-nums;
 }
 
@@ -141,71 +153,68 @@ p {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #1faa55;
-  box-shadow: 0 0 0 3px rgba(31, 170, 85, 0.18);
+  background: #3d9a4a;
+  box-shadow: 0 0 0 3px rgba(61, 154, 74, 0.16);
 }
 
 .content {
   flex: 1;
-  padding: 32px 36px 48px;
+  padding: 40px 40px 56px;
 }
 
 .gate {
-  min-height: calc(100vh - 128px);
+  min-height: calc(100vh - 160px);
   display: grid;
   place-items: center;
 }
 
 .status-line {
-  color: #6b7280;
+  color: #8a9099;
 }
 
 .auth-card {
   width: min(420px, 100%);
   background: #fff;
   border: 1px solid #e6e8ee;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(17, 24, 39, 0.06);
-  padding: 32px 28px 28px;
+  border-radius: 14px;
+  padding: 36px 32px 32px;
 }
 
 .auth-card h1,
 .page-head h1,
 .account h1 {
-  font-size: 1.6rem;
+  font-size: 1.75rem;
   letter-spacing: -0.03em;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .subtitle {
-  margin-top: 6px;
-  color: #6b7280;
+  margin-top: 8px;
+  color: #8a9099;
+  font-size: 0.95rem;
 }
 
 .tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin: 22px 0 18px;
-  padding: 4px;
-  background: #f3f4f6;
-  border-radius: 10px;
+  display: flex;
+  gap: 22px;
+  margin: 26px 0 22px;
+  border-bottom: 1px solid #e6e8ee;
 }
 
 .tabs button {
   border: 0;
+  border-bottom: 2px solid transparent;
   background: transparent;
-  border-radius: 8px;
-  height: 36px;
-  color: #6b7280;
+  margin-bottom: -1px;
+  padding: 0 0 10px;
+  color: #8a9099;
   font-weight: 600;
   cursor: pointer;
 }
 
 .tabs button[aria-selected='true'] {
-  background: #fff;
-  color: #16181d;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
+  color: #14171c;
+  border-bottom-color: #3d9a4a;
 }
 
 form {
@@ -218,28 +227,29 @@ label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #5e6570;
 }
 
 input {
   height: 42px;
-  border: 1px solid #d8dbe3;
-  border-radius: 10px;
+  border: 1px solid #e1e4ea;
+  border-radius: 8px;
   padding: 0 12px;
   background: #fff;
   color: inherit;
 }
 
 input:focus {
-  outline: 2px solid rgba(23, 138, 69, 0.25);
-  border-color: #178a45;
+  outline: none;
+  border-color: #3d9a4a;
+  box-shadow: 0 0 0 3px rgba(61, 154, 74, 0.15);
 }
 
 .primary,
 .secondary,
 .ghost,
-.text-button,
 .new-card {
   cursor: pointer;
 }
@@ -247,15 +257,20 @@ input:focus {
 .primary {
   height: 44px;
   border: 0;
-  border-radius: 10px;
-  background: #178a45;
+  border-radius: 8px;
+  background: #3d9a4a;
   color: #fff;
   font-weight: 650;
   padding: 0 16px;
 }
 
+.auth-card .primary {
+  width: 100%;
+  margin-top: 4px;
+}
+
 .primary:hover {
-  background: #12753a;
+  background: #348443;
 }
 
 .primary:disabled {
@@ -273,7 +288,7 @@ input:focus {
 }
 
 .page-head {
-  margin-bottom: 22px;
+  margin-bottom: 28px;
 }
 
 .cards {
@@ -285,10 +300,9 @@ input:focus {
 .card {
   background: #fff;
   border: 1px solid #e6e8ee;
-  border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-  min-height: 248px;
-  padding: 18px;
+  border-radius: 14px;
+  min-height: 236px;
+  padding: 18px 18px 16px;
   display: flex;
   flex-direction: column;
 }
@@ -301,48 +315,50 @@ input:focus {
 }
 
 .card h2 {
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   letter-spacing: -0.02em;
+  font-weight: 650;
 }
 
 .meta {
   margin-top: 4px;
-  color: #6b7280;
-  font-size: 0.9rem;
+  color: #8a9099;
+  font-size: 0.88rem;
 }
 
 .pct {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  font-size: 0.95rem;
 }
 
 .pct.up {
-  color: #178a45;
+  color: #3d9a4a;
 }
 
 .pct.down {
-  color: #c2414a;
+  color: #c4474f;
 }
 
 .chart {
   flex: 1;
   display: flex;
   align-items: flex-end;
-  gap: 4px;
-  height: 84px;
-  margin: 18px 0 16px;
+  gap: 5px;
+  height: 72px;
+  margin: 20px 0 16px;
 }
 
 .chart span {
   flex: 1;
-  background: #1faa55;
+  background: #3d9a4a;
   border-radius: 3px 3px 0 0;
   min-height: 4px;
 }
 
 .chart.down span {
-  background: #e7a0a6;
+  background: #e4b4b8;
 }
 
 .card-actions {
@@ -356,48 +372,41 @@ input:focus {
   border-radius: 8px;
   padding: 0 12px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .secondary {
-  border: 1px solid #d8dbe3;
+  border: 1px solid #e1e4ea;
   background: #fff;
-  color: #16181d;
+  color: #14171c;
 }
 
 .secondary:hover,
 .ghost:hover {
-  border-color: #178a45;
-  color: #178a45;
+  border-color: #3d9a4a;
+  color: #2f7d3c;
 }
 
 .ghost {
   border: 1px solid transparent;
   background: transparent;
-  color: #3d4350;
+  color: #5e6570;
 }
 
 .new-card {
-  border: 1.5px dashed #cfd3dc;
+  border: 1.5px dashed #d3d7e0;
   background: transparent;
-  box-shadow: none;
-  color: #6b7280;
+  color: #8a9099;
   font-weight: 650;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  font-size: 0.95rem;
 }
 
 .new-card:hover {
-  border-color: #178a45;
-  color: #178a45;
-  background: #f3faf6;
-}
-
-.plus {
-  font-size: 1.8rem;
-  line-height: 1;
-  font-weight: 400;
+  border-color: #3d9a4a;
+  color: #2f7d3c;
+  background: #f4fbf6;
 }
 
 .account {
@@ -408,20 +417,9 @@ input:focus {
   margin-top: 18px;
 }
 
-.text-button {
-  border: 0;
-  background: transparent;
-  color: #5c6370;
-  font-weight: 600;
-  padding: 0;
-}
-
-.text-button:hover {
-  color: #16181d;
-}
-
-.text-button:disabled {
-  cursor: default;
+button:focus-visible {
+  outline: 2px solid rgba(61, 154, 74, 0.4);
+  outline-offset: 2px;
 }
 
 @media (max-width: 800px) {
@@ -431,7 +429,7 @@ input:focus {
 
   .sidebar {
     border-right: 0;
-    border-bottom: 1px solid #e6e8ee;
+    border-bottom: 1px solid #e7e9ee;
     gap: 14px;
   }
 
