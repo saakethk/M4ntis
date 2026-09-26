@@ -1,6 +1,6 @@
 # Preliminary Tasks
 
-The solvable, dependency-ordered backlog is in [ISSUES.md](./ISSUES.md). The notes below are the source task list.
+Prioritized GitHub issues for this list: [ISSUE_BACKLOG.md](./ISSUE_BACKLOG.md).
 
 Here is a list of preliminary tasks that need to be done to ensure frontend functionality is done:
 
