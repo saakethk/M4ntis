@@ -107,5 +107,7 @@ One row per signed-in browser. `token_hash` is the SHA-256 of the cookie value. 
 | expires_at | TIMESTAMPTZ NOT NULL |
 | created_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
 
-DDL: [`sql/users.sql`](sql/users.sql). The auth routes create these tables on first use.
+DDL: [`sql/users.sql`](sql/users.sql).
+
+Create both tables with `python software/database/load_users.py`.
 
