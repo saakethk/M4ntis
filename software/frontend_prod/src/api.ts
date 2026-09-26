@@ -7,16 +7,25 @@ export type User = {
 }
 
 const API_BASE = 'http://localhost:8001'
+const SESSION_CHECK_MS = 5000
 
 export async function getMe(): Promise<User | null> {
   let response: Response
   try {
-    response = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+    response = await fetch(`${API_BASE}/auth/me`, {
+      credentials: 'include',
+      signal: AbortSignal.timeout(SESSION_CHECK_MS),
+    })
   } catch {
-    return null
+    throw new Error('Could not reach the server.')
   }
-  if (response.status === 401 || !response.ok) return null
-  return (await response.json()) as User
+  if (response.status === 401) return null
+  if (!response.ok) throw new Error('Could not reach the server.')
+  try {
+    return (await response.json()) as User
+  } catch {
+    throw new Error('Could not reach the server.')
+  }
 }
 
 export function login(email: string, password: string): Promise<User> {

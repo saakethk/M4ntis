@@ -10,14 +10,24 @@ export default function App() {
   const [section, setSection] = useState<Section>('strategies')
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
+  const [sessionError, setSessionError] = useState<string | null>(null)
 
   useEffect(() => {
     let ignore = false
-    getMe().then((next) => {
-      if (ignore) return
-      setUser(next)
-      setReady(true)
-    })
+    getMe()
+      .then((next) => {
+        if (ignore) return
+        setUser(next)
+        setSessionError(null)
+      })
+      .catch((error: unknown) => {
+        if (ignore) return
+        setUser(null)
+        setSessionError(error instanceof Error ? error.message : 'Could not reach the server.')
+      })
+      .finally(() => {
+        if (!ignore) setReady(true)
+      })
     return () => {
       ignore = true
     }
@@ -47,7 +57,19 @@ export default function App() {
   } else if (!user) {
     main = (
       <div className="gate">
-        <AuthCard onSignedIn={setUser} />
+        <div className="gate-stack">
+          {sessionError ? (
+            <p className="form-error" role="alert">
+              {sessionError}
+            </p>
+          ) : null}
+          <AuthCard
+            onSignedIn={(next) => {
+              setSessionError(null)
+              setUser(next)
+            }}
+          />
+        </div>
       </div>
     )
   } else if (section === 'account') {
