@@ -177,6 +177,24 @@ function isSymbolSource(def: BlockDef): boolean {
   return def.params.every((param) => param.key === 'buffer' || param.key.startsWith('symbol'));
 }
 
+function SymbolEntry({ onAdd }: { onAdd: (symbol: string) => boolean }) {
+  const [draft, setDraft] = useState('');
+  return (
+    <input
+      className="nodrag start-symbol-input"
+      value={draft}
+      placeholder="Add symbol"
+      aria-label="Add symbol"
+      onChange={(event) => setDraft(event.target.value.toUpperCase())}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        if (onAdd(draft)) setDraft('');
+      }}
+    />
+  );
+}
+
 function SymbolText({ symbols }: { symbols: string[] }) {
   if (symbols.length === 0) return <span className="symbol-text">—</span>;
   return (
@@ -250,7 +268,18 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
   if (!def) return <div className="block block-unknown">Unknown block: {type}</div>;
 
   if (def.type === 'start') {
+    const slots = def.params.filter((param) => param.key.startsWith('symbol'));
     const tickers = assignedSymbols(def, data.params);
+    const setParam = (key: string, value: ParamValue) =>
+      updateNodeData(id, { params: { ...data.params, [key]: value } });
+    const addSymbol = (raw: string) => {
+      const symbol = raw.trim().toUpperCase();
+      if (!/^[A-Z][A-Z0-9.]{0,7}$/.test(symbol)) return false;
+      const open = slots.find((param) => String(data.params[param.key] ?? '').trim() === '');
+      if (!open) return false;
+      setParam(open.key, symbol);
+      return true;
+    };
     return (
       <div className={['block', 'block-start', selected ? 'selected' : ''].join(' ')}>
         <div className="block-header">
@@ -270,15 +299,28 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
             <span className="block-title">{def.label}</span>
           </div>
         </div>
-        {tickers.length > 0 && (
-          <div className="start-symbols" aria-label="Assigned symbols">
-            {tickers.map((symbol, index) => (
-              <span className="start-symbol" key={`${symbol}-${index}`}>
+        <div className="start-symbols" aria-label="Assigned symbols">
+          {slots.map((param) => {
+            const symbol = String(data.params[param.key] ?? '').trim();
+            if (!symbol) return null;
+            return (
+              <span className="start-symbol" key={param.key}>
                 {symbol}
+                <button
+                  type="button"
+                  className="nodrag"
+                  aria-label={`Remove ${symbol}`}
+                  onClick={() => setParam(param.key, '')}
+                >
+                  ×
+                </button>
               </span>
-            ))}
-          </div>
-        )}
+            );
+          })}
+          {tickers.length < slots.length && (
+            <SymbolEntry onAdd={addSymbol} />
+          )}
+        </div>
         <FlowHandles type={def.type} />
       </div>
     );

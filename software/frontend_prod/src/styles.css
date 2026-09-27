@@ -1057,8 +1057,9 @@ input:focus-visible {
 .strategy-editor .start-symbol {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   height: 22px;
-  padding: 0 8px;
+  padding: 0 4px 0 8px;
   border: 1px solid #d9eedd;
   border-radius: 999px;
   background: #f3faf4;
@@ -1066,6 +1067,35 @@ input:focus-visible {
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
+}
+
+.strategy-editor .start-symbol button {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #3d9a4a;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.strategy-editor .start-symbol-input {
+  width: 88px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px dashed #d9eedd;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.strategy-editor .start-symbol-input:focus {
+  outline: none;
+  border-color: #3d9a4a;
 }
 
 .strategy-editor .block.block-symbol {
@@ -1375,9 +1405,17 @@ input:focus-visible {
   border-bottom-right-radius: 1px;
 }
 
+.strategy-editor .react-flow__handle.handle-exec.react-flow__handle-bottom {
+  bottom: 0;
+  top: auto;
+  left: 50%;
+  transform: translate(-50%, 50%);
+}
+
 .strategy-editor .react-flow__handle.handle-exec.react-flow__handle-bottom::after {
-  top: 2px;
-  transform: rotate(45deg);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -65%) rotate(45deg);
 }
 
 .strategy-editor .react-flow__handle.handle-exec.react-flow__handle-top {
@@ -1386,8 +1424,13 @@ input:focus-visible {
 }
 
 .strategy-editor .react-flow__handle.handle-exec.react-flow__handle-top::after {
-  top: 5px;
-  transform: rotate(-135deg);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -35%) rotate(-135deg);
+}
+
+.strategy-editor .react-flow__edge.edge-exec .react-flow__arrowhead {
+  display: none;
 }
 
 .strategy-editor .react-flow__handle.handle-data {
