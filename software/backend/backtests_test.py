@@ -18,6 +18,14 @@ class DummySeriesTest(unittest.TestCase):
         self.assertEqual([order["side"] for order in orders], ["buy", "sell"])
         self.assertEqual(orders[0]["symbol"], "AAPL")
 
+    def test_menu_is_fixed_and_does_not_touch_the_database(self) -> None:
+        menu = backtests.dummy_menu()
+        self.assertTrue(menu["dummy"])
+        self.assertEqual(menu["equity"], 100_060.0)
+        self.assertEqual(menu["return_pct"], 0.06)
+        self.assertEqual(len(menu["orders"]), 2)
+        self.assertEqual(len(menu["balances"]), 3)
+
     def test_equity_ends_higher_than_it_starts(self) -> None:
         balances = backtests.dummy_balances()
         self.assertLess(balances[0]["equity"], balances[-1]["equity"])
@@ -56,6 +64,20 @@ class BacktestRouteTest(unittest.TestCase):
                 json={"user_id": 9, "strategy_id": 8},
             )
         self.assertEqual(response.status_code, 403)
+
+    def test_menu_requires_a_session(self) -> None:
+        with patch.object(main.auth, "user_from_token", return_value=None):
+            response = self.client.get("/backtests/dummy")
+        self.assertEqual(response.status_code, 401)
+
+    def test_menu_route_returns_the_dummy_series(self) -> None:
+        with patch.object(main.auth, "user_from_token", return_value=User(4, "a@b.com")):
+            response = self.client.get("/backtests/dummy")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["dummy"], True)
+        self.assertEqual(body["orders"][0]["side"], "buy")
+        self.assertEqual(body["balances"][-1]["equity"], 100_060.0)
 
 
 if __name__ == "__main__":

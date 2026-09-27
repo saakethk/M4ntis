@@ -62,6 +62,10 @@ export function hydrateEdge(edge: BlockEdge): BlockEdge {
     data: { kind },
     type: kind === 'exec' ? 'smoothstep' : 'default',
     className: `edge-${kind}`,
+    markerEnd: undefined,
+    markerStart: undefined,
+    // Leave the chevron straight down, then step across, then enter straight up.
+    ...(kind === 'exec' ? { pathOptions: { borderRadius: 8, offset: 28 } } : {}),
   };
 }
 

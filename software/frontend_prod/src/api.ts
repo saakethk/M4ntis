@@ -110,6 +110,207 @@ export function createStrategy(body: StrategyWrite): Promise<StrategyRecord> {
   }).then(readRecord)
 }
 
+export type AssistantReply = {
+  reply: string
+  dummy: boolean
+}
+
+export type BacktestOrder = {
+  symbol: string
+  side: string
+  quantity: number
+  price: number
+}
+
+export type BacktestBalance = {
+  cash: number
+  equity: number
+}
+
+export type BacktestResult = {
+  id: number
+  dummy: boolean
+  orders: BacktestOrder[]
+  balances: BacktestBalance[]
+}
+
+export type BacktestMenu = {
+  dummy: boolean
+  equity: number
+  returnPct: number
+  orders: BacktestOrder[]
+  balances: BacktestBalance[]
+}
+
+export function getDummyBacktest(): Promise<BacktestMenu> {
+  return requestJson('/backtests/dummy').then(readBacktestMenu)
+}
+
+function readBacktestMenu(body: unknown): BacktestMenu {
+  const result = readBacktest({ ...(body as object), id: 1 })
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as { equity?: unknown; return_pct?: unknown }
+  if (typeof row.equity !== 'number' || typeof row.return_pct !== 'number') {
+    throw new Error('Backtest response was not valid.')
+  }
+  return {
+    dummy: result.dummy,
+    equity: row.equity,
+    returnPct: row.return_pct,
+    orders: result.orders,
+    balances: result.balances,
+  }
+}
+
+export function runDummyBacktest(userId: number, strategyId: number): Promise<BacktestResult> {
+  return requestJson('/backtests', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, strategy_id: strategyId }),
+  }).then(readBacktest)
+}
+
+function readBacktest(body: unknown): BacktestResult {
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as { id?: unknown; dummy?: unknown; orders?: unknown; balances?: unknown }
+  if (!Array.isArray(row.orders) || !Array.isArray(row.balances)) {
+    throw new Error('Backtest response was not valid.')
+  }
+  return {
+    id: readId(row.id),
+    dummy: row.dummy === true,
+    orders: row.orders.map(readOrder),
+    balances: row.balances.map(readBalance),
+  }
+}
+
+function readOrder(body: unknown): BacktestOrder {
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as { symbol?: unknown; side?: unknown; quantity?: unknown; price?: unknown }
+  if (typeof row.symbol !== 'string' || typeof row.side !== 'string') {
+    throw new Error('Backtest response was not valid.')
+  }
+  if (typeof row.quantity !== 'number' || typeof row.price !== 'number') {
+    throw new Error('Backtest response was not valid.')
+  }
+  return { symbol: row.symbol, side: row.side, quantity: row.quantity, price: row.price }
+}
+
+function readBalance(body: unknown): BacktestBalance {
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as { cash?: unknown; equity?: unknown }
+  if (typeof row.cash !== 'number' || typeof row.equity !== 'number') {
+    throw new Error('Backtest response was not valid.')
+  }
+  return { cash: row.cash, equity: row.equity }
+}
+
+export type DiscussionPost = {
+  id: number
+  userId: number
+  author: string
+  body: string
+  strategyId: number | null
+  parentId: number | null
+  likesCount: number
+  createdAt: string
+  liked: boolean
+}
+
+export type DiscussionCreated = {
+  id: number
+  strategyId: number | null
+  strategyMadePublic: boolean
+}
+
+export function listDiscussions(): Promise<DiscussionPost[]> {
+  return requestJson('/discussions').then((body) => {
+    if (!Array.isArray(body)) throw new Error('Could not load discussions.')
+    return body.map(readDiscussion)
+  })
+}
+
+export function createDiscussion(body: {
+  body: string
+  strategyId?: number
+  parentId?: number
+}): Promise<DiscussionCreated> {
+  return requestJson('/discussions', {
+    method: 'POST',
+    body: JSON.stringify({
+      body: body.body,
+      ...(body.strategyId != null ? { strategy_id: body.strategyId } : {}),
+      ...(body.parentId != null ? { parent_id: body.parentId } : {}),
+    }),
+  }).then(readDiscussionCreated)
+}
+
+export function likeDiscussion(postId: number): Promise<{ id: number; likesCount: number; liked: boolean }> {
+  return requestJson(`/discussions/${postId}/like`, { method: 'POST' }).then((body) => {
+    if (!body || typeof body !== 'object') throw new Error('Discussion response was not valid.')
+    const row = body as { id?: unknown; likes_count?: unknown; liked?: unknown }
+    return {
+      id: readId(row.id),
+      likesCount: typeof row.likes_count === 'number' ? row.likes_count : 0,
+      liked: row.liked === true,
+    }
+  })
+}
+
+function readDiscussion(body: unknown): DiscussionPost {
+  if (!body || typeof body !== 'object') throw new Error('Discussion response was not valid.')
+  const row = body as {
+    id?: unknown
+    user_id?: unknown
+    author?: unknown
+    body?: unknown
+    strategy_id?: unknown
+    parent_id?: unknown
+    likes_count?: unknown
+    created_at?: unknown
+    liked?: unknown
+  }
+  if (typeof row.body !== 'string' || typeof row.author !== 'string') {
+    throw new Error('Discussion response was not valid.')
+  }
+  return {
+    id: readId(row.id),
+    userId: readId(row.user_id),
+    author: row.author,
+    body: row.body,
+    strategyId: row.strategy_id == null ? null : readId(row.strategy_id),
+    parentId: row.parent_id == null ? null : readId(row.parent_id),
+    likesCount: typeof row.likes_count === 'number' ? row.likes_count : 0,
+    createdAt: typeof row.created_at === 'string' ? row.created_at : '',
+    liked: row.liked === true,
+  }
+}
+
+function readDiscussionCreated(body: unknown): DiscussionCreated {
+  if (!body || typeof body !== 'object') throw new Error('Discussion response was not valid.')
+  const row = body as { id?: unknown; strategy_id?: unknown; strategy_made_public?: unknown }
+  return {
+    id: readId(row.id),
+    strategyId: row.strategy_id == null ? null : readId(row.strategy_id),
+    strategyMadePublic: row.strategy_made_public === true,
+  }
+}
+
+export function askAssistant(prompt: string): Promise<AssistantReply> {
+  return requestJson('/llm', {
+    method: 'POST',
+    body: JSON.stringify({ prompt }),
+  }).then(readAssistantReply)
+}
+
+function readAssistantReply(body: unknown): AssistantReply {
+  if (!body || typeof body !== 'object') throw new Error('Assistant response was not valid.')
+  const row = body as { reply?: unknown; dummy?: unknown }
+  if (typeof row.reply !== 'string' || !row.reply.trim()) {
+    throw new Error('Assistant response was not valid.')
+  }
+  return { reply: row.reply, dummy: row.dummy === true }
+}
+
 export function updateStrategy(id: number, body: StrategyWrite): Promise<StrategyRecord> {
   return requestJson(`/strategies/${id}`, {
     method: 'PUT',

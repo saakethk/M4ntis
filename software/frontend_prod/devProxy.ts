@@ -7,6 +7,7 @@ export const API_PREFIXES = [
   '/symbols',
   '/backtests',
   '/discussions',
+  '/llm',
   '/health',
 ] as const
 

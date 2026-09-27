@@ -14,6 +14,10 @@ import psycopg
 from helpers.db import connect
 from helpers.strategies import PRIVATE, PUBLIC, StrategyForbidden, StrategyNotFound
 
+
+class PostNotFound(Exception):
+    pass
+
 _SELECT_STRATEGY = """
 SELECT id, user_id, visibility
 FROM strategies
@@ -59,9 +63,10 @@ def create_post(
     try:
         with conn.transaction():
             made_public, stored_strategy_id = _attach_strategy(conn, user_id, strategy_id)
+            stored_parent_id = _require_parent(conn, parent_id)
             record = conn.execute(
                 _INSERT_POST,
-                (user_id, cleaned, stored_strategy_id, parent_id),
+                (user_id, cleaned, stored_strategy_id, stored_parent_id),
             ).fetchone()
         return {
             "id": int(record[0]),
@@ -94,6 +99,102 @@ def _attach_strategy(
         (stored_strategy_id, user_id),
     ).fetchone()
     return updated is not None, stored_strategy_id
+
+
+def _require_parent(conn: psycopg.Connection, parent_id: int | None) -> int | None:
+    if parent_id is None:
+        return None
+    row = conn.execute(
+        "SELECT id FROM discussion_posts WHERE id = %s",
+        (int(parent_id),),
+    ).fetchone()
+    if row is None:
+        raise PostNotFound()
+    return int(parent_id)
+
+
+def list_posts(user_id: int) -> list[dict[str, Any]]:
+    """Every post, oldest first, with whether this user liked it."""
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            """
+            SELECT p.id, p.user_id, u.email, p.body, p.strategy_id, p.parent_id,
+                   p.likes_count, p.created_at,
+                   EXISTS (
+                       SELECT 1 FROM discussion_likes l
+                       WHERE l.post_id = p.id AND l.user_id = %s
+                   )
+            FROM discussion_posts p
+            JOIN users u ON u.id = p.user_id
+            ORDER BY p.created_at, p.id
+            """,
+            (user_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [_public_post(row) for row in rows]
+
+
+def toggle_like(user_id: int, post_id: int) -> dict[str, Any]:
+    """Like a post, or remove the like if it is already there."""
+    conn = _connect()
+    try:
+        with conn.transaction():
+            post = conn.execute(
+                "SELECT likes_count FROM discussion_posts WHERE id = %s",
+                (post_id,),
+            ).fetchone()
+            if post is None:
+                raise PostNotFound()
+            existing = conn.execute(
+                """
+                SELECT 1 FROM discussion_likes
+                WHERE post_id = %s AND user_id = %s
+                """,
+                (post_id, user_id),
+            ).fetchone()
+            if existing is None:
+                conn.execute(
+                    "INSERT INTO discussion_likes (post_id, user_id) VALUES (%s, %s)",
+                    (post_id, user_id),
+                )
+                liked = True
+                delta = 1
+            else:
+                conn.execute(
+                    "DELETE FROM discussion_likes WHERE post_id = %s AND user_id = %s",
+                    (post_id, user_id),
+                )
+                liked = False
+                delta = -1
+            updated = conn.execute(
+                """
+                UPDATE discussion_posts
+                SET likes_count = GREATEST(likes_count + %s, 0)
+                WHERE id = %s
+                RETURNING likes_count
+                """,
+                (delta, post_id),
+            ).fetchone()
+        return {"id": post_id, "likes_count": int(updated[0]), "liked": liked}
+    finally:
+        conn.close()
+
+
+def _public_post(row: tuple[Any, ...]) -> dict[str, Any]:
+    created = row[7]
+    return {
+        "id": int(row[0]),
+        "user_id": int(row[1]),
+        "author": str(row[2]),
+        "body": str(row[3]),
+        "strategy_id": None if row[4] is None else int(row[4]),
+        "parent_id": None if row[5] is None else int(row[5]),
+        "likes_count": int(row[6]),
+        "created_at": created.isoformat() if hasattr(created, "isoformat") else str(created),
+        "liked": bool(row[8]),
+    }
 
 
 def _connect() -> psycopg.Connection:
