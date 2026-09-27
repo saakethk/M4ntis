@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getBacktest, type BacktestReport } from '../../api/backtests.ts'
 import { dateTime, money, pct, signedMoney, signedPct } from '../../lib/format.ts'
+import { BacktestAnalysis } from './BacktestAnalysis.tsx'
 
 type Props = {
   id: number
@@ -54,6 +55,7 @@ function ReportBody({ report }: { report: BacktestReport }) {
   const optional = (value: number | null, format: (v: number) => string) => (value == null ? '–' : format(value))
   return (
     <div className="plan-grid">
+      <BacktestAnalysis backtestId={report.id} />
       <article className="plan-card plan-teal">
         <h2>Overall performance</h2>
         <EquityChart points={report.balances.map((point) => point.equity)} />
