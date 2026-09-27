@@ -10,13 +10,6 @@ import { parseRoute, routePath, type AppScreen } from './routes'
 function currentRoute(): AppScreen {
   return parseRoute(window.location.pathname)
 }
-<<<<<<< Updated upstream
-
-function currentRoute(): Screen {
-  return parseRoute(window.location.pathname)
-}
-=======
->>>>>>> Stashed changes
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -24,7 +17,7 @@ export default function App() {
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
-  const [screen, setScreen] = useState<Screen>(currentRoute)
+  const [screen, setScreen] = useState<AppScreen>(currentRoute())
 
   useEffect(() => {
     function onPopState() {
