@@ -41,6 +41,9 @@ class _Conn:
         self.statements: list[tuple[str, object]] = []
         self.closed = False
 
+    def commit(self) -> None:
+        return None
+
     def transaction(self) -> "_Conn":
         return self
 

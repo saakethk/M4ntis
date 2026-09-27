@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { askAssistant } from '../api'
+import { askAssistant, type AssistantProgram } from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, CATEGORIES } from '../blocks/catalog'
 import type { BlockType } from '../blocks/types'
 
@@ -12,9 +12,10 @@ const GROUPS = CATEGORIES.map((category) => ({
   ),
 })).filter((group) => group.blocks.length > 0)
 
-function Assistant() {
+function Assistant({ onApply }: { onApply?: (program: AssistantProgram) => void }) {
   const [prompt, setPrompt] = useState('')
   const [reply, setReply] = useState<string | null>(null)
+  const [program, setProgram] = useState<AssistantProgram | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -27,8 +28,10 @@ function Assistant() {
     try {
       const body = await askAssistant(text)
       setReply(body.reply)
+      setProgram(body.program)
     } catch (caught) {
       setReply(null)
+      setProgram(null)
       setError(caught instanceof Error ? caught.message : 'Could not reach the server.')
     } finally {
       setPending(false)
@@ -49,12 +52,23 @@ function Assistant() {
         {pending ? 'Asking…' : 'Ask'}
       </button>
       {reply && <p className="assistant-reply">{reply}</p>}
+      {program && onApply ? (
+        <button type="button" className="assistant-apply" onClick={() => onApply(program)}>
+          Apply to canvas
+        </button>
+      ) : null}
       {error && <p className="assistant-error">{error}</p>}
     </form>
   )
 }
 
-export function BlockPalette({ onAdd }: { onAdd: (type: BlockType) => void }) {
+export function BlockPalette({
+  onAdd,
+  onApply,
+}: {
+  onAdd: (type: BlockType) => void
+  onApply?: (program: AssistantProgram) => void
+}) {
   const dragged = useRef(false)
 
   return (
@@ -101,7 +115,7 @@ export function BlockPalette({ onAdd }: { onAdd: (type: BlockType) => void }) {
           </section>
         ))}
       </div>
-      <Assistant />
+      <Assistant onApply={onApply} />
     </aside>
   )
 }

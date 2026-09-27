@@ -28,7 +28,7 @@ import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/ty
 import { BlockNode } from '../flow/BlockNode'
 import { START_NODE_ID, analyze, checkConnection, connect, makeNode } from '../flow/graph'
 import { fromDocument, toDocument, toIR } from '../flow/serialize'
-import { TEMPLATES } from '../flow/templates'
+import { TEMPLATES, assistantCrossover, type AssistantProgram } from '../flow/templates'
 import { BlockPalette, DRAG_MIME } from './BlockPalette'
 
 const nodeTypes: NodeTypes = Object.fromEntries(BLOCK_TYPES.map((type) => [type, BlockNode]))
@@ -201,6 +201,18 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
     [loaded, screenToFlowPosition, setNodes],
   )
 
+  const applyProgram = useCallback(
+    (program: AssistantProgram) => {
+      if (!loaded) return
+      const graph = assistantCrossover(program)
+      setNodes(graph.nodes)
+      setEdges(graph.edges)
+      setSaved(false)
+      showMessage('Applied the assistant strategy.', false)
+    },
+    [loaded, setEdges, setNodes, showMessage],
+  )
+
   const onDrop = useCallback(
     (event: DragEvent) => {
       event.preventDefault()
@@ -311,7 +323,7 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
 
   return (
     <div className="strategy-editor">
-      <BlockPalette onAdd={addBlock} />
+      <BlockPalette onAdd={addBlock} onApply={applyProgram} />
       <section className="editor-stage">
         <div className="canvas-bar">
           <div className="canvas-title">

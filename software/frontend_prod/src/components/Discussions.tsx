@@ -3,7 +3,9 @@ import {
   createDiscussion,
   likeDiscussion,
   listDiscussions,
+  listStrategies,
   type DiscussionPost,
+  type StrategySummary,
 } from '../api'
 import { displayName } from '../strategies'
 
@@ -16,6 +18,7 @@ export function Discussions({ onOpenStrategy }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [strategies, setStrategies] = useState<StrategySummary[]>([])
 
   async function reload() {
     const next = await listDiscussions()
@@ -36,6 +39,20 @@ export function Discussions({ onOpenStrategy }: Props) {
       })
       .finally(() => {
         if (!ignore) setLoading(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+    listStrategies()
+      .then((rows) => {
+        if (!ignore) setStrategies(rows)
+      })
+      .catch(() => {
+        if (!ignore) setStrategies([])
       })
     return () => {
       ignore = true
@@ -78,6 +95,7 @@ export function Discussions({ onOpenStrategy }: Props) {
       {error ? <p className="form-error">{error}</p> : null}
       {notice ? <p className="discussion-notice">{notice}</p> : null}
       <Composer
+        strategies={strategies}
         onSubmit={async (body, strategyId) => {
           await publish(body, strategyId)
         }}
@@ -105,9 +123,11 @@ export function Discussions({ onOpenStrategy }: Props) {
 function Composer({
   onSubmit,
   parent,
+  strategies = [],
 }: {
   onSubmit: (body: string, strategyId?: number) => Promise<void>
   parent?: boolean
+  strategies?: StrategySummary[]
 }) {
   const [body, setBody] = useState('')
   const [strategy, setStrategy] = useState('')
@@ -146,13 +166,15 @@ function Composer({
       />
       {parent ? null : (
         <label>
-          Strategy id
-          <input
-            value={strategy}
-            inputMode="numeric"
-            placeholder="Optional"
-            onChange={(event) => setStrategy(event.target.value)}
-          />
+          Strategy
+          <select value={strategy} onChange={(event) => setStrategy(event.target.value)}>
+            <option value="">None</option>
+            {strategies.map((item) => (
+              <option key={item.id} value={String(item.id)}>
+                {item.name}
+              </option>
+            ))}
+          </select>
         </label>
       )}
       {error ? <p className="form-error">{error}</p> : null}

@@ -61,6 +61,9 @@ def create_post(
     cleaned = clean_body(body)
     conn = _connect()
     try:
+        # connect() already ran SET TIME ZONE, which opens a transaction.
+        # transaction() would only be a savepoint, and close() would roll the post back.
+        conn.commit()
         with conn.transaction():
             made_public, stored_strategy_id = _attach_strategy(conn, user_id, strategy_id)
             stored_parent_id = _require_parent(conn, parent_id)
@@ -140,6 +143,7 @@ def toggle_like(user_id: int, post_id: int) -> dict[str, Any]:
     """Like a post, or remove the like if it is already there."""
     conn = _connect()
     try:
+        conn.commit()
         with conn.transaction():
             post = conn.execute(
                 "SELECT likes_count FROM discussion_posts WHERE id = %s",
