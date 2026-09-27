@@ -122,11 +122,39 @@ class AskTest(unittest.TestCase):
             ("gemini", "gemini-2.5-pro"),
         )
         self.assertEqual(
-            resolve_assistant_model(None, "Llama-3.3-8B-Instruct"),
-            ("meta", "Llama-3.3-8B-Instruct"),
+            resolve_assistant_model(None, "muse-spark-1.1"),
+            ("meta", "muse-spark-1.1"),
         )
-        self.assertEqual(resolve_assistant_model("meta", None), ("meta", "Llama-3.3-70B-Instruct"))
-        self.assertEqual(ASSISTANT_MODELS["gemini"][0], "gemini-2.0-flash")
+        self.assertEqual(resolve_assistant_model("meta", None), ("meta", "muse-spark-1.3"))
+        self.assertEqual(
+            resolve_assistant_model(None, "muse-spark-1.2"),
+            ("meta", "muse-spark-1.2"),
+        )
+        self.assertEqual(
+            ASSISTANT_MODELS["meta"],
+            (
+                "muse-spark-1.3",
+                "muse-spark-1.3-contributor",
+                "muse-spark-1.2",
+                "muse-spark-1.2-contributor",
+                "muse-spark-1.1",
+            ),
+        )
+        self.assertEqual(
+            ASSISTANT_MODELS["gemini"],
+            (
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash-lite",
+                "gemini-3.1-pro-preview",
+            ),
+        )
+        self.assertEqual(
+            resolve_assistant_model("gemini", "gemini-3.8-flash"),
+            ("gemini", "gemini-3.8-flash"),
+        )
+        self.assertEqual(resolve_assistant_model("gemini", None), ("gemini", "gemini-2.5-flash"))
 
     def test_unknown_provider_and_model_are_rejected(self) -> None:
         with self.assertRaises(ValueError) as unknown_provider:
@@ -143,7 +171,7 @@ class AskTest(unittest.TestCase):
         self.assertIn("Unknown model", str(unknown_model.exception))
         self.assertEqual(called, [])
         with self.assertRaises(ValueError):
-            ask("help", provider="gemini", model="Llama-3.3-70B-Instruct", complete=lambda prompt: "unused")
+            ask("help", provider="gemini", model="muse-spark-1.3", complete=lambda prompt: "unused")
 
 
 class NormalizeGraphTest(unittest.TestCase):
@@ -266,6 +294,19 @@ class LlmRouteTest(unittest.TestCase):
             response = self.client.post("/llm", json={"prompt": "help", "temperature": 0})
         self.assertEqual(response.status_code, 422)
 
+    def test_provider_and_model_are_not_extra_inputs(self) -> None:
+        agent = _FakeAgent("A tick is one bar.")
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent),
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "gemini", "model": "gemini-2.5-flash"},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotIn("Extra inputs are not permitted", response.text)
+
     def test_selected_model_is_passed_to_the_agent(self) -> None:
         agent = _FakeAgent("A tick is one bar.")
         with (
@@ -274,10 +315,10 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post(
                 "/llm",
-                json={"prompt": "help", "provider": "meta", "model": "Llama-3.3-8B-Instruct"},
+                json={"prompt": "help", "provider": "meta", "model": "muse-spark-1.1"},
             )
         self.assertEqual(response.status_code, 200, response.text)
-        from_env.assert_called_once_with(provider="meta", model="Llama-3.3-8B-Instruct")
+        from_env.assert_called_once_with(provider="meta", model="muse-spark-1.1")
 
     def test_unknown_model_is_400(self) -> None:
         with (
@@ -296,7 +337,7 @@ class LlmRouteTest(unittest.TestCase):
         with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
             response = self.client.post(
                 "/llm",
-                json={"prompt": "help", "provider": "cursor", "model": "gemini-2.0-flash"},
+                json={"prompt": "help", "provider": "cursor", "model": "gemini-2.5-flash"},
             )
         self.assertEqual(response.status_code, 400)
         self.assertIn("Unknown provider", response.json()["detail"])
@@ -304,7 +345,7 @@ class LlmRouteTest(unittest.TestCase):
     def test_missing_selected_provider_key_is_503(self) -> None:
         env = {
             "AI_PROVIDER": "gemini",
-            "AI_MODEL": "gemini-2.0-flash",
+            "AI_MODEL": "gemini-2.5-flash",
             "GEMINI_API_KEY": "present",
             "META_API_KEY": "",
             "OPENAI_API_KEY": "",
@@ -318,7 +359,7 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post(
                 "/llm",
-                json={"prompt": "help", "provider": "meta", "model": "Llama-3.3-70B-Instruct"},
+                json={"prompt": "help", "provider": "meta", "model": "muse-spark-1.3"},
             )
         self.assertEqual(response.status_code, 503)
         self.assertIn("META_API_KEY", response.json()["detail"])
@@ -340,4 +381,21 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post("/llm", json={"prompt": "help"})
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(response.json()["detail"], "Assistant is unavailable")
+        self.assertEqual(response.json()["detail"], "Assistant is unavailable: openai: bad key (HTTP 401)")
+
+    def test_provider_failure_does_not_echo_an_api_key(self) -> None:
+        leaked = "AIzaSyDUMMYKEYVALUE1234567890"
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(
+                main.llm.AIAgent,
+                "from_env",
+                side_effect=AIProviderError("gemini", f"rejected bearer {leaked}", 400),
+            ),
+        ):
+            response = self.client.post("/llm", json={"prompt": "help"})
+        self.assertEqual(response.status_code, 502)
+        detail = response.json()["detail"]
+        self.assertNotIn(leaked, detail)
+        self.assertIn("Assistant is unavailable:", detail)
+        self.assertIn("[redacted]", detail)

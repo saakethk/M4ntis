@@ -42,7 +42,7 @@ reply.text, reply.input_tokens, reply.output_tokens, reply.finish_reason
 | `openai` | `OPENAI_API_KEY` | OpenAI Chat Completions |
 | `anthropic` | `ANTHROPIC_API_KEY` | Anthropic Messages |
 | `gemini` | `GEMINI_API_KEY` | Gemini `generateContent` |
-| `meta` | `META_API_KEY` | Llama API, OpenAI-compatible endpoint |
+| `meta` | `META_API_KEY` | Meta Model API chat completions (`https://api.meta.ai/v1`) |
 | `openai_compatible` | `AI_API_KEY` (optional) | Any OpenAI-style server at `AI_BASE_URL`, e.g. Ollama or vLLM |
 
 Errors raise `AIConfigError` (bad setup) or `AIProviderError` (the API refused or failed, with
