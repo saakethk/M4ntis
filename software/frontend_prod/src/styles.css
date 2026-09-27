@@ -806,12 +806,11 @@ input:focus-visible {
 }
 
 .backtest-menu {
-  width: 260px;
-  flex: none;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 16px 14px 24px;
   background: #fff;
-  border-left: 1px solid #e5e7eb;
   color: #0f172a;
 }
 
@@ -899,29 +898,36 @@ input:focus-visible {
 .block-palette {
   width: 220px;
   flex: none;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
   background: #fff;
   border-right: 1px solid #e5e7eb;
   padding: 0;
 }
 
 .palette-blocks {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
   padding: 14px 10px 12px;
+}
+
+.editor-rail {
+  width: 280px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #fff;
+  border-left: 1px solid #e5e7eb;
 }
 
 .assistant {
   flex: none;
+  max-height: 46%;
+  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin: 0;
-  padding: 12px;
-  border-top: 1px solid #e5e7eb;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid #e5e7eb;
   background: #fff;
 }
 
@@ -1971,5 +1977,9 @@ input:focus-visible {
 
   .block-palette {
     width: 180px;
+  }
+
+  .editor-rail {
+    width: 220px;
   }
 }

@@ -34,7 +34,7 @@ import { BlockNode } from '../flow/BlockNode'
 import { START_NODE_ID, checkConnection, connect, makeNode } from '../flow/graph'
 import { fromDocument, toDocument, toIR } from '../flow/serialize'
 import { TEMPLATES, assistantCrossover, type AssistantProgram } from '../flow/templates'
-import { BlockPalette, DRAG_MIME } from './BlockPalette'
+import { Assistant, BlockPalette, DRAG_MIME } from './BlockPalette'
 
 const nodeTypes: NodeTypes = Object.fromEntries(BLOCK_TYPES.map((type) => [type, BlockNode]))
 
@@ -387,7 +387,7 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
 
   return (
     <div className="strategy-editor">
-      <BlockPalette onAdd={addBlock} onApply={applyProgram} />
+      <BlockPalette onAdd={addBlock} />
       <section className="editor-stage">
         <div className="canvas-bar">
           <div className="canvas-title">
@@ -517,7 +517,10 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
           )}
         </div>
       </section>
-      <BacktestMenu menu={backtest} error={backtestError} />
+      <aside className="editor-rail">
+        <Assistant onApply={applyProgram} />
+        <BacktestMenu menu={backtest} error={backtestError} />
+      </aside>
     </div>
   )
 }
@@ -534,7 +537,7 @@ function money(value: number) {
 
 function BacktestMenu({ menu, error }: { menu: BacktestMenu | null; error: string | null }) {
   return (
-    <aside className="backtest-menu" aria-label="Backtest">
+    <section className="backtest-menu" aria-label="Backtest">
       <h2>Backtest</h2>
       {error ? <p className="form-error">{error}</p> : null}
       {menu ? (
@@ -565,7 +568,7 @@ function BacktestMenu({ menu, error }: { menu: BacktestMenu | null; error: strin
       ) : (
         !error && <p className="backtest-wait">Loading backtest…</p>
       )}
-    </aside>
+    </section>
   )
 }
 
