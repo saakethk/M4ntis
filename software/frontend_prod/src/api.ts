@@ -207,10 +207,31 @@ function readBacktestMenu(body: unknown): BacktestMenu {
   }
 }
 
-export function runDummyBacktest(userId: number, strategyId: number): Promise<BacktestResult> {
+/** `start` and `end` are inclusive `YYYY-MM-DD` dates; empty uses all stored bars on that side. */
+export type BacktestParams = {
+  start: string
+  end: string
+  capital: number
+}
+
+/**
+ * Compile the saved strategy and replay it over market bars on the TradeCPU simulator.
+ * A compile error, missing market data, or cash going negative rejects with the server's message.
+ */
+export function runBacktest(
+  userId: number,
+  strategyId: number,
+  params: BacktestParams,
+): Promise<BacktestResult> {
   return requestJson('/backtests', {
     method: 'POST',
-    body: JSON.stringify({ user_id: userId, strategy_id: strategyId }),
+    body: JSON.stringify({
+      user_id: userId,
+      strategy_id: strategyId,
+      start: params.start || null,
+      end: params.end || null,
+      capital: params.capital,
+    }),
   }).then(readBacktest)
 }
 

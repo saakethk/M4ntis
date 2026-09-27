@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 import uvicorn
@@ -96,9 +97,14 @@ class LlmAsk(BaseModel):
 
 
 class BacktestCreate(BaseModel):
+    """``start`` and ``end`` are inclusive dates; ``capital`` overrides the Start block's balance."""
+
     model_config = ConfigDict(extra="forbid")
     user_id: int
     strategy_id: int
+    start: date | None = None
+    end: date | None = None
+    capital: float | None = Field(default=None, gt=0, le=backtests.MAX_CAPITAL)
 
 
 class StrategyUpdate(BaseModel):
@@ -388,11 +394,24 @@ def create_backtest_route(body: BacktestCreate, request: Request) -> dict:
     if body.user_id != user.id:
         raise HTTPException(status_code=403, detail="You can only run a backtest as yourself")
     try:
-        return backtests.run_dummy_backtest(body.user_id, body.strategy_id)
+        return backtests.run_backtest(
+            body.user_id,
+            body.strategy_id,
+            start=body.start,
+            end=body.end,
+            capital=body.capital,
+        )
     except backtests.UserNotFound as exc:
         raise HTTPException(status_code=404, detail="User not found") from exc
     except strategies.StrategyNotFound as exc:
         raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except compiler.CompilationFailed as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "detail": str(exc), "diagnostics": exc.diagnostics},
+        )
+    except backtests.BacktestFailed as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (RuntimeError, psycopg.Error) as exc:
         raise HTTPException(status_code=503, detail="Backtest database is unavailable") from exc
 

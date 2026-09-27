@@ -52,8 +52,14 @@ export function BacktestPage({ id, onOpenStrategy }: Props) {
   )
 }
 
+// A strategy can order on every bar, so long runs list only the first orders.
+const ORDER_ROWS = 200
+
 function ReportBody({ report }: { report: BacktestReport }) {
   const metrics = report.metrics
+  const buys = report.orders.filter((order) => order.side === 'buy').length
+  const sells = report.orders.length - buys
+  const shown = report.orders.slice(0, ORDER_ROWS)
   return (
     <div className="plan-grid">
       <article className="plan-card plan-teal">
@@ -71,7 +77,9 @@ function ReportBody({ report }: { report: BacktestReport }) {
       <article className="plan-card plan-navy">
         <h2>Trades</h2>
         <dl className="plan-metrics">
-          <Metric label="Trades" value={String(metrics.numTrades)} />
+          <Metric label="Orders" value={count(report.orders.length)} />
+          <Metric label="Buys / sells" value={`${count(buys)} / ${count(sells)}`} />
+          <Metric label="Closed trades" value={count(metrics.numTrades)} />
           <Metric label="Won" value={String(metrics.numTradesWon)} />
           <Metric label="Lost" value={String(metrics.numTradesLost)} />
           <Metric label="Average win" value={metrics.avgWin == null ? '–' : money(metrics.avgWin)} />
@@ -95,8 +103,14 @@ function ReportBody({ report }: { report: BacktestReport }) {
       </article>
       <article className="plan-card plan-amber">
         <h2>Orders</h2>
+        {report.orders.length === 0 ? <p className="plan-sub">The strategy never placed an order.</p> : null}
+        {report.orders.length > shown.length ? (
+          <p className="plan-sub">
+            Showing the first {count(shown.length)} of {count(report.orders.length)} orders.
+          </p>
+        ) : null}
         <ul className="plan-rows">
-          {report.orders.map((order, index) => (
+          {shown.map((order, index) => (
             <li key={`${order.ts}-${order.side}-${index}`}>
               <span className={order.side === 'buy' ? 'up' : 'down'}>{order.side}</span>
               <span>
@@ -152,6 +166,10 @@ function EquityChart({ points }: { points: number[] }) {
       <polyline points={line} />
     </svg>
   )
+}
+
+function count(value: number) {
+  return value.toLocaleString('en-US')
 }
 
 function money(value: number) {
