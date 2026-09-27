@@ -23,10 +23,12 @@ function NumberField({
   def,
   value,
   onChange,
+  className,
 }: {
   def: Extract<ParamDef, { type: 'number' }>;
   value: number;
   onChange: (v: number) => void;
+  className?: string;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -42,7 +44,7 @@ function NumberField({
 
   return (
     <input
-      className="nodrag param-input"
+      className={className ?? 'nodrag param-input'}
       type="number"
       value={draft ?? String(value)}
       step={def.step ?? (def.integer ? 1 : 'any')}
@@ -52,6 +54,36 @@ function NumberField({
       onBlur={(e) => commit(e.target.value)}
       onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
     />
+  );
+}
+
+function SelectControl({
+  def,
+  value,
+  onChange,
+  className,
+}: {
+  def: Extract<ParamDef, { type: 'select' }>;
+  value: ParamValue;
+  onChange: (v: ParamValue) => void;
+  className?: string;
+}) {
+  return (
+    <select
+      className={className ?? 'nodrag param-input'}
+      aria-label={def.label}
+      value={String(value)}
+      onChange={(e) => {
+        const opt = def.options.find((o) => String(o.value) === e.target.value);
+        if (opt) onChange(opt.value);
+      }}
+    >
+      {def.options.map((o) => (
+        <option key={String(o.value)} value={String(o.value)}>
+          {o.label}
+        </option>
+      ))}
+    </select>
   );
 }
 
@@ -75,22 +107,144 @@ function ParamField({
       {def.type === 'number' ? (
         <NumberField def={def} value={Number(value)} onChange={onChange} />
       ) : (
-        <select
-          className="nodrag param-input"
-          value={String(value)}
-          onChange={(e) => {
-            const opt = def.options.find((o) => String(o.value) === e.target.value);
-            if (opt) onChange(opt.value);
-          }}
-        >
-          {def.options.map((o) => (
-            <option key={String(o.value)} value={String(o.value)}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <SelectControl def={def} value={value} onChange={onChange} />
       )}
     </label>
+  );
+}
+
+/**
+ * Canvas-only chips for blocks that hold or forward a single value.
+ * `current_price` forwards one stock buffer, `constant` holds a literal,
+ * and `get_var` forwards a variable slot. The document and IR are unchanged.
+ */
+const VALUE_CHIP_LABEL: Partial<Record<BlockType, string>> = {
+  current_price: 'Price',
+  constant: 'Constant',
+  get_var: 'Var',
+};
+
+function StartBlock({
+  data,
+  selected,
+  def,
+  setParam,
+}: {
+  data: BlockNodeT['data'];
+  selected?: boolean;
+  def: BlockDef;
+  setParam: (key: string, value: ParamValue) => void;
+}) {
+  const balance = def.params.find((p) => p.key === 'startingBalance');
+  const resolution = def.params.find((p) => p.key === 'resolution');
+  const buffers = def.params.filter((p) => p.key.startsWith('symbol') && p.type === 'select');
+  const execOuts = portsOf('start', 'exec', 'out');
+
+  return (
+    <div className={['block', 'block-start', selected ? 'selected' : ''].join(' ')}>
+      <div className="start-title">{def.label}</div>
+      <div className="start-fields">
+        {balance?.type === 'number' && (
+          <label className="start-field">
+            <span>Balance</span>
+            <NumberField
+              def={balance}
+              value={Number(data.params[balance.key] ?? balance.default)}
+              onChange={(v) => setParam(balance.key, v)}
+            />
+          </label>
+        )}
+        {resolution?.type === 'select' && (
+          <label className="start-field">
+            <span>Resolution</span>
+            <SelectControl
+              def={resolution}
+              value={data.params[resolution.key] ?? resolution.default}
+              onChange={(v) => setParam(resolution.key, v)}
+            />
+          </label>
+        )}
+      </div>
+      {buffers.length > 0 && (
+        <div className="buffer-chips" aria-label="Stock buffers">
+          {buffers.map((p) =>
+            p.type === 'select' ? (
+              <label key={p.key} className="buffer-chip" title={p.label}>
+                <span>{p.label}</span>
+                <SelectControl
+                  def={p}
+                  value={data.params[p.key] ?? p.default}
+                  onChange={(v) => setParam(p.key, v)}
+                  className="nodrag buffer-chip-select"
+                />
+              </label>
+            ) : null,
+          )}
+        </div>
+      )}
+      {execOuts.length > 0 && (
+        <div className="exec-outs">
+          {execOuts.map((p) => (
+            <div className="exec-out" key={p.id}>
+              <Handle type="source" position={Position.Bottom} id={p.id} className="handle-exec" />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ValueChip({
+  data,
+  selected,
+  def,
+  setParam,
+  withSymbols,
+}: {
+  data: BlockNodeT['data'];
+  selected?: boolean;
+  def: BlockDef;
+  setParam: (key: string, value: ParamValue) => void;
+  withSymbols: (p: ParamDef) => ParamDef;
+}) {
+  const label = VALUE_CHIP_LABEL[def.type] ?? def.label;
+  const dataOuts = portsOf(def.type, 'data', 'out');
+
+  return (
+    <div
+      className={['block', 'block-slim', `block-${def.type}`, selected ? 'selected' : ''].join(' ')}
+      title={def.label}
+    >
+      <span className="slim-label">{label}</span>
+      {def.params.map((raw) => {
+        const param = withSymbols(raw);
+        const value = data.params[param.key] ?? param.default;
+        if (param.type === 'number') {
+          return (
+            <NumberField
+              key={param.key}
+              def={param}
+              value={Number(value)}
+              onChange={(v) => setParam(param.key, v)}
+              className="nodrag param-input slim-input"
+            />
+          );
+        }
+        return (
+          <SelectControl
+            key={param.key}
+            def={param}
+            value={value}
+            onChange={(v) => setParam(param.key, v)}
+            className="nodrag param-input slim-input"
+          />
+        );
+      })}
+      {dataOuts.map((port) => (
+        <Handle key={port.id} type="source" position={Position.Right} id={port.id} className="handle-data" />
+      ))}
+    </div>
   );
 }
 
@@ -349,6 +503,16 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
   const setParam = (key: string, value: ParamValue) =>
     updateNodeData(id, { params: { ...data.params, [key]: value } });
 
+  if (def.type === 'start') {
+    return <StartBlock data={data} selected={selected} def={def} setParam={setParam} />;
+  }
+
+  if (def.type in VALUE_CHIP_LABEL) {
+    return (
+      <ValueChip data={data} selected={selected} def={def} setParam={setParam} withSymbols={withSymbols} />
+    );
+  }
+
   const execIn = portsOf(def.type, 'exec', 'in')[0];
   const execOuts = portsOf(def.type, 'exec', 'out');
   const dataIns = portsOf(def.type, 'data', 'in');
@@ -365,6 +529,7 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
         selected ? 'selected' : '',
         def.status === 'blocked' ? 'blocked' : '',
       ].join(' ')}
+      title={def.description || undefined}
     >
       {execIn && (
         <Handle type="target" position={Position.Top} id={execIn.id} className="handle-exec" />
@@ -392,12 +557,6 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
           </span>
         )}
       </div>
-
-      {def.description ? (
-        <p className="block-summary" title={def.description}>
-          {def.description}
-        </p>
-      ) : null}
 
       {def.condition && (
         <ConditionPanel

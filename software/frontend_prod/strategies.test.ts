@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { STRATEGIES, portfolioStrategies } from './src/strategies.ts'
+import { portfolioChoice, portfolioStrategies } from './src/strategies.ts'
 
-const DEFAULT_NAMES = [
+const SAMPLE_NAMES = [
   'Mean Reversion / SPY',
   'Trend Following Tech',
   'Volatility Breakout',
@@ -10,26 +10,15 @@ const DEFAULT_NAMES = [
 ]
 
 describe('portfolioStrategies', () => {
-  it('shows the built-in sample cards when the list request fails', () => {
-    const shown = portfolioStrategies(null)
-    assert.deepEqual(
-      shown.map((strategy) => strategy.name),
-      DEFAULT_NAMES,
-    )
-    assert.equal(shown, STRATEGIES)
-    assert.equal(shown[0].returnPct, 24.8)
+  it('returns no cards when the list request fails', () => {
+    assert.deepEqual(portfolioStrategies(null), [])
   })
 
-  it('shows the built-in sample cards when the signed-in user has no saved strategies', () => {
-    const shown = portfolioStrategies([])
-    assert.deepEqual(
-      shown.map((strategy) => strategy.id),
-      ['mean-reversion', 'trend-following', 'volatility-breakout', 'arbitrage-experiment'],
-    )
-    assert.equal(shown, STRATEGIES)
+  it('returns no cards when the signed-in user has no saved strategies', () => {
+    assert.deepEqual(portfolioStrategies([]), [])
   })
 
-  it('keeps saved strategies and does not append the samples', () => {
+  it('keeps saved strategies and does not append sample cards or sample stats', () => {
     const shown = portfolioStrategies([
       { id: 7, name: 'Opening Drive' },
       { id: 8, name: 'Close Auction' },
@@ -42,11 +31,30 @@ describe('portfolioStrategies', () => {
       shown.map((strategy) => strategy.id),
       ['7', '8'],
     )
-    assert.equal(shown[0].returnPct, STRATEGIES[0].returnPct)
-    assert.equal(shown[1].status, STRATEGIES[1].status)
+    assert.equal(shown[0].returnPct, null)
+    assert.equal(shown[0].maxDrawdownPct, null)
+    assert.equal(shown[0].status, 'draft')
     assert.equal(
-      shown.some((strategy) => DEFAULT_NAMES.includes(strategy.name)),
+      shown.some((strategy) => SAMPLE_NAMES.includes(strategy.name)),
       false,
     )
+  })
+})
+
+describe('portfolioChoice', () => {
+  it('shows Get Started only for a successful empty portfolio', () => {
+    assert.equal(portfolioChoice({ loading: false, failed: false, count: 0 }), 'get-started')
+  })
+
+  it('keeps a failed load as an error instead of Get Started', () => {
+    assert.equal(portfolioChoice({ loading: false, failed: true, count: 0 }), 'error')
+  })
+
+  it('lists saved strategies when the request returns rows', () => {
+    assert.equal(portfolioChoice({ loading: false, failed: false, count: 2 }), 'list')
+  })
+
+  it('stays on loading until the request settles', () => {
+    assert.equal(portfolioChoice({ loading: true, failed: false, count: 0 }), 'loading')
   })
 })
