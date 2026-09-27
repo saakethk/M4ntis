@@ -78,7 +78,12 @@ export interface SelectParamDef extends ParamBase {
   options: { value: ParamValue; label: string; hint?: string }[];
 }
 
-export type ParamDef = NumberParamDef | SelectParamDef;
+export interface TickerParamDef extends ParamBase {
+  type: 'ticker';
+  default: string;
+}
+
+export type ParamDef = NumberParamDef | SelectParamDef | TickerParamDef;
 
 export interface BlockDef {
   type: BlockType;

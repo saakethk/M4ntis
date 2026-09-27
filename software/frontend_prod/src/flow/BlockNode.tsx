@@ -1,10 +1,10 @@
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from '@xyflow/react';
 import { memo, useEffect, useId, useRef, useState } from 'react';
 import { BLOCK_DEFS, CATEGORIES, COMPARISON_OPERATORS, portsOf } from '../blocks/catalog';
-import { NUM_STOCK_BUFFERS, ticksToDuration } from '../blocks/hardware';
+import { ticksToDuration } from '../blocks/hardware';
 import { searchTickers, type TickerHit } from '../api';
 import type { BlockDef, BlockNode as BlockNodeT, BlockType, ParamDef, ParamValue, PortDef } from '../blocks/types';
-import { START_NODE_ID, assignPriceTicker } from './graph';
+import { START_NODE_ID, assignPriceTicker, tickerSymbols } from './graph';
 
 const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((category) => [category.id, category.label]),
@@ -507,19 +507,11 @@ function TickerSearch({ value, onChange }: { value: string; onChange: (symbol: s
   );
 }
 
-/** Resolution from Start. Tickers come from Get ticker blocks, then from symbols saved on older Start blocks. */
+/** Resolution from Start. Tickers come from `tickerSymbols` (Get ticker blocks, then older Start symbols). */
 function useStrategyContext() {
   const joined = useStore((s) => {
     const p = s.nodeLookup.get(START_NODE_ID)?.data?.params as Record<string, ParamValue> | undefined;
-    const tickers = s.nodes
-      .filter((node) => node.type === 'get_ticker')
-      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-      .slice(0, NUM_STOCK_BUFFERS)
-      .map((node) => String((node.data?.params as Record<string, ParamValue> | undefined)?.symbol ?? ''));
-    const symbols =
-      tickers.length > 0
-        ? Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => tickers[i] ?? '')
-        : Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => p?.[`symbol${i}`] ?? '');
+    const symbols = tickerSymbols(s.nodes as BlockNodeT[]);
     return [p?.resolution ?? '', ...symbols].join('|');
   });
   const [resolution, ...symbols] = joined.split('|');

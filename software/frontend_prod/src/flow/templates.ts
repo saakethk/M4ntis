@@ -79,6 +79,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       nodes: [
         start(),
+        makeNode('get_ticker', { x: -560, y: -20 }, { symbol: 'AAPL' }, 'aapl'),
         makeNode('sma', { x: -340, y: 140 }, { buffer: 0, n: 12 }, 'sma_fast'),
         makeNode('set_var', { x: 0, y: 150 }, { slot: 'VAR1' }, 'set_fast'),
         makeNode('sma', { x: -340, y: 330 }, { buffer: 0, n: 26 }, 'sma_slow'),
@@ -119,6 +120,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       nodes: [
         start(),
+        makeNode('get_ticker', { x: -680, y: -20 }, { symbol: 'AAPL' }, 'aapl'),
         makeNode('current_price', { x: -460, y: 120 }, { buffer: 0 }, 'price'),
         makeNode('mean_reversion_bands', { x: -460, y: 270 }, { buffer: 0, n: 20, k: 2 }, 'bands'),
         makeNode('if', { x: 0, y: 170 }, { operator: '<=' }, 'if_lower'),
