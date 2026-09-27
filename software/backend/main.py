@@ -384,7 +384,7 @@ def ask_llm_route(body: LlmAsk, request: Request) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except llm.AIConfigError as exc:
-        raise HTTPException(status_code=503, detail="Assistant is not configured") from exc
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except llm.AIProviderError as exc:
         raise HTTPException(status_code=502, detail="Assistant is unavailable") from exc
 

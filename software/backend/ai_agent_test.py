@@ -163,6 +163,41 @@ class AgentBehaviourTest(unittest.TestCase):
         with patch.dict("os.environ", env):
             agent = AIAgent.from_env()
         self.assertEqual((agent.provider.name, agent.model, agent.api_key), ("gemini", "some-model", "k"))
+        agent.close()
+
+    def test_from_env_uses_the_only_api_key(self):
+        env = {
+            "AI_PROVIDER": "",
+            "AI_MODEL": "",
+            "AI_BASE_URL": "",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "META_API_KEY": "",
+            "AI_API_KEY": "",
+            "GEMINI_API_KEY": "k",
+        }
+        with patch.dict("os.environ", env):
+            agent = AIAgent.from_env()
+        self.assertEqual(agent.provider.name, "gemini")
+        self.assertEqual(agent.model, "gemini-2.0-flash")
+        agent.close()
+
+    def test_from_env_names_the_missing_settings(self):
+        env = {
+            "AI_PROVIDER": "",
+            "AI_MODEL": "",
+            "AI_BASE_URL": "",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "GEMINI_API_KEY": "",
+            "META_API_KEY": "",
+            "AI_API_KEY": "",
+        }
+        with patch.dict("os.environ", env):
+            with self.assertRaises(AIConfigError) as caught:
+                AIAgent.from_env()
+        self.assertIn("AI_PROVIDER", str(caught.exception))
+        self.assertIn(".env", str(caught.exception))
 
     def test_provider_error_carries_status_and_message(self):
         agent = make_agent(

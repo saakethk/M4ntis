@@ -239,7 +239,7 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post("/llm", json={"prompt": "help"})
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["detail"], "Assistant is not configured")
+        self.assertEqual(response.json()["detail"], "set AI_PROVIDER")
 
     def test_provider_failure_is_502(self) -> None:
         with (
