@@ -19,11 +19,19 @@ _FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 # Models the assistant panel can select. The first id for a provider is its default.
 # Gemini ids are Gemini API model codes. gemini-2.0-flash was shut down on
-# 2026-06-01, so the default is gemini-2.5-flash. Meta ids are Muse Spark model
-# ids for https://api.meta.ai/v1/chat/completions (see https://dev.meta.ai/docs/models).
+# 2026-06-01, so the default is gemini-2.5-flash. Meta ids are the Muse Spark
+# models on https://api.meta.ai/v1/chat/completions
+# (https://ai.developer.meta.com/docs/models/). Contributor ids are the same
+# models on the tier that may be used for training.
 ASSISTANT_MODELS: dict[str, tuple[str, ...]] = {
     "gemini": ("gemini-2.5-flash", "gemini-2.5-pro"),
-    "meta": ("muse-spark-1.3", "muse-spark-1.1"),
+    "meta": (
+        "muse-spark-1.3",
+        "muse-spark-1.3-contributor",
+        "muse-spark-1.2",
+        "muse-spark-1.2-contributor",
+        "muse-spark-1.1",
+    ),
 }
 
 APPENDIX = """

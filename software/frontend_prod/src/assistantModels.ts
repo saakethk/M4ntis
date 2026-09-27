@@ -1,5 +1,6 @@
 // Models the assistant panel can switch to. Gemini ids are Gemini API model codes.
-// Meta ids are Muse Spark model ids for https://api.meta.ai/v1/chat/completions.
+// Meta ids are the Muse Spark models from https://ai.developer.meta.com/docs/models/
+// called at https://api.meta.ai/v1/chat/completions. Contributor ids may be used for training.
 
 export type AssistantModelChoice = {
   provider: 'gemini' | 'meta'
@@ -11,6 +12,9 @@ export const ASSISTANT_MODELS: readonly AssistantModelChoice[] = [
   { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   { provider: 'gemini', model: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
   { provider: 'meta', model: 'muse-spark-1.3', label: 'Muse Spark 1.3' },
+  { provider: 'meta', model: 'muse-spark-1.3-contributor', label: 'Muse Spark 1.3 Contributor' },
+  { provider: 'meta', model: 'muse-spark-1.2', label: 'Muse Spark 1.2' },
+  { provider: 'meta', model: 'muse-spark-1.2-contributor', label: 'Muse Spark 1.2 Contributor' },
   { provider: 'meta', model: 'muse-spark-1.1', label: 'Muse Spark 1.1' },
 ]
 

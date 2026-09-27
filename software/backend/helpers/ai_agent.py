@@ -152,8 +152,9 @@ class OpenAIProvider(OpenAICompatible):
 class MetaProvider(OpenAICompatible):
     """Meta Model API (Muse Spark) through its OpenAI-compatible chat endpoint.
 
-    https://dev.meta.ai/docs/protocols/chat-completions
-    POST https://api.meta.ai/v1/chat/completions with Authorization: Bearer.
+    https://ai.developer.meta.com/docs/protocols/chat-completions
+    POST https://api.meta.ai/v1/chat/completions
+    Authorization: Bearer, model such as muse-spark-1.3, messages[{role, content}].
     """
 
     name = "meta"
