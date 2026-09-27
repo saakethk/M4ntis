@@ -152,8 +152,10 @@ def cmd_hwtest(args: argparse.Namespace) -> int:
                 total_failures += rep.failures
                 status = "PASS" if rep.failures == 0 else f"FAIL ({rep.failures})"
                 bal = f"${rep.final_balance / 100:,.2f}" if rep.final_balance is not None else "?"
+                per_bar_ms = rep.rounds_s / max(len(rounds), 1) * 1e3
                 row = (f"{Path(path).name:32s} {Path(pattern).name:10s} {len(words):4d}w  warm-up {warmup:2d}  "
-                       f"buy {rep.buys:3d} sell {rep.sells:3d} hold {rep.holds:3d}  end {bal:>14s}  {status}")
+                       f"buy {rep.buys:3d} sell {rep.sells:3d} hold {rep.holds:3d}  end {bal:>14s}  "
+                       f"load {rep.load_s * 1e3:6.1f} ms  {per_bar_ms:6.3f} ms/bar  {status}")
                 summary.append(row)
                 if rep.lines:
                     print(f"{Path(path).name} / {pattern}")
@@ -205,7 +207,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="comma list of sine,walk,ramp,steps,spikes,flat and/or CSV paths (buf0..buf4), or 'all'")
     h.add_argument("--rounds", type=int, default=60, help="rounds to run after warm-up per pattern")
     h.add_argument("--seed", type=int, default=0, help="seed for the random-walk pattern")
-    h.add_argument("--tick-delay", type=float, default=0.01, help="seconds between TICK frames")
+    h.add_argument("--tick-delay", type=float, default=0.0,
+                   help="seconds between TICK frames (the RTL parses back-to-back frames at line rate)")
     h.add_argument("--price-exp", action="append", default=[], metavar="BUF=EXP")
     h.add_argument("--dry-run", action="store_true", help="use a simulated board instead of the serial port")
     h.add_argument("-v", "--verbose", action="store_true", help="print every round, not just mismatches")
