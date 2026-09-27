@@ -61,6 +61,7 @@ BLOCKS: dict[str, BlockSpec] = {
         exec_in=True, exec_outs=("out",), data_ins=("value",), params={"slot": SLOT}
     ),
     "get_var": BlockSpec(data_outs=("out",), params={"slot": SLOT}),
+    "get_balance": BlockSpec(data_outs=("out",)),
     "add": BlockSpec(data_ins=("a", "b"), data_outs=("out",)),
     "subtract": BlockSpec(data_ins=("a", "b"), data_outs=("out",)),
     "multiply": BlockSpec(data_ins=("a", "b"), data_outs=("out",)),

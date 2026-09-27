@@ -17,6 +17,7 @@ export type BlockType =
   | 'constant'
   | 'set_var'
   | 'get_var'
+  | 'get_balance'
   | 'add'
   | 'subtract'
   | 'multiply'

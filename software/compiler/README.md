@@ -93,6 +93,7 @@ drive the program.
 
 - **Numbers are fixed-point decimals.** Each buffer delivers prices at its price exponent: 2 means
   cents, and the host picks this per symbol so prices fit in int16. The balance is kept in cents.
+  **Get Balance** reads that register via `GETBALANCE`.
   Constants are scaled at compile time, divides pre-multiply the numerator to keep precision, and
   intermediate values are capped at 4 decimal places.
 - **If** only has `CMP_GT`, `CMP_LT` and `SUB` + `JMP_IF` to work with. `>=` and `<=` are compiled as

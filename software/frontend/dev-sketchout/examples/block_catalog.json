@@ -2506,6 +2506,23 @@
     "compilesTo": "GETVAR",
     "status": "confirmed"
   },
+  "get_balance": {
+    "type": "get_balance",
+    "label": "Get Balance",
+    "category": "reserved",
+    "description": "Current cash balance in dollars.",
+    "ports": [
+      {
+        "id": "data:out",
+        "kind": "data",
+        "direction": "out",
+        "label": "balance"
+      }
+    ],
+    "params": [],
+    "compilesTo": "GETBALANCE",
+    "status": "confirmed"
+  },
   "add": {
     "type": "add",
     "label": "Add",

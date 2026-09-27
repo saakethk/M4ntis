@@ -21,7 +21,7 @@ const GLYPHS: Record<BlockCategory, string> = {
 }
 
 /** Blocks drawn as a compact pill: one value and one output. */
-const CHIP_LABEL: Partial<Record<BlockType, string>> = { constant: 'Constant', get_var: 'Var' }
+const CHIP_LABEL: Partial<Record<BlockType, string>> = { constant: 'Constant', get_var: 'Var', get_balance: 'Balance' }
 
 type SetParam = (key: string, value: ParamValue) => void
 

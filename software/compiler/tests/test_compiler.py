@@ -239,6 +239,49 @@ class TestBehaviour(unittest.TestCase):
         self.assertEqual(per_round[0][-1], BalanceMsg(10_000_000 - 900_00 * 3))
         self.assertEqual([b["priceExponent"] for b in r.manifest["buffers"]], [1, 2, 2, 2, 2])
 
+    def test_get_balance_gates_buys_on_a_threshold(self):
+        # $1000 start, 3 x $100 per buy: buys at $1000 and $700, stops once cash ($400) <= $500
+        d = Doc(startingBalance=1000)
+        d.add("bal", "get_balance")
+        d.add("c", "constant", value=500)
+        d.add("if1", "if", operator=">")
+        d.add("buy", "buy", quantity=3)
+        d.exec("start", "if1").data("bal", "if1", "a").data("c", "if1", "b").exec("if1", "buy", "then")
+        r = compile_strategy(d.json())
+        self.assertIn("GETBALANCE", r.asm)
+        self.assertTrue(only_rtl_ops(r.items))
+        _, per_round, _ = run_rounds(r.words, rounds_for([10000] * 5))
+        self.assertEqual(per_round[0], [Decision(0, "buy", 3), BalanceMsg(70_000)])
+        self.assertEqual(per_round[1], [Decision(0, "buy", 3), BalanceMsg(40_000)])
+        for msgs in per_round[2:]:
+            self.assertEqual(msgs, [BalanceMsg(40_000)])
+
+    def test_get_balance_compares_against_price_times_qty(self):
+        # balance (cents) vs price x 3 in dimes: must rescale to a common scale before comparing
+        d = Doc(startingBalance=1000)
+        d.add("bal", "get_balance")
+        d.add("p", "current_price")
+        d.add("q", "constant", value=3)
+        d.add("cost", "multiply")
+        d.add("if1", "if", operator=">")
+        d.add("buy", "buy", quantity=3)
+        d.data("p", "cost", "a").data("q", "cost", "b")
+        d.exec("start", "if1").data("bal", "if1", "a").data("cost", "if1", "b").exec("if1", "buy", "then")
+        r = compile_strategy(d.json(), CompileOptions(price_exponents={0: 1}))
+        _, per_round, _ = run_rounds(r.words, rounds_for([1000] * 5))  # $100.0 in dimes
+        balances = [msgs[-1].value for msgs in per_round]
+        self.assertEqual(balances, [70_000, 40_000, 10_000, 10_000, 10_000])
+
+    def test_get_balance_into_variable(self):
+        # VAR slots are int16; keep the balance small enough to store at scale 2 (cents).
+        d = Doc(startingBalance=123.45)
+        d.add("bal", "get_balance")
+        d.add("set", "set_var", slot="VAR1")
+        d.exec("start", "set").data("bal", "set", "value")
+        r = compile_strategy(d.json())
+        self.assertEqual(r.manifest["variableSlots"]["scales"], {"VAR1": 2})
+        self.assertEqual(run_until_ticks(r.words, [100]).vars[0], 12_345)
+
     def test_price_exponent_for_unknown_buffer_is_rejected(self):
         d = Doc()
         with self.assertRaisesRegex(CompileError, "BUF5"):

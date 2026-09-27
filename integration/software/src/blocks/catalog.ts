@@ -148,6 +148,16 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     compilesTo: 'LOAD_IMM (scaled to fixed point)',
     status: 'confirmed',
   },
+  get_balance: {
+    type: 'get_balance',
+    label: 'Get Balance',
+    category: 'market',
+    description: 'Current cash balance in dollars.',
+    ports: [dataOut('out', 'balance')],
+    params: [],
+    compilesTo: 'GETBALANCE',
+    status: 'confirmed',
+  },
 
   set_var: {
     type: 'set_var',

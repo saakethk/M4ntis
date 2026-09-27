@@ -110,6 +110,7 @@ BLOCKS: dict[str, Block] = {
         params={"symbol": Param("ticker", ""), "buffer": BUFFER, "n": OFFSET},
     ),
     "constant": Block("Constant", "A literal number (prices are dollars).", data_outs=("out",), params={"value": Param("number", 0)}),
+    "get_balance": Block("Get Balance", "Current cash balance in dollars.", data_outs=("out",)),
     "set_var": Block(
         "Set Variable",
         "Store a value in a variable slot; values persist between ticks.",

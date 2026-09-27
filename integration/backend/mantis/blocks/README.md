@@ -3,8 +3,9 @@
 Everything the backend knows about strategy blocks.
 
 - `catalog.py`: every block type with its ports, parameter ranges, and a
-  description. It mirrors the editor's `src/blocks/catalog.ts` (a frontend test
-  checks the two list the same types) and feeds the assistant's prompt.
+  description (including **Get Balance** for current cash). It mirrors the editor's
+  `src/blocks/catalog.ts` (a frontend test checks the two list the same types) and
+  feeds the assistant's prompt.
 - `canvas.py`: `normalize_graph()` validates a compact graph (`{nodes: [{id, type,
   params}], edges: [...]}`): known types, params in range with defaults filled,
   ports that exist, exec-to-exec and data-to-data only, one wire per exec output

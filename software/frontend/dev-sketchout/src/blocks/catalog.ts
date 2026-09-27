@@ -205,6 +205,16 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     compilesTo: 'GETVAR',
     status: 'confirmed',
   },
+  get_balance: {
+    type: 'get_balance',
+    label: 'Get Balance',
+    category: 'reserved',
+    description: 'Current cash balance in dollars.',
+    ports: [dataOut('out', 'balance')],
+    params: [],
+    compilesTo: 'GETBALANCE',
+    status: 'confirmed',
+  },
 
   // 4. Math
   add: binaryMath('add', 'Add', '+', 'ADD'),

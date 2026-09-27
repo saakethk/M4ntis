@@ -10,7 +10,7 @@ Every strategy starts at the **Start** block. Start sets the starting balance an
 
 ## Blocks
 
-- **Market data:** Get ticker; Price N Ticks Ago (N from 1 to 29); Sum of Last N Ticks (N from 1 to 30); Constant.
+- **Market data:** Get ticker; Price N Ticks Ago (N from 1 to 29); Sum of Last N Ticks (N from 1 to 30); Constant; Get Balance (current cash in dollars).
 - **Variables:** Set Variable and Get Variable, with 15 slots (VAR1 to VAR15). Values persist from one tick to the next.
 - **Math:** Add, Subtract, Multiply, Divide, Power (whole-number exponent from 0 to 8) and Square Root. Log isn't supported by the hardware.
 - **Control:** If/Else and For (Range). Comparisons (>, ≥, <, ≤, =, ≠) exist only inside the If block. For AND, put a second If in the first If's Then branch. For OR, put a second If in the Else branch.

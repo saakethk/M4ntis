@@ -124,6 +124,11 @@ class VarRef:
 
 
 @dataclass(frozen=True)
+class Balance:
+    pass
+
+
+@dataclass(frozen=True)
 class Bin:
     op: str  # add | sub | mul | div
     a: "Expr"
@@ -141,7 +146,7 @@ class Volatility:
     n: int
 
 
-Expr = Const | Price | Sum | VarRef | Bin | Sqrt | Volatility
+Expr = Const | Price | Sum | VarRef | Balance | Bin | Sqrt | Volatility
 
 
 def to_fixed(value: float) -> tuple[Const, bool]:
@@ -531,6 +536,8 @@ class Compiler:
             return VarRef(int(str(p["slot"])[3:]) - 1)
         if t == "for":
             return VarRef(self.hidden_slots[n.id])
+        if t == "get_balance":
+            return Balance()
         if t in ("add", "subtract", "multiply", "divide"):
             op = {"add": "add", "subtract": "sub", "multiply": "mul", "divide": "div"}[t]
             return Bin(op, self.input_expr(n, "a"), self.input_expr(n, "b"))
@@ -566,6 +573,8 @@ class Compiler:
             return self.pe[e.buf]
         if isinstance(e, VarRef):
             return self.slot_scales.get(e.slot, 0)
+        if isinstance(e, Balance):
+            return BALANCE_EXP
         if isinstance(e, Sqrt):
             return _even_at_least_4(self.scale(e.x)) // 2
         sa, sb = self.scale(e.a), self.scale(e.b)
@@ -578,7 +587,7 @@ class Compiler:
     def need(self, e: Expr) -> int:
         if isinstance(e, Const):
             return 1 if IMM16_MIN <= e.value <= IMM16_MAX else 2
-        if isinstance(e, (Price, Sum, VarRef)):
+        if isinstance(e, (Price, Sum, VarRef, Balance)):
             return 1
         if isinstance(e, Sqrt):
             return max(self.need(e.x), 4)
@@ -631,6 +640,10 @@ class Compiler:
             r = self.alloc()
             self.emit(Op.GETVAR, rd=r, var=e.slot)
             return r, self.slot_scales.get(e.slot, 0)
+        if isinstance(e, Balance):
+            r = self.alloc()
+            self.emit(Op.GETBALANCE, rd=r)
+            return r, BALANCE_EXP
         if isinstance(e, Sqrt):
             rv, s = self.ev(e.x)
             target = _even_at_least_4(s)

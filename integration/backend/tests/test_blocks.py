@@ -111,6 +111,31 @@ def test_z_score_strategy_compiles():
     assert result["manifest"]["words"]
 
 
+def test_get_balance_strategy_normalizes_and_compiles():
+    graph = normalize_graph(
+        {
+            "nodes": [
+                {"id": "start", "type": "start"},
+                {"id": "t0", "type": "get_ticker", "params": {"symbol": "AAPL"}},
+                {"id": "bal", "type": "get_balance"},
+                {"id": "floor", "type": "constant", "params": {"value": 500}},
+                {"id": "ok", "type": "if", "params": {"operator": ">"}},
+                {"id": "buy", "type": "buy", "params": {"quantity": 1}},
+            ],
+            "edges": [
+                {"source": "start", "sourceHandle": "exec:out", "target": "ok", "targetHandle": "exec:in"},
+                {"source": "bal", "sourceHandle": "data:out", "target": "ok", "targetHandle": "data:a"},
+                {"source": "floor", "sourceHandle": "data:out", "target": "ok", "targetHandle": "data:b"},
+                {"source": "ok", "sourceHandle": "exec:then", "target": "buy", "targetHandle": "exec:in"},
+            ],
+        }
+    )
+    assert any(n["type"] == "get_balance" for n in graph["nodes"])
+    result = compile_document(document_from_canvas(graph))
+    assert result["ok"] is True
+    assert "GETBALANCE" in result["asm"]
+
+
 def test_diagnostics_on_generated_nodes_point_at_the_macro_block():
     graph = z_score_graph()
     for node in graph["nodes"]:
