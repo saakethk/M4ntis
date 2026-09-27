@@ -285,6 +285,12 @@ def ask_llm_route(body: LlmAsk, request: Request) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.get("/backtests/dummy")
+def dummy_backtest_menu_route(request: Request) -> dict:
+    _require_user(request)
+    return backtests.dummy_menu()
+
+
 @app.post("/backtests", status_code=201)
 def create_backtest_route(body: BacktestCreate, request: Request) -> dict:
     user = _require_user(request)

@@ -15,7 +15,14 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
-import { createStrategy, getStrategy, runDummyBacktest, updateStrategy, type BacktestResult } from '../api'
+import {
+  createStrategy,
+  getDummyBacktest,
+  getStrategy,
+  runDummyBacktest,
+  updateStrategy,
+  type BacktestMenu,
+} from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, isBlockType } from '../blocks/catalog'
 import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/types'
 import { BlockNode } from '../flow/BlockNode'
@@ -76,11 +83,31 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [running, setRunning] = useState(false)
-  const [backtest, setBacktest] = useState<BacktestResult | null>(null)
+  const [backtest, setBacktest] = useState<BacktestMenu | null>(null)
+  const [backtestError, setBacktestError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
   const canvasRef = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition, getViewport } = useReactFlow()
+
+  useEffect(() => {
+    let ignore = false
+    getDummyBacktest()
+      .then((menu) => {
+        if (!ignore) {
+          setBacktest(menu)
+          setBacktestError(null)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!ignore) {
+          setBacktestError(error instanceof Error ? error.message : 'Could not load the backtest.')
+        }
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   useEffect(() => {
     if (strategyId == null || unavailable) return
@@ -249,10 +276,20 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
       const id = saved && storedId != null ? storedId : await persist()
       if (id == null) return
       const result = await runDummyBacktest(userId, id)
-      setBacktest(result)
       const ending = result.balances[result.balances.length - 1]
-      const equity = ending ? ending.equity.toLocaleString('en-US') : '—'
-      showMessage(`Dummy backtest finished. Ending equity ${equity}.`, false)
+      const starting = result.balances[0]
+      const equity = ending?.equity ?? 0
+      const returnPct =
+        starting && starting.equity !== 0 ? ((equity - starting.equity) / starting.equity) * 100 : 0
+      setBacktest({
+        dummy: result.dummy,
+        equity,
+        returnPct,
+        orders: result.orders,
+        balances: result.balances,
+      })
+      setBacktestError(null)
+      showMessage(`Dummy backtest finished. Ending equity ${equity.toLocaleString('en-US')}.`, false)
     } catch (error) {
       showMessage(error instanceof Error ? error.message : 'Could not run the backtest', true)
     } finally {
@@ -312,18 +349,6 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
             </button>
           </div>
         </div>
-        {backtest ? (
-          <div className="backtest-result" role="status">
-            <p>Dummy backtest</p>
-            <ul>
-              {backtest.orders.map((order, index) => (
-                <li key={`${order.symbol}-${order.side}-${index}`}>
-                  {order.side} {order.quantity} {order.symbol} at {order.price}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
         <div
           ref={canvasRef}
           className="editor-canvas"
@@ -358,7 +383,49 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
           )}
         </div>
       </section>
+      <BacktestMenu menu={backtest} error={backtestError} />
     </div>
+  )
+}
+
+function money(value: number) {
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+}
+
+function BacktestMenu({ menu, error }: { menu: BacktestMenu | null; error: string | null }) {
+  return (
+    <aside className="backtest-menu" aria-label="Backtest">
+      <h2>Backtest</h2>
+      {error ? <p className="form-error">{error}</p> : null}
+      {menu ? (
+        <>
+          <p className="backtest-equity">{money(menu.equity)}</p>
+          <p className={menu.returnPct >= 0 ? 'backtest-return up' : 'backtest-return down'}>
+            {menu.returnPct >= 0 ? '+' : ''}
+            {menu.returnPct.toFixed(2)}%
+          </p>
+          <h3>Orders</h3>
+          <ul>
+            {menu.orders.map((order, index) => (
+              <li key={`${order.symbol}-${order.side}-${index}`}>
+                <span className={order.side === 'buy' ? 'up' : 'down'}>{order.side}</span>
+                {order.quantity} {order.symbol} at {order.price}
+              </li>
+            ))}
+          </ul>
+          <h3>Balance</h3>
+          <ul>
+            {menu.balances.map((point, index) => (
+              <li key={`${point.equity}-${index}`}>
+                Equity {money(point.equity)} · Cash {money(point.cash)}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        !error && <p className="backtest-wait">Loading backtest…</p>
+      )}
+    </aside>
   )
 }
 

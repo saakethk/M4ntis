@@ -134,6 +134,34 @@ export type BacktestResult = {
   balances: BacktestBalance[]
 }
 
+export type BacktestMenu = {
+  dummy: boolean
+  equity: number
+  returnPct: number
+  orders: BacktestOrder[]
+  balances: BacktestBalance[]
+}
+
+export function getDummyBacktest(): Promise<BacktestMenu> {
+  return requestJson('/backtests/dummy').then(readBacktestMenu)
+}
+
+function readBacktestMenu(body: unknown): BacktestMenu {
+  const result = readBacktest({ ...(body as object), id: 1 })
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as { equity?: unknown; return_pct?: unknown }
+  if (typeof row.equity !== 'number' || typeof row.return_pct !== 'number') {
+    throw new Error('Backtest response was not valid.')
+  }
+  return {
+    dummy: result.dummy,
+    equity: row.equity,
+    returnPct: row.return_pct,
+    orders: result.orders,
+    balances: result.balances,
+  }
+}
+
 export function runDummyBacktest(userId: number, strategyId: number): Promise<BacktestResult> {
   return requestJson('/backtests', {
     method: 'POST',

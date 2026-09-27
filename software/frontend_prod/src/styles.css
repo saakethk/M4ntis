@@ -676,6 +676,80 @@ input:focus-visible {
   overflow: hidden;
 }
 
+.backtest-menu {
+  width: 260px;
+  flex: none;
+  overflow: auto;
+  padding: 16px 14px 24px;
+  background: #fff;
+  border-left: 1px solid #e5e7eb;
+  color: #0f172a;
+}
+
+.backtest-menu h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.backtest-menu h3 {
+  margin: 16px 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.backtest-equity {
+  margin: 12px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.backtest-return {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.backtest-return.up,
+.backtest-menu .up {
+  color: #3d9a4a;
+}
+
+.backtest-return.down,
+.backtest-menu .down {
+  color: #dc2626;
+}
+
+.backtest-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.backtest-menu li {
+  padding: 8px 0;
+  border-top: 1px solid #f1f3f6;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.backtest-menu li span {
+  display: inline-block;
+  min-width: 36px;
+  margin-right: 6px;
+  text-transform: capitalize;
+}
+
+.backtest-wait {
+  margin-top: 12px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
 .strategy-editor {
   --cat-structure: #3d9a4a;
   --cat-reserved: #3d9a4a;
