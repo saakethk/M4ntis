@@ -187,6 +187,46 @@ class LlmRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["detail"], "Canvas graph is not valid")
 
+    def test_editor_node_fields_are_accepted(self) -> None:
+        agent = _FakeAgent("A tick is one bar.")
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent),
+        ):
+            response = self.client.post(
+                "/llm",
+                json={
+                    "prompt": "what is a tick?",
+                    "graph": {
+                        "nodes": [
+                            {
+                                "id": "start",
+                                "type": "start",
+                                "position": {"x": 0, "y": -200},
+                                "measured": {"width": 180, "height": 40},
+                                "data": {"params": {"resolution": "15m", "startingBalance": 50000}},
+                                "selected": True,
+                            }
+                        ],
+                        "edges": [
+                            {
+                                "id": "e1",
+                                "source": "start",
+                                "sourceHandle": None,
+                                "target": "buy",
+                                "targetHandle": "exec:in",
+                                "data": {"kind": "exec"},
+                                "className": "edge-exec",
+                            }
+                        ],
+                    },
+                },
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertIn('"resolution":"15m"', agent.kwargs["messages"])
+        self.assertIn('"startingBalance":50000', agent.kwargs["messages"])
+        self.assertNotIn("position", agent.kwargs["messages"])
+
     def test_extra_fields_are_rejected(self) -> None:
         with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
             response = self.client.post("/llm", json={"prompt": "help", "model": "gpt"})
