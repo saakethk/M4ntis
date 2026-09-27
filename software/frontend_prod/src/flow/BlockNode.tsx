@@ -250,9 +250,35 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
   if (!def) return <div className="block block-unknown">Unknown block: {type}</div>;
 
   if (def.type === 'start') {
+    const tickers = assignedSymbols(def, data.params);
     return (
-      <div className={['block', 'block-start', selected ? 'selected' : ''].join(' ')} aria-label="Start">
-        <SymbolText symbols={assignedSymbols(def, data.params)} />
+      <div className={['block', 'block-start', selected ? 'selected' : ''].join(' ')}>
+        <div className="block-header">
+          <span className="block-glyph" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path
+                d={GLYPHS[def.category] ?? GLYPHS.structure}
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <div className="block-heading">
+            <span className="block-type">{CATEGORY_LABELS[def.category] ?? def.category}</span>
+            <span className="block-title">{def.label}</span>
+          </div>
+        </div>
+        {tickers.length > 0 && (
+          <div className="start-symbols" aria-label="Assigned symbols">
+            {tickers.map((symbol, index) => (
+              <span className="start-symbol" key={`${symbol}-${index}`}>
+                {symbol}
+              </span>
+            ))}
+          </div>
+        )}
         <FlowHandles type={def.type} />
       </div>
     );

@@ -1,6 +1,6 @@
 import type { Edge, Node } from '@xyflow/react';
 
-/** Exec ports sequence opcodes (triangles, top-in / bottom-out). Data ports carry register values (circles, left-in / right-out). */
+/** Exec ports sequence opcodes (chevrons, top-in / bottom-out). Data ports carry register values (circles, left-in / right-out). */
 export type PortKind = 'exec' | 'data';
 export type PortDirection = 'in' | 'out';
 

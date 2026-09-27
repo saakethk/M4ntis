@@ -924,10 +924,29 @@ input:focus-visible {
 }
 
 .strategy-editor .block.block-start {
-  width: auto;
-  min-width: 88px;
-  max-width: 240px;
-  padding: 12px 16px 10px;
+  min-height: 72px;
+  padding-bottom: 10px;
+}
+
+.strategy-editor .start-symbols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 4px 50px;
+}
+
+.strategy-editor .start-symbol {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid #d9eedd;
+  border-radius: 999px;
+  background: #f3faf4;
+  color: #3d9a4a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .strategy-editor .block.block-symbol {
@@ -1217,18 +1236,39 @@ input:focus-visible {
 .strategy-editor .react-flow__handle.handle-exec {
   z-index: 2;
   width: 16px;
-  height: 12px;
+  height: 16px;
   min-width: 0;
   min-height: 0;
-  border: none;
-  border-radius: 0;
-  background: #3d9a4a;
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  border: 1.5px solid #d9eedd;
+  border-radius: 5px;
+  background: #fff;
+  clip-path: none;
+}
+
+.strategy-editor .react-flow__handle.handle-exec::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid #3d9a4a;
+  border-bottom: 2px solid #3d9a4a;
+  border-bottom-right-radius: 1px;
+}
+
+.strategy-editor .react-flow__handle.handle-exec.react-flow__handle-bottom::after {
+  top: 2px;
+  transform: rotate(45deg);
 }
 
 .strategy-editor .react-flow__handle.handle-exec.react-flow__handle-top {
-  top: -1px;
+  top: 0;
   transform: translate(-50%, -50%);
+}
+
+.strategy-editor .react-flow__handle.handle-exec.react-flow__handle-top::after {
+  top: 5px;
+  transform: rotate(-135deg);
 }
 
 .strategy-editor .react-flow__handle.handle-data {
