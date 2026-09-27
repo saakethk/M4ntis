@@ -1243,9 +1243,57 @@ input:focus-visible {
 }
 
 .backtest-menu h2 {
-  margin: 0;
+  margin: 0 0 12px;
   font-size: 18px;
   font-weight: 700;
+}
+
+.backtest-menu .backtest-params {
+  display: grid;
+  gap: 10px;
+}
+
+.backtest-menu .backtest-params label {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #526072;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.backtest-menu .backtest-params input,
+.backtest-menu .backtest-params select {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #d5dce6;
+  border-radius: 8px;
+  background: #fff;
+  color: #1c2430;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.backtest-menu .backtest-params input:focus,
+.backtest-menu .backtest-params select:focus {
+  outline: none;
+  border-color: #0f6e68;
+  box-shadow: 0 0 0 3px rgba(15, 110, 104, 0.16);
+}
+
+.backtest-capital {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.backtest-capital input {
+  min-width: 0;
 }
 
 .backtest-menu h3 {
@@ -1489,8 +1537,10 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
-.run-backtest {
+.backtest-menu .run-backtest {
+  width: 100%;
   height: 36px;
+  margin-top: 14px;
   border: 0;
   border-radius: 10px;
   background: #3d9a4a;
@@ -1499,10 +1549,12 @@ input:focus-visible {
   font-size: 14px;
   padding: 0 14px;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.run-backtest:disabled {
+.backtest-menu .run-backtest:disabled {
   opacity: 0.65;
+  cursor: default;
 }
 
 .backtest-result {
