@@ -8,6 +8,11 @@ describe('parseRoute', () => {
     assert.deepEqual(parseRoute(''), { kind: 'home' })
   })
 
+  it('reads the discussions page', () => {
+    assert.deepEqual(parseRoute('/discussions'), { kind: 'discussions' })
+    assert.deepEqual(parseRoute('/discussions/'), { kind: 'discussions' })
+  })
+
   it('reads a new unsaved strategy', () => {
     assert.deepEqual(parseRoute('/strategy/new'), { kind: 'new' })
     assert.deepEqual(parseRoute('/strategy/new/'), { kind: 'new' })
@@ -38,6 +43,7 @@ describe('parseRoute', () => {
 describe('routePath', () => {
   it('builds the portfolio and strategy urls', () => {
     assert.equal(routePath({ kind: 'home' }), '/')
+    assert.equal(routePath({ kind: 'discussions' }), '/discussions')
     assert.equal(routePath({ kind: 'new' }), '/strategy/new')
     assert.equal(routePath({ kind: 'edit', id: 4 }), '/strategy/4')
     assert.equal(routePath({ kind: 'backtest', id: 3 }), '/backtest/3')
