@@ -27,7 +27,6 @@ import {
   type StrategyVersion,
 } from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, isBlockType } from '../blocks/catalog'
-import { RESOLUTIONS } from '../blocks/hardware'
 import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/types'
 import { BlockNode } from '../flow/BlockNode'
 import { START_NODE_ID, checkConnection, connect, makeNode } from '../flow/graph'
@@ -508,7 +507,6 @@ function formatVersionTime(value: string): string {
 
 const BACKTEST_PARAMETERS = {
   symbol: 'AAPL',
-  timeframe: '1m',
   start: '2024-01-02',
   end: '2024-06-28',
   capital: 100_000,
@@ -524,7 +522,6 @@ function BacktestPanel({
   onRun: () => void
 }) {
   const [symbol, setSymbol] = useState(BACKTEST_PARAMETERS.symbol)
-  const [timeframe, setTimeframe] = useState(BACKTEST_PARAMETERS.timeframe)
   const [start, setStart] = useState(BACKTEST_PARAMETERS.start)
   const [end, setEnd] = useState(BACKTEST_PARAMETERS.end)
   const [capital, setCapital] = useState(BACKTEST_PARAMETERS.capital.toLocaleString('en-US'))
@@ -542,16 +539,6 @@ function BacktestPanel({
             spellCheck={false}
             onChange={(event) => setSymbol(event.target.value.toUpperCase())}
           />
-        </label>
-        <label>
-          <span>Timeframe</span>
-          <select aria-label="Timeframe" value={timeframe} onChange={(event) => setTimeframe(event.target.value)}>
-            {RESOLUTIONS.map((resolution) => (
-              <option key={resolution.value} value={resolution.value}>
-                {resolution.value}
-              </option>
-            ))}
-          </select>
         </label>
         <label>
           <span>Start</span>
