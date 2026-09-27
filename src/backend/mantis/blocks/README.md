@@ -4,7 +4,7 @@ Everything the backend knows about strategy blocks.
 
 - `catalog.py`: every block type with its ports, parameter ranges, and a
   description (including **Get Balance** for current cash). It mirrors the editor's
-  `src/blocks/catalog.ts` (a frontend test checks the two list the same types) and
+  `src/frontend/src/blocks/catalog.ts` (a frontend test checks the two list the same types) and
   feeds the assistant's prompt.
 - `canvas.py`: `normalize_graph()` validates a compact graph (`{nodes: [{id, type,
   params}], edges: [...]}`): known types, params in range with defaults filled,
@@ -26,4 +26,4 @@ Adding a macro:
 1. Write a function in `macros.py` that returns an `Expansion` (parts, internal
    wires, and which part produces each output) and register it in `MACROS`.
 2. Add the block to `catalog.py` with `macro=True`.
-3. Add it to the editor catalog (`integration/software/src/blocks/catalog.ts`).
+3. Add it to the editor catalog (`src/frontend/src/blocks/catalog.ts`).

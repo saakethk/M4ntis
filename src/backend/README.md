@@ -1,13 +1,13 @@
 # Mantis backend
 
-FastAPI server behind the Mantis web app. Run it with `python main.py` from this folder
-(port `BACKEND_PORT`, default 8001); settings come from the repo-root `.env`.
-See the [integration README](../README.md) for setup and the full system picture.
+FastAPI server behind the Mantis web app. From the repository root, run
+`python -m src.backend` (port `BACKEND_PORT`, default 8001); settings come from the
+repo-root `.env`. Or use `./dev.sh` to start the backend and frontend together.
 
 ## Layout
 
 ```
-main.py                 entry point: builds the app and runs uvicorn
+__main__.py             entry point: builds the app and runs uvicorn
 mantis/
   config.py             repo paths and .env loading (env, env_port)
   errors.py             domain errors; each carries its HTTP status
@@ -55,8 +55,9 @@ Errors are `{"detail": "..."}` with 400 (bad input), 401, 403, 404, 409, 422
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest                                   # database tests skip
-MANTIS_TEST_DATABASE=postgresql://u:p@127.0.0.1:5432/mantis_test python -m pytest
+# from repository root:
+python3 -m pytest src/backend/tests                # database tests skip
+MANTIS_TEST_DATABASE=postgresql://u:p@127.0.0.1:5432/mantis_test python3 -m pytest src/backend/tests
 ```
 
 The database tests drop and recreate the app's tables, so point them at a throwaway database.
