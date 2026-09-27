@@ -143,7 +143,7 @@ class PostPublishesStrategyTest(unittest.TestCase):
 
         created = datetime(2024, 1, 2, tzinfo=timezone.utc)
         conn = _Conn(
-            [[(3, 4, "owner@example.com", "Hello", None, None, 2, created, True)]]
+            [[(3, 4, "owner@example.com", "Hello", 8, "Mean reversion", None, 2, created, True)]]
         )
         with (
             patch.object(auth, "user_from_token", return_value=OWNER),
@@ -152,9 +152,15 @@ class PostPublishesStrategyTest(unittest.TestCase):
             response = self.client.get("/discussions")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()[0]["body"], "Hello")
+        self.assertEqual(response.json()[0]["strategy_id"], 8)
+        self.assertEqual(response.json()[0]["strategy_name"], "Mean reversion")
         self.assertEqual(response.json()[0]["likes_count"], 2)
         self.assertTrue(response.json()[0]["liked"])
         self.assertEqual(conn.statements[0][1], (4,))
+        listed = conn.statements[0][0]
+        self.assertIn("LEFT JOIN strategies", listed)
+        self.assertNotIn("WHERE p.user_id", listed)
+        self.assertIn("ORDER BY p.created_at DESC, p.id DESC", listed)
 
     def test_first_request_creates_the_tiger_tables(self) -> None:
         discussions._schema_ready = False

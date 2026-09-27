@@ -211,6 +211,8 @@ class RunReport:
     sells: int = 0
     holds: int = 0
     final_balance: int | None = None
+    load_s: float = 0.0
+    rounds_s: float = 0.0
     lines: list[str] = field(default_factory=list)
 
 
@@ -220,7 +222,7 @@ def run_pattern(
     rounds: list[list[int]],
     pattern: str,
     warmup: int,
-    tick_delay: float = 0.01,
+    tick_delay: float = 0.0,
     verbose: bool = False,
 ) -> RunReport:
     at_load, expected, _ = run_rounds(words, rounds)
@@ -238,9 +240,13 @@ def run_pattern(
             mark = "" if e == g else "   <-- mismatch"
             rep.lines.append(f"     expected {fmt(e) if e != '(none)' else e:40s} got {fmt(g) if g != '(none)' else g}{mark}")
 
+    t0 = time.perf_counter()
     port.write(load_program_message(words))
-    check("load", at_load, read_until_balance(port))
+    loaded = read_until_balance(port)
+    rep.load_s = time.perf_counter() - t0
+    check("load", at_load, loaded)
 
+    t0 = time.perf_counter()
     for i, (prices, exp) in enumerate(zip(rounds, expected)):
         for b, p in enumerate(prices):
             port.write(tick_message(b, p))
@@ -259,6 +265,7 @@ def run_pattern(
             rep.holds += not decisions
         if exp and isinstance(exp[-1], BalanceMsg):
             rep.final_balance = exp[-1].value
+    rep.rounds_s = time.perf_counter() - t0
 
     extra = port.read(getattr(port, "in_waiting", 0) or 0)
     if extra:

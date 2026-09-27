@@ -5,13 +5,15 @@ import { Discussions } from './components/Discussions'
 import { Portfolio } from './components/Portfolio'
 import { Shell } from './components/Shell'
 import { StrategyEditor } from './components/StrategyEditor'
+import { parseRoute, routePath, type AppScreen } from './routes'
 
-type Screen =
-  | { kind: 'home' }
-  | { kind: 'discussions' }
-  | { kind: 'new' }
-  | { kind: 'edit'; id: number }
-  | { kind: 'unavailable' }
+function currentRoute(): AppScreen {
+  return parseRoute(window.location.pathname)
+}
+
+function currentRoute(): Screen {
+  return parseRoute(window.location.pathname)
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -19,7 +21,24 @@ export default function App() {
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
-  const [screen, setScreen] = useState<Screen>({ kind: 'home' })
+  const [screen, setScreen] = useState<Screen>(currentRoute)
+
+  useEffect(() => {
+    function onPopState() {
+      setScreen(currentRoute())
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  function go(next: AppScreen, mode: 'push' | 'replace' = 'push') {
+    const path = routePath(next)
+    if (path != null && path !== window.location.pathname) {
+      if (mode === 'replace') window.history.replaceState(null, '', path)
+      else window.history.pushState(null, '', path)
+    }
+    setScreen(next)
+  }
 
   useEffect(() => {
     let ignore = false
@@ -49,7 +68,7 @@ export default function App() {
     try {
       await logout()
       setUser(null)
-      setScreen({ kind: 'home' })
+      go({ kind: 'home' })
     } catch (error) {
       setLogoutError(error instanceof Error ? error.message : 'Could not sign out.')
     } finally {
@@ -58,8 +77,7 @@ export default function App() {
   }
 
   function openStrategy(id: string) {
-    if (/^\d+$/.test(id)) setScreen({ kind: 'edit', id: Number(id) })
-    else setScreen({ kind: 'unavailable' })
+    go(parseRoute(`/strategy/${id}`))
   }
 
   const editorOpen =
@@ -90,16 +108,17 @@ export default function App() {
       </div>
     )
   } else if (screen.kind === 'home') {
-    main = <Portfolio onNew={() => setScreen({ kind: 'new' })} onEdit={openStrategy} />
+    main = <Portfolio onNew={() => go({ kind: 'new' })} onEdit={openStrategy} />
   } else if (screen.kind === 'discussions') {
-    main = <Discussions onOpenStrategy={openStrategy} />
+    main = <Discussions user={user} onOpenStrategy={openStrategy} />
   } else {
     main = (
       <StrategyEditor
         userId={user.id}
         strategyId={screen.kind === 'edit' ? screen.id : null}
         unavailable={screen.kind === 'unavailable'}
-        onClose={() => setScreen({ kind: 'home' })}
+        onClose={() => go({ kind: 'home' })}
+        onCreated={(id) => go({ kind: 'edit', id }, 'replace')}
       />
     )
   }
@@ -114,7 +133,7 @@ export default function App() {
       page={screen.kind === 'discussions' ? 'discussions' : 'strategies'}
       onNavigate={
         user
-          ? (next) => setScreen(next === 'discussions' ? { kind: 'discussions' } : { kind: 'home' })
+          ? (next) => go(next === 'discussions' ? { kind: 'discussions' } : { kind: 'home' })
           : undefined
       }
     >

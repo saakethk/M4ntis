@@ -16,17 +16,19 @@ import {
 import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import {
+  compileStrategy,
   createStrategy,
   getDummyBacktest,
   getStrategy,
   runDummyBacktest,
   updateStrategy,
   type BacktestMenu,
+  type CompileResult,
 } from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, isBlockType } from '../blocks/catalog'
 import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/types'
 import { BlockNode } from '../flow/BlockNode'
-import { START_NODE_ID, analyze, checkConnection, connect, makeNode } from '../flow/graph'
+import { START_NODE_ID, checkConnection, connect, makeNode } from '../flow/graph'
 import { fromDocument, toDocument, toIR } from '../flow/serialize'
 import { TEMPLATES, assistantCrossover, type AssistantProgram } from '../flow/templates'
 import { BlockPalette, DRAG_MIME } from './BlockPalette'
@@ -65,6 +67,7 @@ type Props = {
   strategyId: number | null
   unavailable?: boolean
   onClose: () => void
+  onCreated?: (id: number) => void
 }
 
 function documentPayload(raw: unknown): unknown {
@@ -72,7 +75,7 @@ function documentPayload(raw: unknown): unknown {
   return JSON.parse(raw)
 }
 
-function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Props) {
+function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCreated }: Props) {
   const blank = blankTemplate?.build() ?? { nodes: [], edges: [] }
   const [name, setName] = useState(strategyId == null && !unavailable ? 'Untitled strategy' : '')
   const [nodes, setNodes, onNodesChange] = useNodesState<BlockNodeT>(blank.nodes)
@@ -87,7 +90,9 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
   const [backtestError, setBacktestError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
+  const [compiledLog, setCompiledLog] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
+  const skipFetchId = useRef<number | null>(null)
   const { screenToFlowPosition, getViewport } = useReactFlow()
 
   useEffect(() => {
@@ -111,6 +116,9 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
 
   useEffect(() => {
     if (strategyId == null || unavailable) return
+    // The id just came back from the first save of this unsaved editor.
+    // Reloading here would replace the canvas the user is still editing.
+    if (skipFetchId.current === strategyId) return
     let ignore = false
     getStrategy(strategyId)
       .then((row) => {
@@ -242,14 +250,38 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
 
   const canDelete = nodes.some((node) => node.selected && !isProtectedNode(node))
 
-  function compile() {
-    const errors = analyze(nodes, edges).filter((item) => item.level === 'error')
-    if (errors.length === 0) {
-      showMessage('Compiled', false)
+  async function compileDocument(document: unknown, saved: boolean) {
+    try {
+      const result = await compileStrategy(document)
+      showCompiled(result, saved)
+    } catch (error) {
+      setCompiledLog(null)
+      showMessage(error instanceof Error ? error.message : 'Could not compile', true)
+    }
+  }
+
+  function showCompiled(result: CompileResult, saved: boolean) {
+    const lines = result.diagnostics.map((item) =>
+      item.node ? `${item.level}: ${item.message} [${item.node}]` : `${item.level}: ${item.message}`,
+    )
+    if (result.ok) {
+      setCompiledLog(lines.length > 0 ? `${lines.join('\n')}\n\n${result.asm}` : result.asm)
+      showMessage(saved ? 'Saved and compiled' : 'Compiled', false)
       return
     }
-    const summary = errors.length === 1 ? errors[0].message : `${errors.length} errors. ${errors[0].message}`
-    showMessage(summary, true)
+    setCompiledLog(lines.join('\n') || result.detail || 'Could not compile')
+    const errors = result.diagnostics.filter((item) => item.level === 'error')
+    const first = errors[0]?.message || result.diagnostics[0]?.message || result.detail || 'Could not compile'
+    showMessage(errors.length > 1 ? `${errors.length} errors. ${first}` : first, true)
+  }
+
+  function compile() {
+    const trimmed = name.trim()
+    if (!trimmed) {
+      showMessage('Name is required', true)
+      return
+    }
+    void compileDocument(toDocument(trimmed, nodes, edges, getViewport()), false)
   }
 
   async function persist(): Promise<number | null> {
@@ -265,11 +297,16 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
       const document = toDocument(trimmed, nodes, edges, getViewport())
       const ir = toIR(nodes, edges)
       const body = { name: trimmed, document, ir, visibility: 'private' as const }
-      const savedRow = storedId == null ? await createStrategy(body) : await updateStrategy(storedId, body)
+      const existingId = storedId
+      const savedRow = existingId == null ? await createStrategy(body) : await updateStrategy(existingId, body)
       setStoredId(savedRow.id)
       setSaved(true)
-      setMessage(null)
-      setMessageError(false)
+      if (existingId == null) {
+        // Keep the canvas. The route change would otherwise reload this id.
+        skipFetchId.current = savedRow.id
+        onCreated?.(savedRow.id)
+      }
+      await compileDocument(document, true)
       return savedRow.id
     } catch (error) {
       setSaved(false)
@@ -316,7 +353,7 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
         <div className="canvas-bar">
           <div className="canvas-title">
             <button type="button" className="quiet" onClick={onClose}>
-              Strategies
+              Home
             </button>
             <input
               className="editor-name"
@@ -361,6 +398,11 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
             </button>
           </div>
         </div>
+        {compiledLog ? (
+          <pre className="compile-log" aria-label="Compiled program">
+            {compiledLog}
+          </pre>
+        ) : null}
         <div
           ref={canvasRef}
           className="editor-canvas"

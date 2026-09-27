@@ -9,13 +9,13 @@ import sys
 from pathlib import Path
 
 from .asm import Assembled, AsmError, assemble, disassemble, format_asm, parse_asm
-from .compiler import CompileError, CompileOptions, Diagnostic, compile_strategy
+from .compiler import CompileError, CompileOptions, Diagnostic, compile_strategy, compile_to_json
 from .isa import NUM_BUFFERS, load_program_message
 from .simulator import BalanceMsg, Decision, run_rounds
 
 
 def _price_exps(pairs: list[str]) -> dict[int, int]:
-    exps = {b: 2 for b in range(NUM_BUFFERS)}
+    exps = {}
     for pair in pairs:
         buf, _, exp = pair.partition("=")
         exps[int(buf)] = int(exp)
@@ -27,28 +27,27 @@ def _read_json(path: str) -> dict:
 
 
 def cmd_compile(args: argparse.Namespace) -> int:
+    options = CompileOptions(price_exponents=_price_exps(args.price_exp))
     try:
         doc = _read_json(args.strategy)
-        result = compile_strategy(doc, CompileOptions(price_exponents=_price_exps(args.price_exp)))
-    except (json.JSONDecodeError, CompileError) as err:
-        e = err if isinstance(err, CompileError) else CompileError(
-            [Diagnostic("error", f"Strategy is not valid JSON: {err}")]
-        )
+    except json.JSONDecodeError as err:
+        bad_json = Diagnostic("error", f"Strategy is not valid JSON: {err}")
         if args.json:
-            print(json.dumps({"ok": False, "diagnostics": [d.to_json() for d in e.diagnostics]}))
+            print(json.dumps({"ok": False, "diagnostics": [bad_json.to_json()]}))
         else:
-            print(e, file=sys.stderr)
+            print(bad_json, file=sys.stderr)
         return 1
 
     if args.json:
-        print(json.dumps({
-            "ok": True,
-            "asm": format_asm(result.items, addresses=True),
-            "hex": result.assembled.hex_lines(),
-            "manifest": result.manifest,
-            "diagnostics": [w.to_json() for w in result.warnings],
-        }))
-        return 0
+        out = compile_to_json(doc, options)
+        print(json.dumps(out))
+        return 0 if out["ok"] else 1
+
+    try:
+        result = compile_strategy(doc, options)
+    except CompileError as e:
+        print(e, file=sys.stderr)
+        return 1
 
     if args.out:
         out = Path(args.out)
@@ -152,8 +151,10 @@ def cmd_hwtest(args: argparse.Namespace) -> int:
                 total_failures += rep.failures
                 status = "PASS" if rep.failures == 0 else f"FAIL ({rep.failures})"
                 bal = f"${rep.final_balance / 100:,.2f}" if rep.final_balance is not None else "?"
+                per_bar_ms = rep.rounds_s / max(len(rounds), 1) * 1e3
                 row = (f"{Path(path).name:32s} {Path(pattern).name:10s} {len(words):4d}w  warm-up {warmup:2d}  "
-                       f"buy {rep.buys:3d} sell {rep.sells:3d} hold {rep.holds:3d}  end {bal:>14s}  {status}")
+                       f"buy {rep.buys:3d} sell {rep.sells:3d} hold {rep.holds:3d}  end {bal:>14s}  "
+                       f"load {rep.load_s * 1e3:6.1f} ms  {per_bar_ms:6.3f} ms/bar  {status}")
                 summary.append(row)
                 if rep.lines:
                     print(f"{Path(path).name} / {pattern}")
@@ -205,7 +206,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="comma list of sine,walk,ramp,steps,spikes,flat and/or CSV paths (buf0..buf4), or 'all'")
     h.add_argument("--rounds", type=int, default=60, help="rounds to run after warm-up per pattern")
     h.add_argument("--seed", type=int, default=0, help="seed for the random-walk pattern")
-    h.add_argument("--tick-delay", type=float, default=0.01, help="seconds between TICK frames")
+    h.add_argument("--tick-delay", type=float, default=0.0,
+                   help="seconds between TICK frames (the RTL parses back-to-back frames at line rate)")
     h.add_argument("--price-exp", action="append", default=[], metavar="BUF=EXP")
     h.add_argument("--dry-run", action="store_true", help="use a simulated board instead of the serial port")
     h.add_argument("-v", "--verbose", action="store_true", help="print every round, not just mismatches")

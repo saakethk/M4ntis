@@ -7,11 +7,14 @@ from typing import Any
 import uvicorn
 import psycopg
 from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 import helpers.auth as auth
 import helpers.backtests as backtests
+import helpers.compile as compiler
 import helpers.discussions as discussions
 import helpers.llm as llm
 import helpers.strategies as strategies
@@ -274,6 +277,26 @@ def copy_strategy_route(strategy_id: int, request: Request) -> dict:
     except (RuntimeError, psycopg.Error) as exc:
         raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
     return {"id": new_id}
+
+
+@app.post("/compile")
+def compile_strategy_route(body: dict[str, Any], request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        return compiler.compile_request(user.id, body)
+    except compiler.InvalidCompileBody as exc:
+        raise RequestValidationError(exc.errors) from exc
+    except compiler.CompilationFailed as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "detail": str(exc), "diagnostics": exc.diagnostics},
+        )
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
 
 
 @app.post("/llm")
