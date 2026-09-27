@@ -75,8 +75,14 @@ export function fromDocument(raw: unknown): { name: string; nodes: BlockNode[]; 
     throw new Error(`Not a ${DOCUMENT_SCHEMA} document`);
   }
   const nodes = (doc.flow.nodes ?? []).map((n) => {
-    if (!isBlockType(n.type)) throw new Error(`Unknown block type "${String(n.type)}"`);
-    return makeNode(n.type, n.position, n.data?.params ?? {}, n.id);
+    const stored = String(n.type);
+    const type = stored === 'current_price' ? 'get_ticker' : n.type;
+    if (!isBlockType(type)) throw new Error(`Unknown block type "${stored}"`);
+    const params = { ...(n.data?.params ?? {}) };
+    if (stored === 'current_price' && String(params.symbol ?? '').trim() === '') {
+      params.symbol = 'AAPL';
+    }
+    return makeNode(type, n.position, params, n.id);
   });
   if (!nodes.some((n) => n.id === START_NODE_ID)) {
     nodes.unshift(makeNode('start', { x: 0, y: 0 }));

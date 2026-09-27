@@ -176,17 +176,6 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     status: 'confirmed',
     history: '1',
   },
-  current_price: {
-    type: 'current_price',
-    label: 'Current Price',
-    category: 'reserved',
-    description: 'Price at the current tick.',
-    ports: [DATA_OUT],
-    params: [bufferParam],
-    compilesTo: 'GETSTOCKPRICE',
-    status: 'confirmed',
-    history: '1',
-  },
   sum_n_ticks: {
     type: 'sum_n_ticks',
     label: 'Sum of Last N Ticks',

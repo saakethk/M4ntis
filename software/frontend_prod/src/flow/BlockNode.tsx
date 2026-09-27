@@ -118,11 +118,10 @@ function ParamField({
 
 /**
  * Canvas-only chips for blocks that hold or forward a single value.
- * `current_price` forwards one stock buffer, `constant` holds a literal,
+ * `constant` holds a literal,
  * and `get_var` forwards a variable slot. The document and IR are unchanged.
  */
 const VALUE_CHIP_LABEL: Partial<Record<BlockType, string>> = {
-  current_price: 'Price',
   constant: 'Constant',
   get_var: 'Var',
 };
@@ -325,7 +324,7 @@ function nodeSymbols(def: BlockDef, params: Record<string, ParamValue>, symbols:
 
 /**
  * A pass-through / symbol source: every parameter is a buffer or ticker, so the node
- * only holds or forwards a symbol. `current_price` is that block in the catalog.
+ * only holds or forwards a symbol.
  */
 function isSymbolSource(def: BlockDef): boolean {
   if (def.type === 'start' || def.params.length === 0) return false;
