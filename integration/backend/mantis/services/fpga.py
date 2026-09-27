@@ -5,8 +5,12 @@ The wire protocol is the board's (see ``software/compiler/tradecpu/hwtest.py`` a
 then for every tick send one price per stock slot and read DECISION messages until
 the board acknowledges the tick with a BALANCE message.
 
-There is no software fallback. When the board is not configured, cannot be opened,
-or stops answering, callers get :class:`FpgaUnavailable` and nothing is recorded.
+``FPGA_SERIAL_PORT`` defaults to ``COM4`` (Windows), matching the hardware scripts
+and ``tradecpu hwtest``. Set it in the repo-root ``.env`` on macOS/Linux (e.g.
+``/dev/cu.usbserial-XXXX``).
+
+There is no software fallback. When the board cannot be opened or stops answering,
+callers get :class:`FpgaUnavailable` and nothing is recorded.
 Only one run can use the board at a time; a second one gets :class:`FpgaBusy`.
 """
 
@@ -31,6 +35,7 @@ from tradecpu.hwtest import read_until_balance  # noqa: E402
 from tradecpu.isa import NUM_BUFFERS, load_program_message, tick_message  # noqa: E402
 from tradecpu.simulator import BalanceMsg, Decision  # noqa: E402
 
+DEFAULT_PORT = "COM4"  # same default as hardware/python/balance_test.py and tradecpu hwtest
 DEFAULT_BAUD = 115200  # fixed by the board's UART
 READ_TIMEOUT_S = 2.0
 SETTLE_S = 0.5
@@ -69,20 +74,54 @@ class BoardRun:
 
 
 def serial_port_path() -> str:
-    return env("FPGA_SERIAL_PORT")
+    return env("FPGA_SERIAL_PORT", DEFAULT_PORT)
+
+
+def _path_aliases(path: str) -> set[str]:
+    aliases = {path}
+    if path.startswith("/dev/cu."):
+        aliases.add("/dev/tty." + path[len("/dev/cu.") :])
+    elif path.startswith("/dev/tty."):
+        aliases.add("/dev/cu." + path[len("/dev/tty.") :])
+    return aliases
+
+
+def _com_names_equal(left: str, right: str) -> bool:
+    if left == right:
+        return True
+    if left.upper().startswith("COM") and right.upper().startswith("COM"):
+        return left.upper() == right.upper()
+    return False
+
+
+def _port_visible(path: str) -> bool:
+    """True when the configured port appears in the OS serial port list (without opening it)."""
+    aliases = _path_aliases(path)
+    try:
+        from serial.tools import list_ports
+    except ImportError:
+        if path.startswith("/dev/"):
+            return os.path.exists(path)
+        return False
+
+    for entry in list_ports.comports():
+        device = entry.device
+        if any(_com_names_equal(device, alias) for alias in aliases):
+            return True
+    if path.startswith("/dev/"):
+        return os.path.exists(path)
+    return False
 
 
 def status() -> dict[str, Any]:
     """Whether a board appears to be attached, without opening (and disturbing) it."""
     path = serial_port_path()
-    if not path:
-        return {"connected": False, "port": None, "busy": False, "detail": _NOT_CONFIGURED}
-    if not os.path.exists(path):
+    if not _port_visible(path):
         return {
             "connected": False,
             "port": path,
             "busy": False,
-            "detail": f"No FPGA found at {path}. Plug in the board or fix FPGA_SERIAL_PORT.",
+            "detail": f"No FPGA found on {path}. Plug in the board, or set FPGA_SERIAL_PORT to its port.",
         }
     busy = _board_lock.locked()
     return {"connected": True, "port": path, "busy": busy, "detail": "Busy running a backtest" if busy else f"Connected at {path}"}
@@ -105,8 +144,6 @@ def board() -> Iterator[Port]:
 
 def open_port() -> Port:
     path = serial_port_path()
-    if not path:
-        raise FpgaUnavailable(_NOT_CONFIGURED)
     try:
         import serial  # pyserial
     except ImportError as exc:
@@ -148,9 +185,3 @@ def _balance_of(messages: list, when: str) -> int:
             f"The FPGA at {serial_port_path()} stopped responding {when}. Check that it is powered on and programmed with TradeCPU."
         )
     return last.value
-
-
-_NOT_CONFIGURED = (
-    "Backtests run on the TradeCPU FPGA, and no board is configured. Connect it over USB and set "
-    "FPGA_SERIAL_PORT in the repo-root .env (e.g. /dev/tty.usbserial-XXXX)."
-)

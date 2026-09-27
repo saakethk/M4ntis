@@ -23,6 +23,11 @@ class SilentPort:
         pass
 
 
+class ListedPort:
+    def __init__(self, device: str) -> None:
+        self.device = device
+
+
 def crossover_words() -> list[int]:
     return [int(word, 16) for word in compiler.compile_document(CROSSOVER)["manifest"]["words"]]
 
@@ -41,15 +46,39 @@ def test_silent_board_is_unavailable():
         fpga.run_program(SilentPort(), crossover_words(), [[15000, 0, 0, 0, 0]])
 
 
-def test_status_without_a_port(monkeypatch):
+def test_status_uses_default_port_and_list_ports(monkeypatch):
     monkeypatch.setenv("FPGA_SERIAL_PORT", "")
-    assert fpga.status()["connected"] is False
+    monkeypatch.setattr(
+        "serial.tools.list_ports.comports",
+        lambda: [],
+    )
+    assert fpga.status() == {
+        "connected": False,
+        "port": "COM4",
+        "busy": False,
+        "detail": "No FPGA found on COM4. Plug in the board, or set FPGA_SERIAL_PORT to its port.",
+    }
+
+    monkeypatch.setenv("FPGA_SERIAL_PORT", "COM4")
+    monkeypatch.setattr(
+        "serial.tools.list_ports.comports",
+        lambda: [ListedPort("com4")],
+    )
+    connected = fpga.status()
+    assert connected["connected"] is True and connected["port"] == "COM4"
+
     monkeypatch.setenv("FPGA_SERIAL_PORT", "/dev/no-such-board")
+    monkeypatch.setattr(
+        "serial.tools.list_ports.comports",
+        lambda: [],
+    )
     assert fpga.status() == {
         "connected": False,
         "port": "/dev/no-such-board",
         "busy": False,
-        "detail": "No FPGA found at /dev/no-such-board. Plug in the board or fix FPGA_SERIAL_PORT.",
+        "detail": "No FPGA found on /dev/no-such-board. Plug in the board, or set FPGA_SERIAL_PORT to its port.",
     }
+
+    monkeypatch.setenv("FPGA_SERIAL_PORT", "")
     with pytest.raises(fpga.FpgaUnavailable, match="could not open"):
         fpga.open_port()

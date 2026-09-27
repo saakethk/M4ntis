@@ -94,6 +94,7 @@ def fake_board(monkeypatch) -> None:
 
 def test_backtests_refuse_without_fpga(database, monkeypatch):
     monkeypatch.setenv("FPGA_SERIAL_PORT", "")
+    monkeypatch.setattr("serial.tools.list_ports.comports", lambda: [])
     client = new_client()
     user = sign_up(client, "b@example.com")
     strategy_id = client.post("/strategies", json={"name": "S", "document": CROSSOVER}).json()["id"]

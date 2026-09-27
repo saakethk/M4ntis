@@ -56,14 +56,14 @@ production; any PostgreSQL 14+ works for everything except market-data bars).
    | `GEMINI_API_KEY`, `META_API_KEY` | Enable those assistant models. `META_API_KEY` also enables post summaries |
    | `AI_PROVIDER`, `AI_MODEL` | Default assistant model, e.g. `gemini` / `gemini-3.8-flash` |
    | `BACKEND_PORT`, `FRONTEND_PORT` | Default 8001 and 8002 |
-   | `FPGA_SERIAL_PORT`, `FPGA_BAUD` | Serial port of the TradeCPU board (e.g. `/dev/tty.usbserial-XXXX`) and its baud rate (default 115200) |
+   | `FPGA_SERIAL_PORT`, `FPGA_BAUD` | TradeCPU board serial port (defaults to `COM4` on Windows; set e.g. `/dev/cu.usbserial-XXXX` on macOS/Linux) and baud rate (default 115200) |
    | `BACKTEST_TICKS` | Ticks per backtest after warm-up (default 500) |
 
    Tables are created automatically the first time the backend connects. Ticker
    search reads `stock_symbols`, which the loaders in `software/database` fill.
 
    Backtests run only on the TradeCPU FPGA: the board must be connected at
-   `FPGA_SERIAL_PORT`, and `stock_minute_bars` in TimescaleDB (Tiger) must hold
+   `FPGA_SERIAL_PORT` (default `COM4`), and `stock_minute_bars` in TimescaleDB (Tiger) must hold
    minute bars for the strategy's stocks. Without the board, runs are refused with
    503 and the editor disables **Run on FPGA**.
 
