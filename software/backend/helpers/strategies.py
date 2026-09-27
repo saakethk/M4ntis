@@ -9,14 +9,28 @@ from __future__ import annotations
 
 import copy
 import json
+import threading
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 import psycopg
 from psycopg.types.json import Jsonb
 
 from helpers.db import connect
+
+# strategy_versions is defined with the discussions schema. Saving used to
+# insert into it before any discussions route had created the table, and that
+# error became HTTP 503.
+_STRATEGIES_SQL = Path(__file__).resolve().parents[2] / "database" / "sql" / "strategies.sql"
+_storage_lock = threading.Lock()
+_storage_ready = False
+_DROP_SHARES_SQL = "DROP TABLE IF EXISTS strategy_shares"
+_ADD_VISIBILITY_SQL = (
+    "ALTER TABLE strategies ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private'"
+)
+_VISIBILITY_CHECK = "strategies_visibility_check"
 
 PRIVATE = "private"
 PUBLIC = "public"
@@ -144,6 +158,54 @@ def to_api(row: StrategyRow, viewer_id: int) -> dict[str, Any]:
     }
 
 
+def ensure_strategy_storage(conn: psycopg.Connection) -> None:
+    """Create strategies and strategy_versions once per process before a save."""
+    global _storage_ready
+    if _storage_ready:
+        return
+    with _storage_lock:
+        if _storage_ready:
+            return
+        conn.commit()
+        try:
+            for statement in _STRATEGIES_SQL.read_text().split(";"):
+                sql = statement.strip()
+                if sql:
+                    conn.execute(sql)
+            conn.execute(_DROP_SHARES_SQL)
+            conn.execute(_ADD_VISIBILITY_SQL)
+            _add_visibility_check_if_missing(conn)
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        from helpers.discussions import ensure_discussion_tables
+
+        ensure_discussion_tables(conn)
+        _storage_ready = True
+
+
+def _add_visibility_check_if_missing(conn: psycopg.Connection) -> None:
+    existing = conn.execute(
+        """
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = %s
+          AND conrelid = 'strategies'::regclass
+        """,
+        (_VISIBILITY_CHECK,),
+    ).fetchone()
+    if existing is not None:
+        return
+    conn.execute(
+        """
+        ALTER TABLE strategies
+        ADD CONSTRAINT strategies_visibility_check
+        CHECK (visibility IN ('private', 'public'))
+        """
+    )
+
+
 def create_strategy(
     user_id: int,
     name: str,
@@ -157,6 +219,7 @@ def create_strategy(
         # connect() already ran SET TIME ZONE, which opens a transaction.
         # transaction() would only be a savepoint, and close() would roll the
         # insert back. The API would return an id that never shows up later.
+        ensure_strategy_storage(conn)
         conn.commit()
         with conn.transaction():
             record = conn.execute(
@@ -177,6 +240,7 @@ def create_strategy(
 def list_strategies(user_id: int) -> list[dict[str, Any]]:
     conn = _connect()
     try:
+        ensure_strategy_storage(conn)
         records = conn.execute(LIST_SQL, (user_id,)).fetchall()
     finally:
         conn.close()
@@ -186,6 +250,7 @@ def list_strategies(user_id: int) -> list[dict[str, Any]]:
 def get_strategy(viewer_id: int, strategy_id: int) -> dict[str, Any]:
     conn = _connect()
     try:
+        ensure_strategy_storage(conn)
         row = _select_one(conn, strategy_id)
     finally:
         conn.close()
@@ -205,6 +270,7 @@ def update_strategy(
 ) -> dict[str, Any]:
     conn = _connect()
     try:
+        ensure_strategy_storage(conn)
         conn.commit()
         with conn.transaction():
             current = _select_one(conn, strategy_id)
@@ -241,6 +307,7 @@ def update_strategy(
 def copy_strategy(viewer_id: int, strategy_id: int) -> int:
     conn = _connect()
     try:
+        ensure_strategy_storage(conn)
         conn.commit()
         with conn.transaction():
             current = _select_one(conn, strategy_id)
@@ -266,6 +333,7 @@ def list_versions(user_id: int, strategy_id: int) -> list[dict[str, Any]]:
     """Saved versions for the owner, newest first. Backtest snapshots are omitted."""
     conn = _connect()
     try:
+        ensure_strategy_storage(conn)
         current = _owned(conn, user_id, strategy_id)
         records = conn.execute(
             """
@@ -292,6 +360,7 @@ def revert_version(user_id: int, strategy_id: int, version_id: int) -> dict[str,
     """Copy a saved version onto the strategy and keep that restore in the history."""
     conn = _connect()
     try:
+        ensure_strategy_storage(conn)
         conn.commit()
         with conn.transaction():
             current = _owned(conn, user_id, strategy_id)

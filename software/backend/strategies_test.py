@@ -592,7 +592,76 @@ def _saved_row(
     )
 
 
+class _SchemaConn:
+    """Records DDL and returns a row only for the strategy insert."""
+
+    def __init__(self, row: tuple) -> None:
+        self._row = row
+        self.statements: list[tuple[str, object]] = []
+        self.closed = False
+
+    def transaction(self) -> "_SchemaConn":
+        return self
+
+    def __enter__(self) -> "_SchemaConn":
+        return self
+
+    def __exit__(self, *args: object) -> bool:
+        return False
+
+    def execute(self, sql: str, params: object = None) -> _Result:
+        folded = " ".join(sql.split())
+        self.statements.append((folded, params))
+        if folded.startswith("INSERT INTO strategies"):
+            return _Result(self._row)
+        if "FROM pg_constraint" in folded:
+            return _Result((1,))
+        return _Result(None)
+
+    def commit(self) -> None:
+        return None
+
+    def rollback(self) -> None:
+        return None
+
+    def close(self) -> None:
+        self.closed = True
+
+
 class SaveStrategyDbTest(unittest.TestCase):
+    def setUp(self) -> None:
+        strategies._storage_ready = True
+
+    def test_save_creates_the_version_table_before_inserting(self) -> None:
+        import helpers.discussions as discussions
+
+        strategies._storage_ready = False
+        discussions._schema_ready = False
+        conn = _SchemaConn(_saved_row())
+        try:
+            with patch.object(strategies, "_connect", return_value=conn):
+                result = strategies.create_strategy(4, "Trend", DOCUMENT, None)
+        finally:
+            strategies._storage_ready = True
+            discussions._schema_ready = True
+        self.assertEqual(result["id"], 8)
+        folded = [sql for sql, _params in conn.statements]
+        create_strategies = folded.index(
+            next(sql for sql in folded if "CREATE TABLE IF NOT EXISTS strategies" in sql)
+        )
+        insert_strategies = folded.index(
+            next(sql for sql in folded if sql.startswith("INSERT INTO strategies"))
+        )
+        create_versions = folded.index(
+            next(sql for sql in folded if "CREATE TABLE IF NOT EXISTS strategy_versions" in sql)
+        )
+        insert_versions = folded.index(
+            next(sql for sql in folded if sql.startswith("INSERT INTO strategy_versions"))
+        )
+        self.assertLess(create_strategies, insert_strategies)
+        self.assertLess(create_versions, insert_versions)
+        self.assertTrue(conn.closed)
+
     def test_create_inserts_the_caller_and_returns_a_summary(self) -> None:
         conn = _Conn([_saved_row(visibility="public", ir=IR)])
         with patch.object(strategies, "_connect", return_value=conn):
@@ -826,6 +895,9 @@ class _DurableConn:
 
 
 class StrategySurvivesCloseTest(unittest.TestCase):
+    def setUp(self) -> None:
+        strategies._storage_ready = True
+
     def test_create_is_still_stored_after_close(self) -> None:
         conn = _DurableConn(_saved_row())
         with patch.object(strategies, "_connect", return_value=conn):
