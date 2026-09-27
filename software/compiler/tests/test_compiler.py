@@ -65,6 +65,20 @@ class TestProgramShape(unittest.TestCase):
         at_load, _, _ = run_rounds(r.words, [])
         self.assertEqual(at_load, [BalanceMsg(123_456_789)])
 
+    def test_get_ticker_supplies_the_symbol(self):
+        d = Doc(symbol0="")
+        d.add("tick", "get_ticker", symbol="aapl")
+        d.add("fast", "sma", n=5, buffer=0)
+        d.add("slow", "sma", n=8, buffer=0)
+        d.add("if1", "if", operator=">")
+        d.add("buy", "buy", quantity=1)
+        d.add("sell", "sell", quantity=1)
+        d.exec("start", "if1").data("fast", "if1", "a").data("slow", "if1", "b")
+        d.exec("if1", "buy", "then").exec("if1", "sell", "else")
+        r = compile_strategy(d.json())
+        self.assertEqual(r.manifest["buffers"][0]["symbol"], "AAPL")
+        self.assertTrue(r.manifest["buffers"][0]["used"])
+
     def test_only_rtl_opcodes(self):
         r = compile_strategy(sma_crossover(5, 20).json())
         self.assertTrue(only_rtl_ops(r.items))
@@ -243,7 +257,7 @@ class TestErrors(unittest.TestCase):
         d = Doc()
         d.add("buy", "buy", buffer=3)
         d.exec("start", "buy")
-        self.assertCompileError(d.json(), "BUF3 is used but no symbol")
+        self.assertCompileError(d.json(), "BUF3 is used but no Get ticker")
 
     def test_offset_beyond_buffer(self):
         d = Doc()

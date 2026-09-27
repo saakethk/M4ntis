@@ -25,6 +25,7 @@ export const TEMPLATES: Template[] = [
     build: () => ({
       nodes: [
         start(),
+        makeNode('get_ticker', { x: -420, y: -20 }, { symbol: 'AAPL' }, 'aapl'),
         makeNode('sma', { x: -420, y: 120 }, { buffer: 0, n: 10 }, 'sma_fast'),
         makeNode('sma', { x: -420, y: 300 }, { buffer: 0, n: 30 }, 'sma_slow'),
         makeNode('if', { x: 0, y: 170 }, { operator: '>' }, 'if_cross'),
