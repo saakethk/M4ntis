@@ -64,6 +64,7 @@ class _Conn:
 
 class PostPublishesStrategyTest(unittest.TestCase):
     def setUp(self) -> None:
+        discussions._schema_ready = True
         self.client = TestClient(main.app)
         _sign_in(self.client)
 
@@ -154,6 +155,22 @@ class PostPublishesStrategyTest(unittest.TestCase):
         self.assertEqual(response.json()[0]["likes_count"], 2)
         self.assertTrue(response.json()[0]["liked"])
         self.assertEqual(conn.statements[0][1], (4,))
+
+    def test_first_request_creates_the_tiger_tables(self) -> None:
+        discussions._schema_ready = False
+        conn = _Conn([])
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(discussions, "_connect", return_value=conn),
+        ):
+            response = self.client.get("/discussions")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), [])
+        created = " ".join(sql for sql, _params in conn.statements)
+        self.assertIn("CREATE TABLE IF NOT EXISTS discussion_posts", created)
+        self.assertIn("CREATE TABLE IF NOT EXISTS discussion_likes", created)
+        self.assertTrue(discussions._schema_ready)
+        self.assertIn("SELECT", conn.statements[-1][0])
 
     def test_like_toggles_and_missing_post_is_404(self) -> None:
         missing = _Conn([None])
