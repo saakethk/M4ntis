@@ -12,7 +12,7 @@ const GROUPS = CATEGORIES.map((category) => ({
   ),
 })).filter((group) => group.blocks.length > 0)
 
-function Assistant({ onApply }: { onApply?: (program: AssistantProgram) => void }) {
+export function Assistant({ onApply }: { onApply?: (program: AssistantProgram) => void }) {
   const [prompt, setPrompt] = useState('')
   const [reply, setReply] = useState<string | null>(null)
   const [program, setProgram] = useState<AssistantProgram | null>(null)
@@ -62,13 +62,7 @@ function Assistant({ onApply }: { onApply?: (program: AssistantProgram) => void 
   )
 }
 
-export function BlockPalette({
-  onAdd,
-  onApply,
-}: {
-  onAdd: (type: BlockType) => void
-  onApply?: (program: AssistantProgram) => void
-}) {
+export function BlockPalette({ onAdd }: { onAdd: (type: BlockType) => void }) {
   const dragged = useRef(false)
 
   return (
@@ -115,7 +109,6 @@ export function BlockPalette({
           </section>
         ))}
       </div>
-      <Assistant onApply={onApply} />
     </aside>
   )
 }

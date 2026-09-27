@@ -1,10 +1,10 @@
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from '@xyflow/react';
-import { memo, useId, useRef, useState } from 'react';
+import { memo, useEffect, useId, useRef, useState } from 'react';
 import { BLOCK_DEFS, CATEGORIES, COMPARISON_OPERATORS, portsOf } from '../blocks/catalog';
 import { NUM_STOCK_BUFFERS, ticksToDuration } from '../blocks/hardware';
-import { NASDAQ_100 } from '../blocks/symbols';
+import { searchTickers, type TickerHit } from '../api';
 import type { BlockDef, BlockNode as BlockNodeT, BlockType, ParamDef, ParamValue, PortDef } from '../blocks/types';
-import { START_NODE_ID } from './graph';
+import { START_NODE_ID, assignPriceTicker } from './graph';
 
 const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
   CATEGORIES.map((category) => [category.id, category.label]),
@@ -107,8 +107,10 @@ function ParamField({
       </span>
       {def.type === 'number' ? (
         <NumberField def={def} value={Number(value)} onChange={onChange} />
-      ) : (
+      ) : def.type === 'select' ? (
         <SelectControl def={def} value={value} onChange={onChange} />
+      ) : (
+        <TickerSearch value={String(value)} onChange={(symbol) => onChange(symbol)} />
       )}
     </label>
   );
@@ -232,6 +234,7 @@ function ValueChip({
             />
           );
         }
+        if (param.type !== 'select') return null;
         return (
           <SelectControl
             key={param.key}
@@ -387,29 +390,42 @@ function FlowHandles({ type }: { type: BlockType }) {
   );
 }
 
-const TICKER_MATCH_LIMIT = 6;
-
-/** Prefix matches first, then substring matches. Empty input matches nothing. */
-function tickerMatches(query: string): string[] {
-  const q = query.trim().toUpperCase();
-  if (!q) return [];
-  const prefix: string[] = [];
-  const contains: string[] = [];
-  for (const symbol of NASDAQ_100) {
-    if (symbol.startsWith(q)) prefix.push(symbol);
-    else if (symbol.includes(q)) contains.push(symbol);
-  }
-  return [...prefix, ...contains].slice(0, TICKER_MATCH_LIMIT);
-}
-
 function TickerSearch({ value, onChange }: { value: string; onChange: (symbol: string) => void }) {
-  const selected = value.trim().toUpperCase() || 'AAPL';
+  const selected = value.trim().toUpperCase();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [matches, setMatches] = useState<TickerHit[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const matches = tickerMatches(query);
   const showList = open && query.trim().length > 0;
+
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setMatches([]);
+      setSearchError(null);
+      return;
+    }
+    let ignore = false;
+    const timer = window.setTimeout(() => {
+      searchTickers(q)
+        .then((rows) => {
+          if (ignore) return;
+          setMatches(rows);
+          setSearchError(null);
+        })
+        .catch(() => {
+          if (ignore) return;
+          setMatches([]);
+          setSearchError('Search unavailable');
+        });
+    }, 180);
+    return () => {
+      ignore = true;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
 
   const choose = (symbol: string) => {
     onChange(symbol);
@@ -420,7 +436,7 @@ function TickerSearch({ value, onChange }: { value: string; onChange: (symbol: s
 
   return (
     <div className={`ticker-search nodrag nopan nowheel${open ? ' open' : ''}`}>
-      <span className="ticker-chip">{selected}</span>
+      <span className="ticker-chip">{selected || '—'}</span>
       <input
         ref={inputRef}
         className="nodrag nopan ticker-search-input"
@@ -448,7 +464,7 @@ function TickerSearch({ value, onChange }: { value: string; onChange: (symbol: s
             event.preventDefault();
             event.stopPropagation();
             const pick = matches[0];
-            if (pick) choose(pick);
+            if (pick) choose(pick.symbol);
           } else if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
@@ -460,24 +476,27 @@ function TickerSearch({ value, onChange }: { value: string; onChange: (symbol: s
       />
       {showList && (
         <ul className="ticker-matches nodrag nopan nowheel" id={listId} role="listbox">
-          {matches.length === 0 ? (
+          {searchError ? (
+            <li className="ticker-match-empty">{searchError}</li>
+          ) : matches.length === 0 ? (
             <li className="ticker-match-empty">No matches</li>
           ) : (
-            matches.map((symbol, index) => (
-              <li key={symbol}>
+            matches.map((hit, index) => (
+              <li key={hit.symbol}>
                 <button
                   type="button"
                   role="option"
-                  aria-selected={symbol === selected}
+                  aria-selected={hit.symbol === selected}
                   className={['nodrag', 'nopan', 'ticker-match', index === 0 ? 'top' : '']
                     .filter(Boolean)
                     .join(' ')}
                   onMouseDown={(event) => {
                     event.preventDefault();
-                    choose(symbol);
+                    choose(hit.symbol);
                   }}
                 >
-                  {symbol}
+                  <span>{hit.symbol}</span>
+                  {hit.name && hit.name !== hit.symbol ? <span className="ticker-match-name">{hit.name}</span> : null}
                 </button>
               </li>
             ))
@@ -509,7 +528,7 @@ function useStrategyContext() {
 
 function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
   const def = BLOCK_DEFS[type as BlockType];
-  const { updateNodeData } = useReactFlow();
+  const { updateNodeData, setNodes } = useReactFlow();
   const { resolution, symbols } = useStrategyContext();
   if (!def) return <div className="block block-unknown">Unknown block: {type}</div>;
 
@@ -625,7 +644,9 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
   const execOuts = portsOf(def.type, 'exec', 'out');
   const dataIns = portsOf(def.type, 'data', 'in');
   const dataOuts = portsOf(def.type, 'data', 'out');
-  const params = def.condition ? def.params.filter((p) => p.key !== 'operator') : def.params;
+  const params = (def.condition ? def.params.filter((p) => p.key !== 'operator') : def.params).filter(
+    (p) => !(def.type === 'price_n_ticks_ago' && p.key === 'buffer'),
+  );
   const rows = Math.max(def.condition ? 0 : dataIns.length, dataOuts.length);
 
   return (
@@ -677,6 +698,21 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
       {params.length > 0 && (
         <div className="block-params">
           {params.map((p) => {
+            if (p.type === 'ticker') {
+              const named = String(data.params.symbol ?? '').trim();
+              const fromBuffer = String(symbols[Number(data.params.buffer ?? 0)] ?? '').trim();
+              return (
+                <label className="param" key={p.key}>
+                  <span className="param-label">{p.label}</span>
+                  <TickerSearch
+                    value={named || fromBuffer}
+                    onChange={(symbol) => {
+                      setNodes((current) => assignPriceTicker(current as BlockNodeT[], id, symbol));
+                    }}
+                  />
+                </label>
+              );
+            }
             const value = data.params[p.key] ?? p.default;
             const hint = p.type === 'number' && p.ticks ? ticksToDuration(Number(value), resolution) : undefined;
             return (

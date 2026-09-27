@@ -23,6 +23,16 @@ describe('parseRoute', () => {
     assert.deepEqual(parseRoute('/strategy/12/'), { kind: 'edit', id: 12 })
   })
 
+  it('reads a saved backtest', () => {
+    assert.deepEqual(parseRoute('/backtest/3'), { kind: 'backtest', id: 3 })
+    assert.deepEqual(parseRoute('/backtest/3/'), { kind: 'backtest', id: 3 })
+  })
+
+  it('does not treat a non-id backtest path as a report', () => {
+    assert.deepEqual(parseRoute('/backtest/new'), { kind: 'unavailable' })
+    assert.deepEqual(parseRoute('/backtest/0'), { kind: 'unavailable' })
+  })
+
   it('does not treat a non-id strategy path as an opened project', () => {
     assert.deepEqual(parseRoute('/strategy/mean-reversion'), { kind: 'unavailable' })
     assert.deepEqual(parseRoute('/strategy/0'), { kind: 'unavailable' })
@@ -36,11 +46,12 @@ describe('routePath', () => {
     assert.equal(routePath({ kind: 'discussions' }), '/discussions')
     assert.equal(routePath({ kind: 'new' }), '/strategy/new')
     assert.equal(routePath({ kind: 'edit', id: 4 }), '/strategy/4')
+    assert.equal(routePath({ kind: 'backtest', id: 3 }), '/backtest/3')
     assert.equal(routePath({ kind: 'unavailable' }), null)
   })
 
   it('round-trips paths that open a screen', () => {
-    for (const path of ['/', '/discussions', '/strategy/new', '/strategy/9']) {
+    for (const path of ['/', '/strategy/new', '/strategy/9', '/backtest/3']) {
       const screen = parseRoute(path)
       assert.equal(routePath(screen), path)
     }

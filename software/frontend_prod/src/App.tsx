@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getMe, logout, type User } from './api'
 import { AuthCard } from './components/AuthCard'
+import { BacktestPage } from './components/BacktestPage'
 import { Discussions } from './components/Discussions'
 import { Portfolio } from './components/Portfolio'
 import { Shell } from './components/Shell'
@@ -106,7 +107,9 @@ export default function App() {
   } else if (screen.kind === 'home') {
     main = <Portfolio onNew={() => go({ kind: 'new' })} onEdit={openStrategy} />
   } else if (screen.kind === 'discussions') {
-    main = <Discussions user={user} onOpenStrategy={openStrategy} />
+    main = <Discussions onOpenStrategy={openStrategy} />
+  } else if (screen.kind === 'backtest') {
+    main = <BacktestPage id={screen.id} onOpenStrategy={(strategyId) => go({ kind: 'edit', id: strategyId })} />
   } else {
     main = (
       <StrategyEditor
@@ -115,6 +118,7 @@ export default function App() {
         unavailable={screen.kind === 'unavailable'}
         onClose={() => go({ kind: 'home' })}
         onCreated={(id) => go({ kind: 'edit', id }, 'replace')}
+        onOpenBacktest={(id) => go({ kind: 'backtest', id })}
       />
     )
   }
@@ -129,7 +133,10 @@ export default function App() {
       page={screen.kind === 'discussions' ? 'discussions' : 'strategies'}
       onNavigate={
         user
-          ? (next) => go(next === 'discussions' ? { kind: 'discussions' } : { kind: 'home' })
+          ? (next) => {
+              if (next === 'discussions') setScreen({ kind: 'discussions' })
+              else go({ kind: 'home' })
+            }
           : undefined
       }
     >

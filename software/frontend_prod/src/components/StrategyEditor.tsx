@@ -18,12 +18,13 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import {
   compileStrategy,
   createStrategy,
-  getDummyBacktest,
   getStrategy,
+  listStrategyVersions,
+  revertStrategyVersion,
   runDummyBacktest,
   updateStrategy,
-  type BacktestMenu,
   type CompileResult,
+  type StrategyVersion,
 } from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, isBlockType } from '../blocks/catalog'
 import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/types'
@@ -31,7 +32,7 @@ import { BlockNode } from '../flow/BlockNode'
 import { START_NODE_ID, checkConnection, connect, makeNode } from '../flow/graph'
 import { fromDocument, toDocument, toIR } from '../flow/serialize'
 import { TEMPLATES, assistantCrossover, type AssistantProgram } from '../flow/templates'
-import { BlockPalette, DRAG_MIME } from './BlockPalette'
+import { Assistant, BlockPalette, DRAG_MIME } from './BlockPalette'
 
 const nodeTypes: NodeTypes = Object.fromEntries(BLOCK_TYPES.map((type) => [type, BlockNode]))
 
@@ -68,6 +69,7 @@ type Props = {
   unavailable?: boolean
   onClose: () => void
   onCreated?: (id: number) => void
+  onOpenBacktest: (id: number) => void
 }
 
 function documentPayload(raw: unknown): unknown {
@@ -75,7 +77,14 @@ function documentPayload(raw: unknown): unknown {
   return JSON.parse(raw)
 }
 
-function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCreated }: Props) {
+function StrategyCanvas({
+  userId,
+  strategyId,
+  unavailable = false,
+  onClose,
+  onCreated,
+  onOpenBacktest,
+}: Props) {
   const blank = blankTemplate?.build() ?? { nodes: [], edges: [] }
   const [name, setName] = useState(strategyId == null && !unavailable ? 'Untitled strategy' : '')
   const [nodes, setNodes, onNodesChange] = useNodesState<BlockNodeT>(blank.nodes)
@@ -86,33 +95,16 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [running, setRunning] = useState(false)
-  const [backtest, setBacktest] = useState<BacktestMenu | null>(null)
-  const [backtestError, setBacktestError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
   const [compiledLog, setCompiledLog] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [versions, setVersions] = useState<StrategyVersion[] | null>(null)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [revertingId, setRevertingId] = useState<number | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const skipFetchId = useRef<number | null>(null)
-  const { screenToFlowPosition, getViewport } = useReactFlow()
-
-  useEffect(() => {
-    let ignore = false
-    getDummyBacktest()
-      .then((menu) => {
-        if (!ignore) {
-          setBacktest(menu)
-          setBacktestError(null)
-        }
-      })
-      .catch((error: unknown) => {
-        if (!ignore) {
-          setBacktestError(error instanceof Error ? error.message : 'Could not load the backtest.')
-        }
-      })
-    return () => {
-      ignore = true
-    }
-  }, [])
+  const { screenToFlowPosition, getViewport, fitView } = useReactFlow()
 
   useEffect(() => {
     if (strategyId == null || unavailable) return
@@ -250,23 +242,23 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
 
   const canDelete = nodes.some((node) => node.selected && !isProtectedNode(node))
 
-  async function compileDocument(document: unknown, saved: boolean) {
+  async function compileDocument(document: unknown, note: string) {
     try {
       const result = await compileStrategy(document)
-      showCompiled(result, saved)
+      showCompiled(result, note)
     } catch (error) {
       setCompiledLog(null)
       showMessage(error instanceof Error ? error.message : 'Could not compile', true)
     }
   }
 
-  function showCompiled(result: CompileResult, saved: boolean) {
+  function showCompiled(result: CompileResult, note: string) {
     const lines = result.diagnostics.map((item) =>
       item.node ? `${item.level}: ${item.message} [${item.node}]` : `${item.level}: ${item.message}`,
     )
     if (result.ok) {
       setCompiledLog(lines.length > 0 ? `${lines.join('\n')}\n\n${result.asm}` : result.asm)
-      showMessage(saved ? 'Saved and compiled' : 'Compiled', false)
+      showMessage(note, false)
       return
     }
     setCompiledLog(lines.join('\n') || result.detail || 'Could not compile')
@@ -281,7 +273,39 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
       showMessage('Name is required', true)
       return
     }
-    void compileDocument(toDocument(trimmed, nodes, edges, getViewport()), false)
+    void compileDocument(toDocument(trimmed, nodes, edges, getViewport()), 'Compiled')
+  }
+
+  async function openHistory() {
+    if (storedId == null || saving || revertingId != null) return
+    setHistoryOpen(true)
+    setHistoryError(null)
+    setVersions(null)
+    try {
+      setVersions(await listStrategyVersions(storedId))
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : 'Could not load saved versions.')
+    }
+  }
+
+  async function revert(versionId: number) {
+    if (storedId == null || revertingId != null) return
+    setRevertingId(versionId)
+    setHistoryError(null)
+    try {
+      const row = await revertStrategyVersion(storedId, versionId)
+      const graph = fromDocument(documentPayload(row.document))
+      setName(graph.name || row.name)
+      setNodes(graph.nodes)
+      setEdges(graph.edges)
+      setSaved(true)
+      setVersions(await listStrategyVersions(storedId))
+      await compileDocument(row.document, 'Reverted and compiled')
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : 'Could not revert this version.')
+    } finally {
+      setRevertingId(null)
+    }
   }
 
   async function persist(): Promise<number | null> {
@@ -306,7 +330,7 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
         skipFetchId.current = savedRow.id
         onCreated?.(savedRow.id)
       }
-      await compileDocument(document, true)
+      await compileDocument(document, 'Saved and compiled')
       return savedRow.id
     } catch (error) {
       setSaved(false)
@@ -317,28 +341,18 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
     }
   }
 
+  function recenter() {
+    void fitView({ padding: 0.22, duration: 250 })
+  }
+
   async function runBacktest() {
     if (!loaded || running || saving) return
     setRunning(true)
-    setBacktest(null)
     try {
       const id = saved && storedId != null ? storedId : await persist()
       if (id == null) return
       const result = await runDummyBacktest(userId, id)
-      const ending = result.balances[result.balances.length - 1]
-      const starting = result.balances[0]
-      const equity = ending?.equity ?? 0
-      const returnPct =
-        starting && starting.equity !== 0 ? ((equity - starting.equity) / starting.equity) * 100 : 0
-      setBacktest({
-        dummy: result.dummy,
-        equity,
-        returnPct,
-        orders: result.orders,
-        balances: result.balances,
-      })
-      setBacktestError(null)
-      showMessage(`Dummy backtest finished. Ending equity ${equity.toLocaleString('en-US')}.`, false)
+      onOpenBacktest(result.id)
     } catch (error) {
       showMessage(error instanceof Error ? error.message : 'Could not run the backtest', true)
     } finally {
@@ -348,7 +362,7 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
 
   return (
     <div className="strategy-editor">
-      <BlockPalette onAdd={addBlock} onApply={applyProgram} />
+      <BlockPalette onAdd={addBlock} />
       <section className="editor-stage">
         <div className="canvas-bar">
           <div className="canvas-title">
@@ -372,6 +386,9 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
                 {message}
               </p>
             ) : null}
+            <button type="button" className="quiet" onClick={recenter} disabled={!loaded}>
+              Recenter
+            </button>
             <button
               type="button"
               className="quiet icon-button"
@@ -381,6 +398,14 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
               disabled={!loaded || !canDelete}
             >
               <TrashIcon />
+            </button>
+            <button
+              type="button"
+              className="quiet"
+              onClick={() => void openHistory()}
+              disabled={!loaded || storedId == null || saving || running || revertingId != null}
+            >
+              History
             </button>
             <button type="button" className="quiet" onClick={compile} disabled={!loaded}>
               Compile
@@ -398,6 +423,39 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
             </button>
           </div>
         </div>
+        {historyOpen ? (
+          <section className="version-history" aria-label="Saved versions">
+            <div className="version-history-head">
+              <h2>Saved versions</h2>
+              <button type="button" className="quiet" onClick={() => setHistoryOpen(false)}>
+                Close
+              </button>
+            </div>
+            {historyError ? <p className="form-error">{historyError}</p> : null}
+            {versions == null && !historyError ? <p className="version-empty">Loading versions…</p> : null}
+            {versions != null && versions.length === 0 ? (
+              <p className="version-empty">No saved versions yet.</p>
+            ) : null}
+            {versions != null && versions.length > 0 ? (
+              <ul>
+                {versions.map((version) => (
+                  <li key={version.id} className="version-row">
+                    <span className="version-name">{version.name}</span>
+                    <time dateTime={version.createdAt}>{formatVersionTime(version.createdAt)}</time>
+                    <button
+                      type="button"
+                      className="quiet"
+                      onClick={() => void revert(version.id)}
+                      disabled={revertingId != null}
+                    >
+                      {revertingId === version.id ? 'Reverting…' : 'Revert'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+        ) : null}
         {compiledLog ? (
           <pre className="compile-log" aria-label="Compiled program">
             {compiledLog}
@@ -437,49 +495,29 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
           )}
         </div>
       </section>
-      <BacktestMenu menu={backtest} error={backtestError} />
+      <aside className="editor-rail">
+        <BacktestPanel />
+        <Assistant onApply={applyProgram} />
+      </aside>
     </div>
   )
 }
 
-function money(value: number) {
-  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+function formatVersionTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function BacktestMenu({ menu, error }: { menu: BacktestMenu | null; error: string | null }) {
+function BacktestPanel() {
   return (
-    <aside className="backtest-menu" aria-label="Backtest">
-      <h2>Backtest</h2>
-      {error ? <p className="form-error">{error}</p> : null}
-      {menu ? (
-        <>
-          <p className="backtest-equity">{money(menu.equity)}</p>
-          <p className={menu.returnPct >= 0 ? 'backtest-return up' : 'backtest-return down'}>
-            {menu.returnPct >= 0 ? '+' : ''}
-            {menu.returnPct.toFixed(2)}%
-          </p>
-          <h3>Orders</h3>
-          <ul>
-            {menu.orders.map((order, index) => (
-              <li key={`${order.symbol}-${order.side}-${index}`}>
-                <span className={order.side === 'buy' ? 'up' : 'down'}>{order.side}</span>
-                {order.quantity} {order.symbol} at {order.price}
-              </li>
-            ))}
-          </ul>
-          <h3>Balance</h3>
-          <ul>
-            {menu.balances.map((point, index) => (
-              <li key={`${point.equity}-${index}`}>
-                Equity {money(point.equity)} · Cash {money(point.cash)}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        !error && <p className="backtest-wait">Loading backtest…</p>
-      )}
-    </aside>
+    <section className="backtest-menu" aria-label="Backtest">
+      <p className="plan-kicker">Backtest</p>
+      <article className="plan-card plan-teal">
+        <h2>Analysis</h2>
+        <p>Run the strategy. Orders, balance, drawdown, and trade results open on their own page.</p>
+      </article>
+    </section>
   )
 }
 

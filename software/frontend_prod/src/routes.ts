@@ -3,6 +3,7 @@ export type AppScreen =
   | { kind: 'discussions' }
   | { kind: 'new' }
   | { kind: 'edit'; id: number }
+  | { kind: 'backtest'; id: number }
   | { kind: 'unavailable' }
 
 function normalizePath(pathname: string): string {
@@ -26,6 +27,11 @@ export function parseRoute(pathname: string): AppScreen {
   if (path === '/' || path === '/strategy') return { kind: 'home' }
   if (path === '/discussions') return { kind: 'discussions' }
   if (path === '/strategy/new') return { kind: 'new' }
+  if (path.startsWith('/backtest/')) {
+    const id = strategyId(path.slice('/backtest/'.length))
+    if (id != null) return { kind: 'backtest', id }
+    return { kind: 'unavailable' }
+  }
   if (path.startsWith('/strategy/')) {
     const id = strategyId(path.slice('/strategy/'.length))
     if (id != null) return { kind: 'edit', id }
@@ -44,6 +50,8 @@ export function routePath(screen: AppScreen): string | null {
       return '/strategy/new'
     case 'edit':
       return `/strategy/${screen.id}`
+    case 'backtest':
+      return `/backtest/${screen.id}`
     case 'unavailable':
       return null
   }

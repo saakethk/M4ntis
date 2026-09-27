@@ -167,7 +167,8 @@ def create_strategy(
                 """,
                 _insert_params(values),
             ).fetchone()
-        row = _row_from_record(record)
+            row = _row_from_record(record)
+            _insert_version(conn, row.id, row.document, row.ir)
         return to_summary(row.id, row.name, row.visibility, row.updated_at)
     finally:
         conn.close()
@@ -227,9 +228,11 @@ def update_strategy(
                 """,
                 params,
             ).fetchone()
-        if record is None:
-            raise StrategyNotFound()
-        row = _row_from_record(record)
+            if record is None:
+                raise StrategyNotFound()
+            row = _row_from_record(record)
+            if document is not UNSET or ir is not UNSET:
+                _insert_version(conn, row.id, row.document, row.ir)
         return to_summary(row.id, row.name, row.visibility, row.updated_at)
     finally:
         conn.close()
@@ -252,9 +255,112 @@ def copy_strategy(viewer_id: int, strategy_id: int) -> int:
                 """,
                 _insert_params(payload),
             ).fetchone()
-        return int(record[0])
+            new_id = int(record[0])
+            _insert_version(conn, new_id, payload["document"], payload["ir"])
+        return new_id
     finally:
         conn.close()
+
+
+def list_versions(user_id: int, strategy_id: int) -> list[dict[str, Any]]:
+    """Saved versions for the owner, newest first. Backtest snapshots are omitted."""
+    conn = _connect()
+    try:
+        current = _owned(conn, user_id, strategy_id)
+        records = conn.execute(
+            """
+            SELECT id, document, created_at
+            FROM strategy_versions
+            WHERE strategy_id = %s AND kind = 'save'
+            ORDER BY created_at DESC, id DESC
+            """,
+            (strategy_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [
+        {
+            "id": int(record[0]),
+            "name": _version_name(_load_json(record[1]), current.name),
+            "created_at": record[2].isoformat(),
+        }
+        for record in records
+    ]
+
+
+def revert_version(user_id: int, strategy_id: int, version_id: int) -> dict[str, Any]:
+    """Copy a saved version onto the strategy and keep that restore in the history."""
+    conn = _connect()
+    try:
+        conn.commit()
+        with conn.transaction():
+            current = _owned(conn, user_id, strategy_id)
+            version = conn.execute(
+                """
+                SELECT document, ir
+                FROM strategy_versions
+                WHERE id = %s AND strategy_id = %s AND kind = 'save'
+                """,
+                (version_id, strategy_id),
+            ).fetchone()
+            if version is None:
+                raise StrategyNotFound()
+            document = _load_json(version[0])
+            ir = _load_json(version[1])
+            name = _version_name(document, current.name)
+            record = conn.execute(
+                """
+                UPDATE strategies
+                SET name = %s, document = %s, ir = %s, updated_at = now()
+                WHERE id = %s AND user_id = %s
+                RETURNING id, user_id, name, visibility, document, ir, updated_at, created_at
+                """,
+                (
+                    name,
+                    Jsonb(document),
+                    Jsonb(ir) if ir is not None else None,
+                    strategy_id,
+                    user_id,
+                ),
+            ).fetchone()
+            if record is None:
+                raise StrategyNotFound()
+            row = _row_from_record(record)
+            _insert_version(conn, row.id, row.document, row.ir)
+        return to_api(row, user_id)
+    finally:
+        conn.close()
+
+
+def _owned(conn: psycopg.Connection, user_id: int, strategy_id: int) -> StrategyRow:
+    current = _select_one(conn, strategy_id)
+    if current is None or not can_view(current.user_id, current.visibility, user_id):
+        raise StrategyNotFound()
+    if not can_edit(current.user_id, user_id):
+        raise StrategyForbidden()
+    return current
+
+
+def _version_name(document: Any, fallback: str) -> str:
+    if isinstance(document, dict) and isinstance(document.get("name"), str):
+        cleaned = document["name"].strip()
+        if cleaned:
+            return cleaned
+    return fallback
+
+
+def _insert_version(conn: psycopg.Connection, strategy_id: int, document: Any, ir: Any) -> None:
+    conn.execute(
+        """
+        INSERT INTO strategy_versions (strategy_id, document, ir, kind)
+        VALUES (%s, %s, %s, 'save')
+        """,
+        (
+            strategy_id,
+            Jsonb(document),
+            Jsonb(ir) if ir is not None else None,
+        ),
+    )
 
 
 def _assignments(
