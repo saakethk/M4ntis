@@ -15,7 +15,8 @@ flags, last compiler result) and composes the pieces around it:
   - Assistant (`features/assistant`): chat with the agent, see its tool steps, apply its canvas.
   - `ChecksPanel.tsx`: live browser checks plus an on-demand compiler check; clicking
     an item selects and centers the block. Blocks with errors get a red marker.
-  - `BacktestPanel.tsx`: what a run will use (from Start and Get ticker blocks) and Run.
+  - `BacktestPanel.tsx`: what a run will use (from Start and Get ticker blocks), whether the TradeCPU FPGA is
+    connected (`GET /backtests/fpga`, with Refresh), and **Run on FPGA**, disabled without a board.
 - `HistoryPanel.tsx`: saved versions with Restore.
 - `TemplateMenu.tsx`: the starter strategies from `flow/templates.ts`.
 

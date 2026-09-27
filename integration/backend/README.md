@@ -40,14 +40,14 @@ All routes except `/health`, `/symbols`, and `/auth/register|login` need the `se
 | `POST /compile` | Compile a `m4ntis.strategy/v1` document or `{strategy_id?, document?, price_exponents?}`. 200: `{ok, asm, hex, manifest, diagnostics}`; rejected: 400 `{ok: false, detail, diagnostics}` |
 | `GET /llm/models` | Assistant models, each with `available` (API key configured), and the default |
 | `POST /llm` | `{prompt, graph?, provider?, model?, history?}` → `{reply, graph, steps, model}`; `graph` is the edited canvas or `null` |
-| `POST /backtests` · `GET /backtests/{id}` | Run (sample series for now) · report with metrics |
-| `GET /backtests/sample` | The sample series without storing a run |
+| `POST /backtests` · `GET /backtests/{id}` | `{user_id, strategy_id}` → run on the TradeCPU FPGA over the latest `BACKTEST_TICKS` bars from TimescaleDB · report with metrics and `source` (`fpga`, or `sample` for old runs). No board: 503; board in use: 409 |
+| `GET /backtests/fpga` | `{connected, port, busy, detail}` for the board at `FPGA_SERIAL_PORT`, without opening it |
 | `GET /discussions` · `POST /discussions` | Feed (with cached summaries) · post `{body, strategy_id?, parent_id?}`; attaching your private strategy publishes it |
 | `POST /discussions/{id}/like` | Toggle your like |
 | `POST /discussions/{id}/summary` | `{refresh?}` → Muse-written thread summary, cached until new replies arrive |
 
 Errors are `{"detail": "..."}` with 400 (bad input), 401, 403, 404, 409, 422
-(schema validation), 502 (AI provider failed), or 503 (database or AI not configured).
+(schema validation), 502 (AI provider failed), or 503 (database, AI, or FPGA not available).
 
 ## Tests
 
