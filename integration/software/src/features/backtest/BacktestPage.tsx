@@ -29,8 +29,9 @@ export function BacktestPage({ id, onOpenStrategy }: Props) {
         <p className="plan-kicker">Backtest</p>
         <h1>{report ? report.strategyName : `Run ${id}`}</h1>
         <p className="plan-sub">{report ? `${dateTime(report.createdAt)} · run ${report.id}` : error ? '' : 'Loading this run…'}</p>
-        {report?.sample ? (
-          <p className="sample-banner">This run replays a fixed sample series. Results will reflect your strategy once the market-data simulator lands.</p>
+        {report?.source === 'fpga' ? <p className="plan-sub">Ran on TradeCPU FPGA</p> : null}
+        {report?.source === 'sample' ? (
+          <p className="sample-banner">This run predates FPGA execution and used sample data, not your strategy on real prices.</p>
         ) : null}
         {report ? (
           <button type="button" className="quiet" onClick={() => onOpenStrategy(report.strategyId)}>

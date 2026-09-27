@@ -434,6 +434,36 @@
   font-size: 13px;
 }
 
+.fpga-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.fpga-status.on {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.fpga-status.off {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.fpga-status .quiet {
+  flex-shrink: 0;
+}
+
 .rail-facts {
   display: grid;
   gap: 8px;

@@ -30,13 +30,20 @@ export type BacktestMetrics = {
   tradeReturns: number[]
 }
 
+export type FpgaStatus = {
+  connected: boolean
+  port: string | null
+  busy: boolean
+  detail: string
+}
+
 export type BacktestReport = {
   id: number
   strategyId: number
   strategyName: string
   createdAt: string
-  /** True while runs use the sample series instead of simulated market data. */
-  sample: boolean
+  /** `fpga` for runs on the TradeCPU board; `sample` for runs from before FPGA execution. */
+  source: string
   orders: BacktestOrder[]
   balances: BacktestBalance[]
   metrics: BacktestMetrics
@@ -49,6 +56,17 @@ export async function runBacktest(userId: number, strategyId: number): Promise<n
   return id(record(await postJson('/backtests', { user_id: userId, strategy_id: strategyId }), WHAT).id, WHAT)
 }
 
+/** Whether the TradeCPU board is attached. Backtests are refused without it. */
+export async function getFpgaStatus(): Promise<FpgaStatus> {
+  const row = record(await requestJson('/backtests/fpga'), 'FPGA status')
+  return {
+    connected: row.connected === true,
+    port: typeof row.port === 'string' ? row.port : null,
+    busy: row.busy === true,
+    detail: str(row, 'detail', 'FPGA status'),
+  }
+}
+
 export async function getBacktest(backtestId: number): Promise<BacktestReport> {
   const row = record(await requestJson(`/backtests/${backtestId}`), WHAT)
   return {
@@ -56,7 +74,7 @@ export async function getBacktest(backtestId: number): Promise<BacktestReport> {
     strategyId: id(row.strategy_id, WHAT),
     strategyName: str(row, 'strategy_name', WHAT),
     createdAt: optionalStr(row, 'created_at'),
-    sample: row.dummy === true,
+    source: str(row, 'source', WHAT),
     orders: list(row.orders, WHAT).map(readOrder),
     balances: list(row.balances, WHAT).map(readBalance),
     metrics: readMetrics(row.metrics),
