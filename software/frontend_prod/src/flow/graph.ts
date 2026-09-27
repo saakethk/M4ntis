@@ -1,12 +1,12 @@
-import { BLOCK_DEFS, defaultParams, historyTicks, isDataBlock, portsOf } from '../blocks/catalog';
-import { NUM_STOCK_BUFFERS, NUM_VAR_SLOTS, ticksToDuration } from '../blocks/hardware';
+import { BLOCK_DEFS, defaultParams, historyTicks, isDataBlock, portsOf } from '../blocks/catalog.ts';
+import { NUM_STOCK_BUFFERS, NUM_VAR_SLOTS, ticksToDuration } from '../blocks/hardware.ts';
 import type {
   BlockEdge,
   BlockNode,
   BlockType,
   ParamValue,
   PortKind,
-} from '../blocks/types';
+} from '../blocks/types.ts';
 
 export const START_NODE_ID = 'start';
 
@@ -146,56 +146,131 @@ export function reachableExecNodes(nodes: BlockNode[], edges: BlockEdge[]) {
   return order;
 }
 
-/**
- * Store a searched ticker on a Price N ticks ago node and point it at a buffer.
- * With no Get ticker blocks, the symbol is written onto Start. Otherwise it uses
- * the matching Get ticker, or the next free buffer slot.
- */
-export function assignPriceTicker(nodes: BlockNode[], nodeId: string, symbol: string): BlockNode[] {
-  const upper = symbol.trim().toUpperCase();
-  if (!upper) return nodes;
-  const tickers = nodes
-    .filter((node) => node.type === 'get_ticker')
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const match = tickers.findIndex(
-    (node) => String(node.data.params.symbol ?? '').trim().toUpperCase() === upper,
-  );
-  const self = nodes.find((node) => node.id === nodeId);
-  const currentBuffer = Number(self?.data.params.buffer ?? 0);
-  const fallback =
-    Number.isInteger(currentBuffer) && currentBuffer >= 0 && currentBuffer < NUM_STOCK_BUFFERS
-      ? currentBuffer
-      : 0;
-  const buffer =
-    match >= 0 ? match : tickers.length > 0 && tickers.length < NUM_STOCK_BUFFERS ? tickers.length : fallback;
-  const stampStart = match < 0 && tickers.length < NUM_STOCK_BUFFERS;
-
-  return nodes.map((node) => {
-    if (node.id === nodeId) {
-      return { ...node, data: { params: { ...node.data.params, symbol: upper, buffer } } };
-    }
-    if (stampStart && node.id === START_NODE_ID) {
-      return {
-        ...node,
-        data: { params: { ...node.data.params, [`symbol${buffer}`]: upper } },
-      };
-    }
-    return node;
-  });
+/** Get ticker blocks in node-id order, capped at the hardware buffer count. */
+function tickerNodes(nodes: BlockNode[]): BlockNode[] {
+  return nodes
+    .filter((n) => n.type === 'get_ticker')
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .slice(0, NUM_STOCK_BUFFERS);
 }
 
 /** Tickers in Get-ticker creation order. Older graphs keep symbols stored on Start. */
 export function tickerSymbols(nodes: BlockNode[]): string[] {
-  const tickers = nodes
-    .filter((n) => n.type === 'get_ticker')
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-    .slice(0, NUM_STOCK_BUFFERS)
-    .map((n) => String(n.data.params.symbol ?? '').trim());
+  const tickers = tickerNodes(nodes).map((n) => String(n.data.params.symbol ?? '').trim());
   if (tickers.length > 0) {
     return Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => tickers[i] ?? '');
   }
   const start = nodes.find((n) => n.id === START_NODE_ID)?.data.params ?? {};
   return Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => String(start[`symbol${i}`] ?? ''));
+}
+
+/**
+ * Copy Get ticker symbols onto Start (`symbol0`…) and set each ticker's buffer.
+ * Same rules as the compiler's `_bind_tickers`. The canvas is left unchanged.
+ */
+export function nodesWithBoundTickers(nodes: BlockNode[]): BlockNode[] {
+  const tickers = tickerNodes(nodes);
+  if (tickers.length === 0) return nodes;
+  const bufferById = new Map(tickers.map((n, i) => [n.id, i]));
+  return nodes.map((n) => {
+    if (n.id === START_NODE_ID) {
+      const params = { ...n.data.params };
+      for (const [i, ticker] of tickers.entries()) {
+        const symbol = String(ticker.data.params.symbol ?? '').trim();
+        if (symbol) params[`symbol${i}`] = symbol.toUpperCase();
+      }
+      return { ...n, data: { ...n.data, params } };
+    }
+    const buffer = bufferById.get(n.id);
+    if (buffer === undefined) return n;
+    const symbol = String(n.data.params.symbol ?? '').trim();
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        params: {
+          ...n.data.params,
+          buffer,
+          ...(symbol ? { symbol: symbol.toUpperCase() } : {}),
+        },
+      },
+    };
+  });
+}
+
+function cleanSymbol(value: unknown): string {
+  return String(value ?? '').trim().toUpperCase();
+}
+
+function clampBuffer(value: unknown): number {
+  const index = Number(value ?? 0);
+  if (!Number.isInteger(index) || index < 0 || index >= NUM_STOCK_BUFFERS) return 0;
+  return index;
+}
+
+function withSymbolBuffer(node: BlockNode, symbol: string, buffer: number): BlockNode {
+  return {
+    ...node,
+    data: { ...node.data, params: { ...node.data.params, symbol, buffer } },
+  };
+}
+
+/**
+ * Point one block at `symbol` and the hardware buffer that holds it.
+ * Graphs with no Get ticker blocks store the symbol on Start. Graphs that
+ * already have Get ticker blocks reuse one, or add one while a buffer is free.
+ */
+export function assignPriceTicker(nodes: BlockNode[], nodeId: string, symbol: string): BlockNode[] {
+  const next = cleanSymbol(symbol);
+  if (!next) return nodes;
+  const target = nodes.find((n) => n.id === nodeId);
+  if (!target || target.id === START_NODE_ID) return nodes;
+  if (target.type === 'get_ticker') {
+    return nodes.map((n) => (n.id === nodeId ? withSymbolBuffer(n, next, clampBuffer(n.data.params.buffer)) : n));
+  }
+
+  const tickers = tickerNodes(nodes);
+  if (tickers.length === 0) {
+    const start = nodes.find((n) => n.id === START_NODE_ID)?.data.params ?? {};
+    let buffer = Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => i).find(
+      (i) => cleanSymbol(start[`symbol${i}`]) === next,
+    );
+    if (buffer === undefined) {
+      buffer = Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => i).find(
+        (i) => cleanSymbol(start[`symbol${i}`]) === '',
+      );
+    }
+    if (buffer === undefined) buffer = clampBuffer(target.data.params.buffer);
+    return nodes.map((n) => {
+      if (n.id === START_NODE_ID) {
+        return { ...n, data: { ...n.data, params: { ...n.data.params, [`symbol${buffer}`]: next } } };
+      }
+      if (n.id === nodeId) return withSymbolBuffer(n, next, buffer);
+      return n;
+    });
+  }
+
+  const existing = tickers.findIndex((n) => cleanSymbol(n.data.params.symbol) === next);
+  if (existing >= 0) {
+    return nodes.map((n) => (n.id === nodeId ? withSymbolBuffer(n, next, existing) : n));
+  }
+  if (tickers.length < NUM_STOCK_BUFFERS) {
+    const buffer = tickers.length;
+    const created = makeNode(
+      'get_ticker',
+      { x: target.position.x - 240, y: target.position.y },
+      { symbol: next, buffer },
+    );
+    return [...nodes.map((n) => (n.id === nodeId ? withSymbolBuffer(n, next, buffer) : n)), created];
+  }
+
+  const buffer = clampBuffer(target.data.params.buffer);
+  const slotId = tickers[buffer]?.id;
+  return nodes.map((n) => {
+    if (n.id === nodeId) return withSymbolBuffer(n, next, buffer);
+    if (slotId && n.id === slotId) return withSymbolBuffer(n, next, buffer);
+    return n;
+  });
 }
 
 export function analyze(nodes: BlockNode[], edges: BlockEdge[]): Diagnostic[] {

@@ -7,12 +7,18 @@ else's private strategy, and this module never changes visibility for them.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import psycopg
 
 from helpers.db import connect
 from helpers.strategies import PRIVATE, PUBLIC, StrategyForbidden, StrategyNotFound
+
+# Same statements as software/database/load_discussions_backtests.py, applied
+# through the Tiger connection the other FastAPI routes already use.
+_SCHEMA = Path(__file__).resolve().parents[2] / "database" / "sql" / "discussions_backtests.sql"
+_schema_ready = False
 
 
 class PostNotFound(Exception):
@@ -36,6 +42,20 @@ INSERT INTO discussion_posts (user_id, body, strategy_id, parent_id)
 VALUES (%s, %s, %s, %s)
 RETURNING id
 """
+
+
+def ensure_discussion_tables(conn: psycopg.Connection) -> None:
+    """Create discussion and backtest tables on Tiger if this process has not yet."""
+    global _schema_ready
+    if _schema_ready:
+        return
+    conn.commit()
+    for statement in _SCHEMA.read_text().split(";"):
+        sql = statement.strip()
+        if sql:
+            conn.execute(sql)
+    conn.commit()
+    _schema_ready = True
 
 
 def clean_body(body: object) -> str:
@@ -63,6 +83,7 @@ def create_post(
     try:
         # connect() already ran SET TIME ZONE, which opens a transaction.
         # transaction() would only be a savepoint, and close() would roll the post back.
+        ensure_discussion_tables(conn)
         conn.commit()
         with conn.transaction():
             made_public, stored_strategy_id = _attach_strategy(conn, user_id, strategy_id)
@@ -117,20 +138,22 @@ def _require_parent(conn: psycopg.Connection, parent_id: int | None) -> int | No
 
 
 def list_posts(user_id: int) -> list[dict[str, Any]]:
-    """Every post, oldest first, with whether this user liked it."""
+    """Every user's posts, newest first, with whether this user liked each one."""
     conn = _connect()
     try:
+        ensure_discussion_tables(conn)
         rows = conn.execute(
             """
-            SELECT p.id, p.user_id, u.email, p.body, p.strategy_id, p.parent_id,
-                   p.likes_count, p.created_at,
+            SELECT p.id, p.user_id, u.email, p.body, p.strategy_id, s.name,
+                   p.parent_id, p.likes_count, p.created_at,
                    EXISTS (
                        SELECT 1 FROM discussion_likes l
                        WHERE l.post_id = p.id AND l.user_id = %s
                    )
             FROM discussion_posts p
             JOIN users u ON u.id = p.user_id
-            ORDER BY p.created_at, p.id
+            LEFT JOIN strategies s ON s.id = p.strategy_id
+            ORDER BY p.created_at DESC, p.id DESC
             """,
             (user_id,),
         ).fetchall()
@@ -143,6 +166,7 @@ def toggle_like(user_id: int, post_id: int) -> dict[str, Any]:
     """Like a post, or remove the like if it is already there."""
     conn = _connect()
     try:
+        ensure_discussion_tables(conn)
         conn.commit()
         with conn.transaction():
             post = conn.execute(
@@ -187,17 +211,18 @@ def toggle_like(user_id: int, post_id: int) -> dict[str, Any]:
 
 
 def _public_post(row: tuple[Any, ...]) -> dict[str, Any]:
-    created = row[7]
+    created = row[8]
     return {
         "id": int(row[0]),
         "user_id": int(row[1]),
         "author": str(row[2]),
         "body": str(row[3]),
         "strategy_id": None if row[4] is None else int(row[4]),
-        "parent_id": None if row[5] is None else int(row[5]),
-        "likes_count": int(row[6]),
+        "strategy_name": None if row[5] is None else str(row[5]),
+        "parent_id": None if row[6] is None else int(row[6]),
+        "likes_count": int(row[7]),
         "created_at": created.isoformat() if hasattr(created, "isoformat") else str(created),
-        "liked": bool(row[8]),
+        "liked": bool(row[9]),
     }
 
 

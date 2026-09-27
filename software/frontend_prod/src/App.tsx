@@ -8,15 +8,7 @@ import { Shell } from './components/Shell'
 import { StrategyEditor } from './components/StrategyEditor'
 import { parseRoute, routePath, type AppScreen } from './routes'
 
-type Screen =
-  | { kind: 'home' }
-  | { kind: 'discussions' }
-  | { kind: 'new' }
-  | { kind: 'edit'; id: number }
-  | { kind: 'backtest'; id: number }
-  | { kind: 'unavailable' }
-
-function currentRoute(): Screen {
+function currentRoute(): AppScreen {
   return parseRoute(window.location.pathname)
 }
 
@@ -26,7 +18,7 @@ export default function App() {
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
-  const [screen, setScreen] = useState<Screen>(currentRoute)
+  const [screen, setScreen] = useState<AppScreen>(currentRoute())
 
   useEffect(() => {
     function onPopState() {

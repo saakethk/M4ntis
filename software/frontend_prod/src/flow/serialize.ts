@@ -1,12 +1,12 @@
-import { BLOCK_DEFS, isBlockType, isDataBlock, portsOf } from '../blocks/catalog';
+import { BLOCK_DEFS, isBlockType, isDataBlock, portsOf } from '../blocks/catalog.ts';
 import type {
   BlockEdge,
   BlockNode,
   BlockType,
   ParamValue,
   PortKind,
-} from '../blocks/types';
-import { START_NODE_ID, hydrateEdge, makeNode, portKind, reachableExecNodes } from './graph';
+} from '../blocks/types.ts';
+import { START_NODE_ID, hydrateEdge, makeNode, nodesWithBoundTickers, portKind, reachableExecNodes } from './graph.ts';
 
 export const DOCUMENT_SCHEMA = 'm4ntis.strategy/v1';
 export const IR_SCHEMA = 'm4ntis.strategy-ir/v1';
@@ -45,12 +45,13 @@ export function toDocument(
   edges: BlockEdge[],
   viewport?: { x: number; y: number; zoom: number },
 ): StrategyDocument {
+  const bound = nodesWithBoundTickers(nodes);
   return {
     schema: DOCUMENT_SCHEMA,
     name,
     savedAt: new Date().toISOString(),
     flow: {
-      nodes: nodes.map((n) => ({
+      nodes: bound.map((n) => ({
         id: n.id,
         type: n.type as BlockType,
         position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
@@ -127,6 +128,7 @@ export interface StrategyIR {
 }
 
 export function toIR(nodes: BlockNode[], edges: BlockEdge[]): StrategyIR {
+  nodes = nodesWithBoundTickers(nodes);
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const execOrder = reachableExecNodes(nodes, edges);
   const reachable = new Set(execOrder);

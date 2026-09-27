@@ -1,5 +1,5 @@
-import { BUFFER_DEPTH, NUM_STOCK_BUFFERS, NUM_VAR_SLOTS, RESOLUTIONS } from './hardware';
-import { NASDAQ_100 } from './symbols';
+import { BUFFER_DEPTH, NUM_STOCK_BUFFERS, NUM_VAR_SLOTS, RESOLUTIONS } from './hardware.ts';
+import { NASDAQ_100 } from './symbols.ts';
 import type {
   BlockCategory,
   BlockDef,
@@ -7,7 +7,7 @@ import type {
   ParamDef,
   ParamValue,
   PortDef,
-} from './types';
+} from './types.ts';
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
