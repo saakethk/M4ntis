@@ -341,7 +341,8 @@ export function analyze(nodes: BlockNode[], edges: BlockEdge[]): Diagnostic[] {
     if (def.history && (reachable.has(n.id) || (isDataBlock(type) && consumed.has(n.id)))) {
       history = Math.max(history, historyTicks(type, n.data.params));
       const buf = Number(n.data.params.buffer ?? 0);
-      if (type !== 'get_ticker' && !tickerSymbols(nodes)[buf]) unassignedBuffers.set(buf, n.id);
+      const ownSymbol = type === 'price_n_ticks_ago' ? String(n.data.params.symbol ?? '').trim() : '';
+      if (type !== 'get_ticker' && !ownSymbol && !tickerSymbols(nodes)[buf]) unassignedBuffers.set(buf, n.id);
     }
   }
 

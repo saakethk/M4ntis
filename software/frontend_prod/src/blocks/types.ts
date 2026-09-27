@@ -19,7 +19,6 @@ export type BlockCategory =
 export type BlockType =
   | 'start'
   | 'get_ticker'
-  | 'current_price'
   | 'sum_n_ticks'
   | 'price_n_ticks_ago'
   | 'constant'
@@ -78,6 +77,7 @@ export interface SelectParamDef extends ParamBase {
   options: { value: ParamValue; label: string; hint?: string }[];
 }
 
+/** A stock symbol chosen with the ticker search, not a fixed option list. */
 export interface TickerParamDef extends ParamBase {
   type: 'ticker';
   default: string;

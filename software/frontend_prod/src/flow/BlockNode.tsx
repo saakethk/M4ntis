@@ -118,11 +118,10 @@ function ParamField({
 
 /**
  * Canvas-only chips for blocks that hold or forward a single value.
- * `current_price` forwards one stock buffer, `constant` holds a literal,
+ * `constant` holds a literal,
  * and `get_var` forwards a variable slot. The document and IR are unchanged.
  */
 const VALUE_CHIP_LABEL: Partial<Record<BlockType, string>> = {
-  current_price: 'Price',
   constant: 'Constant',
   get_var: 'Var',
 };
@@ -280,7 +279,6 @@ function ConditionPanel({
   ports: PortDef[];
 }) {
   const [a, b] = ports;
-  const hint = COMPARISON_OPERATORS.find((o) => o.value === operator)?.hint;
   return (
     <div className="condition">
       <div className="condition-title">Condition</div>
@@ -292,14 +290,12 @@ function ConditionPanel({
             type="button"
             className={`nodrag op-btn ${o.value === operator ? 'active' : ''}`}
             onClick={() => onOperator(o.value)}
-            title={o.hint}
           >
             {o.label}
           </button>
         ))}
       </div>
       <DataIn port={b} />
-      {hint && <div className="condition-hint">compiles to {hint}</div>}
     </div>
   );
 }
@@ -328,7 +324,7 @@ function nodeSymbols(def: BlockDef, params: Record<string, ParamValue>, symbols:
 
 /**
  * A pass-through / symbol source: every parameter is a buffer or ticker, so the node
- * only holds or forwards a symbol. `current_price` is that block in the catalog.
+ * only holds or forwards a symbol.
  */
 function isSymbolSource(def: BlockDef): boolean {
   if (def.type === 'start' || def.params.length === 0) return false;
@@ -730,10 +726,6 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
           ))}
         </div>
       )}
-
-      <div className="block-footer" title={def.statusNote}>
-        <code>{def.compilesTo}</code>
-      </div>
 
       {execOuts.length > 0 && (
         <div className={`exec-outs ${execOuts.length > 1 ? 'multi' : ''}`}>
