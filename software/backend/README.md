@@ -21,8 +21,9 @@ This is the code to expose the backend code like the FPGA interface and such to 
 - POST /backtests with `{ "user_id", "strategy_id" }` stores a dummy backtest for the signed-in user. `user_id` must be that user. It snapshots the strategy and writes sample orders and balances. Nothing is run against market data.
 - GET /backtests/{id} returns that run for the user who created it (or anyone who can view the strategy): orders, balances, and metrics derived from them.
 - POST /discussions with `{ "body", "strategy_id"?, "parent_id"? }` creates a post for the signed-in user. Returns `{ "id", "strategy_id", "strategy_made_public" }`. If the author owns `strategy_id` and it is private, the strategy becomes `public` (view-only) and `strategy_made_public` is true. A non-owner cannot publish someone else's private strategy.
+- POST /llm with `{ "prompt" }` asks the configured model for help building a strategy. The signed-in user gets `{ "reply", "dummy": false, "program" }`. `program` is an SMA crossover (`resolution`, `symbol`, `fast`, `slow`, `quantity`) when the prompt asks for one the editor can place on the canvas, otherwise `null`. A missing `AI_PROVIDER` or API key returns 503. A provider failure returns 502.
 
-## AI assistant client (not wired to any endpoint yet)
+## AI assistant client
 `helpers/ai_agent.py` gives one `AIAgent` class for every model provider, all sharing the system
 prompt in `helpers/prompts/assistant_system.md`.
 

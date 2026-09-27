@@ -1414,6 +1414,9 @@ input:focus-visible {
 
 .assistant-reply {
   color: #334155;
+  white-space: pre-wrap;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .assistant-error {

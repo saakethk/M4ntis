@@ -1,124 +1,134 @@
-"""Pretend strategy assistant.
+"""Strategy assistant backed by the configured model provider.
 
-Nothing is sent to a model. A prompt that asks for a trade becomes a small
-SMA crossover using Start for the bar size and Get ticker for the stock.
+POST /llm sends the user's prompt to AIAgent (AI_PROVIDER / AI_MODEL). The reply
+is the model's explanation. When the user asks for a one-stock SMA crossover,
+the model also returns a program the editor can place on the canvas.
 """
 
 from __future__ import annotations
 
+import json
 import re
+from collections.abc import Callable
+
+from helpers.ai_agent import AIAgent, AIConfigError, AIProviderError, load_system_prompt
 
 MAX_PROMPT_LENGTH = 2000
+RESOLUTIONS = ("1m", "5m", "15m", "30m", "1h", "1d")
+_SYMBOL = re.compile(r"^[A-Z][A-Z0-9.]{0,7}$")
+_FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
-HELP = (
-    "Start only chooses how often the strategy runs: every 1 minute, 5 minutes, "
-    "15 minutes, 30 minutes, 1 hour, or 1 day. Add a Get ticker block and search "
-    "for the stock, such as AAPL. Compare a fast average with a slow average, "
-    "buy when the fast one is higher, and sell when it is lower."
-)
+# Appended to the shared assistant prompt. The editor can only apply an SMA
+# crossover, so a program is included only for that shape.
+APPENDIX = """
+## Canvas program
 
-_RESOLUTIONS = (
-    ("15 minutes", "15m"),
-    ("15 minute", "15m"),
-    ("30 minutes", "30m"),
-    ("30 minute", "30m"),
-    ("1 minute", "1m"),
-    ("5 minutes", "5m"),
-    ("5 minute", "5m"),
-    ("1 hour", "1h"),
-    ("1 day", "1d"),
-    ("15 min", "15m"),
-    ("30 min", "30m"),
-    ("1 min", "1m"),
-    ("5 min", "5m"),
-    ("hourly", "1h"),
-    ("daily", "1d"),
-)
+The editor can place one strategy on the canvas from your reply: a single-stock SMA crossover. Start sets the resolution. Get ticker holds the stock. A fast SMA and a slow SMA feed an If block. Then buys, Else sells the same quantity.
 
-_EVERY = {
-    "1m": "1 minute",
-    "5m": "5 minutes",
-    "15m": "15 minutes",
-    "30m": "30 minutes",
-    "1h": "1 hour",
-    "1d": "1 day",
-}
+When the user asks for that crossover, end your reply with one fenced JSON block and nothing after it:
 
-_NAMES = {
-    "APPLE": "AAPL",
-    "MICROSOFT": "MSFT",
-    "TESLA": "TSLA",
-    "NVIDIA": "NVDA",
-    "AMAZON": "AMZN",
-    "GOOGLE": "GOOGL",
-    "META": "META",
-}
+```json
+{"program": {"resolution": "5m", "symbol": "AAPL", "fast": 10, "slow": 30, "quantity": 10}}
+```
 
-_INTENT = ("buy", "sell", "sma", "average", "crossover", "ticker", "aapl", "apple")
+Use only these values:
+- resolution: 1m, 5m, 15m, 30m, 1h, or 1d
+- symbol: one ticker
+- fast and slow: whole numbers from 1 to 30, with slow greater than fast
+- quantity: a whole number of shares from 1 to 32767
+
+The prose before the fence is what the user reads. Explain the rule and the connections in that prose.
+
+For any other request, including mean reversion, several stocks, or a general question, do not include a program block. Describe the blocks in prose instead.
+""".strip()
 
 
-def dummy_reply(prompt: str) -> dict[str, object]:
-    """Return a fixed-style reply, plus a program when the prompt asks for a trade."""
+def system_prompt() -> str:
+    return f"{load_system_prompt()}\n\n{APPENDIX}"
+
+
+def ask(prompt: str, *, complete: Callable[[str], str] | None = None) -> dict[str, object]:
+    """Send one prompt to the model and return reply text plus an optional program."""
     text = prompt.strip()
     if not text:
         raise ValueError("Prompt is required")
     if len(text) > MAX_PROMPT_LENGTH:
         raise ValueError("Prompt is too long")
-    program = _program(text)
-    if program is None:
-        return {"reply": HELP, "dummy": True, "program": None}
-    reply = (
-        f"Every {_EVERY[str(program['resolution'])]}, Get ticker {program['symbol']}. "
-        f"If the {program['fast']}-bar average is above the {program['slow']}-bar average, "
-        f"buy {program['quantity']}; otherwise sell {program['quantity']}."
-    )
-    return {"reply": reply, "dummy": True, "program": program}
+    raw = (complete or _complete)(text)
+    reply, program = _split(raw)
+    return {"reply": reply, "dummy": False, "program": program}
 
 
-def _program(text: str) -> dict[str, object] | None:
-    lower = text.lower()
-    if not any(word in lower for word in _INTENT):
+def _complete(prompt: str) -> str:
+    with AIAgent.from_env() as agent:
+        response = agent.chat(prompt, system_prompt=system_prompt(), temperature=0.2, max_tokens=1500)
+    if not response.text.strip():
+        raise AIProviderError(response.provider, "empty response")
+    return response.text
+
+
+def _split(text: str) -> tuple[str, dict[str, object] | None]:
+    stripped = text.strip()
+    if not stripped:
+        raise AIProviderError("assistant", "empty response")
+    whole = _json_object(stripped)
+    if whole is not None and isinstance(whole.get("reply"), str) and whole["reply"].strip():
+        return whole["reply"].strip(), _program(whole.get("program"))
+    program: dict[str, object] | None = None
+    reply = stripped
+    for match in _FENCE.finditer(stripped):
+        payload = _json_object(match.group(1))
+        if payload is None or "program" not in payload:
+            continue
+        program = _program(payload.get("program"))
+        reply = f"{stripped[: match.start()]}{stripped[match.end() :]}".strip()
+    if program is not None and not reply:
+        reply = "Here is an SMA crossover you can apply to the canvas."
+    return reply, program
+
+
+def _json_object(text: str) -> dict | None:
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError:
         return None
-    scanned = lower
-    quantity_match = re.search(r"\b(?:buy|sell|quantity|shares?)\s+(\d{1,5})\b", scanned)
-    quantity = int(quantity_match.group(1)) if quantity_match else 10
-    quantity = min(max(quantity, 1), 32767)
-    if quantity_match:
-        scanned = scanned.replace(quantity_match.group(0), " ", 1)
-    resolution = _resolution(scanned)
-    for phrase, value in _RESOLUTIONS:
-        if value == resolution and phrase in scanned:
-            scanned = scanned.replace(phrase, " ", 1)
-            break
-    windows = [int(n) for n in re.findall(r"\b\d{1,2}\b", scanned) if 1 <= int(n) <= 30]
-    fast = windows[0] if windows else 10
-    slow = windows[1] if len(windows) > 1 else 30
-    if slow <= fast:
-        slow = min(30, fast + 1)
-    if slow <= fast:
-        fast = max(1, slow - 1)
+    return value if isinstance(value, dict) else None
+
+
+def _program(value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    resolution = value.get("resolution")
+    symbol = value.get("symbol")
+    fast = _whole(value.get("fast"))
+    slow = _whole(value.get("slow"))
+    quantity = _whole(value.get("quantity"))
+    if resolution not in RESOLUTIONS or not isinstance(symbol, str):
+        return None
+    ticker = symbol.strip().upper()
+    if _SYMBOL.fullmatch(ticker) is None or fast is None or slow is None or quantity is None:
+        return None
+    if not (1 <= fast <= 30 and 1 <= slow <= 30 and slow > fast):
+        return None
+    if not 1 <= quantity <= 32767:
+        return None
     return {
         "resolution": resolution,
-        "symbol": _symbol(text),
+        "symbol": ticker,
         "fast": fast,
         "slow": slow,
         "quantity": quantity,
     }
 
 
-def _resolution(lower: str) -> str:
-    for phrase, value in _RESOLUTIONS:
-        if phrase in lower:
-            return value
-    return "5m"
+def _whole(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return None
 
 
-def _symbol(text: str) -> str:
-    upper = text.upper()
-    for name, ticker in _NAMES.items():
-        if name in upper:
-            return ticker
-    for token in re.findall(r"\b[A-Z]{2,5}\b", text):
-        if token not in {"SMA", "BUY", "SELL", "EVERY", "HOUR", "DAY"}:
-            return token
-    return "AAPL"
+__all__ = ["AIConfigError", "AIProviderError", "MAX_PROMPT_LENGTH", "ask", "system_prompt"]
