@@ -216,7 +216,7 @@ def test_discussions_publish_like_and_summaries(database):
         calls.append(thread)
         return f"{len(thread.replies)} replies about {thread.strategy_name}", "muse-spark-1.3"
 
-    with patch("mantis.api.routes.discussions.summarize_thread", side_effect=fake_summary):
+    with patch("src.backend.mantis.api.routes.discussions.summarize_thread", side_effect=fake_summary):
         first = reader.post(f"/discussions/{post['id']}/summary").json()
         cached = reader.post(f"/discussions/{post['id']}/summary").json()
         reader.post("/discussions", json={"body": "Does it work on 1h?", "parent_id": post["id"]})

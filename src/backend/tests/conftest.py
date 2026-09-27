@@ -16,7 +16,7 @@ import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from src.backend.mantis.api.app import create_app  # noqa: E402
 from src.backend.mantis.blocks.canvas import normalize_graph  # noqa: E402

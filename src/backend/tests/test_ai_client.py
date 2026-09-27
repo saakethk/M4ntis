@@ -58,7 +58,7 @@ def test_provider_base_url_can_be_overridden(monkeypatch):
 
 
 def test_retries_then_raises_provider_error(monkeypatch):
-    monkeypatch.setattr("mantis.ai.client.time.sleep", lambda _: None)
+    monkeypatch.setattr("src.backend.mantis.ai.client.time.sleep", lambda _: None)
     calls = []
 
     def handler(request):
