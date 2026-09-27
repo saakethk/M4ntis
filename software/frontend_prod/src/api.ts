@@ -8,12 +8,34 @@ export type User = {
   email: string
 }
 
+export type TickerHit = {
+  symbol: string
+  name: string
+}
+
 const SESSION_TIMEOUT_MS = 5000
 
 const API_BASE = resolveApiBase(import.meta.env.VITE_API_URL, {
   dev: import.meta.env.DEV,
   pageHostname: typeof window === 'undefined' ? undefined : window.location.hostname,
 })
+
+export function searchTickers(query: string): Promise<TickerHit[]> {
+  const params = new URLSearchParams({ q: query, limit: '6' })
+  return requestJson(`/symbols?${params}`).then(readTickers)
+}
+
+function readTickers(body: unknown): TickerHit[] {
+  if (!body || typeof body !== 'object') throw new Error('Symbol search was not valid.')
+  const symbols = (body as { symbols?: unknown }).symbols
+  if (!Array.isArray(symbols)) throw new Error('Symbol search was not valid.')
+  return symbols.map((item) => {
+    if (!item || typeof item !== 'object') throw new Error('Symbol search was not valid.')
+    const row = item as { symbol?: unknown; name?: unknown }
+    if (typeof row.symbol !== 'string') throw new Error('Symbol search was not valid.')
+    return { symbol: row.symbol, name: typeof row.name === 'string' ? row.name : row.symbol }
+  })
+}
 
 export async function getMe(): Promise<User | null> {
   const controller = new AbortController()

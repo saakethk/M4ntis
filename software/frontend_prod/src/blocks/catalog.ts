@@ -50,6 +50,14 @@ const bufferParam: ParamDef = {
   options: range(NUM_STOCK_BUFFERS).map((i) => ({ value: i, label: `BUF${i}` })),
 };
 
+/** Symbol chosen by search. Empty until the user picks one, so older graphs keep their buffer. */
+const tickerSearchParam: ParamDef = {
+  key: 'symbol',
+  label: 'Ticker',
+  type: 'ticker',
+  default: '',
+};
+
 /** GETSUMPRICEBEFORE sums the N most recent entries, so N can be the full buffer depth. */
 const windowParam = (defaultTicks: number, min = 1, max = BUFFER_DEPTH): ParamDef => ({
   key: 'n',
@@ -159,9 +167,8 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
       {
         key: 'symbol',
         label: 'Ticker',
-        type: 'select',
+        type: 'ticker',
         default: 'AAPL',
-        options: NASDAQ_100.map((s) => ({ value: s, label: s })),
       },
       bufferParam,
     ],
@@ -197,7 +204,9 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
     category: 'reserved',
     description: 'Price N ticks before the current one.',
     ports: [DATA_OUT],
-    params: [bufferParam, offsetParam(10)],
+    // `symbol` is the ticker search. `buffer` stays for the hardware slot; the compiler
+    // fills it from `symbol` when the user has picked one.
+    params: [tickerSearchParam, bufferParam, offsetParam(10)],
     compilesTo: 'GETSTOCKPRICEBEFORE',
     status: 'confirmed',
     history: 'n+1',
