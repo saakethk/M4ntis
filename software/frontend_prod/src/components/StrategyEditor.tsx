@@ -496,8 +496,8 @@ function StrategyCanvas({
         </div>
       </section>
       <aside className="editor-rail">
-        <Assistant onApply={applyProgram} />
         <BacktestPanel />
+        <Assistant onApply={applyProgram} />
       </aside>
     </div>
   )

@@ -1093,7 +1093,7 @@ input:focus-visible {
   gap: 6px;
   margin: 0;
   padding: 14px 14px 12px;
-  border-bottom: 1px solid #e5e7eb;
+  border-top: 1px solid #e5e7eb;
   background: #fff;
 }
 
