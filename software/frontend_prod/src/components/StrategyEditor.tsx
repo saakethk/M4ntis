@@ -421,14 +421,6 @@ function StrategyCanvas({
             <button type="button" className="quiet" onClick={() => void persist()} disabled={!loaded || saving || running}>
               {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
             </button>
-            <button
-              type="button"
-              className="run-backtest"
-              onClick={() => void runBacktest()}
-              disabled={!loaded || saving || running}
-            >
-              {running ? 'Running…' : 'Run Backtest'}
-            </button>
           </div>
         </div>
         {historyOpen ? (
@@ -504,7 +496,11 @@ function StrategyCanvas({
         </div>
       </section>
       <aside className="editor-rail">
-        <BacktestPanel />
+        <BacktestPanel
+          running={running}
+          disabled={!loaded || saving || running}
+          onRun={() => void runBacktest()}
+        />
         <Assistant graph={canvasSnapshot(nodes, edges)} onApply={applyGraph} />
       </aside>
     </div>
@@ -517,14 +513,74 @@ function formatVersionTime(value: string): string {
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function BacktestPanel() {
+const BACKTEST_PARAMETERS = {
+  symbol: 'AAPL',
+  start: '2024-01-02',
+  end: '2024-06-28',
+  capital: 100_000,
+}
+
+function BacktestPanel({
+  running,
+  disabled,
+  onRun,
+}: {
+  running: boolean
+  disabled: boolean
+  onRun: () => void
+}) {
+  const [symbol, setSymbol] = useState(BACKTEST_PARAMETERS.symbol)
+  const [start, setStart] = useState(BACKTEST_PARAMETERS.start)
+  const [end, setEnd] = useState(BACKTEST_PARAMETERS.end)
+  const [capital, setCapital] = useState(BACKTEST_PARAMETERS.capital.toLocaleString('en-US'))
+
   return (
     <section className="backtest-menu" aria-label="Backtest">
       <p className="plan-kicker">Backtest</p>
-      <article className="plan-card plan-teal">
-        <h2>Analysis</h2>
-        <p>Run the strategy. Orders, balance, drawdown, and trade results open on their own page.</p>
-      </article>
+      <h2>Parameters</h2>
+      <div className="backtest-params">
+        <label>
+          <span>Symbol</span>
+          <input
+            value={symbol}
+            aria-label="Symbol"
+            spellCheck={false}
+            onChange={(event) => setSymbol(event.target.value.toUpperCase())}
+          />
+        </label>
+        <label>
+          <span>Start</span>
+          <input aria-label="Start" type="date" value={start} onChange={(event) => setStart(event.target.value)} />
+        </label>
+        <label>
+          <span>End</span>
+          <input aria-label="End" type="date" value={end} onChange={(event) => setEnd(event.target.value)} />
+        </label>
+        <label>
+          <span>Capital</span>
+          <span className="backtest-capital">
+            <span aria-hidden="true">$</span>
+            <input
+              aria-label="Capital"
+              inputMode="numeric"
+              value={capital}
+              onChange={(event) => setCapital(event.target.value.replace(/[^\d]/g, ''))}
+              onBlur={() => {
+                const amount = Number(capital)
+                if (!capital || Number.isNaN(amount)) {
+                  setCapital(String(BACKTEST_PARAMETERS.capital))
+                  return
+                }
+                setCapital(amount.toLocaleString('en-US'))
+              }}
+              onFocus={() => setCapital(capital.replace(/,/g, ''))}
+            />
+          </span>
+        </label>
+      </div>
+      <button type="button" className="run-backtest" onClick={onRun} disabled={disabled}>
+        {running ? 'Running…' : 'Run Backtest'}
+      </button>
     </section>
   )
 }
