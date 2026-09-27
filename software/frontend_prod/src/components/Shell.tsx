@@ -8,6 +8,8 @@ type Props = {
   loggingOut: boolean
   logoutError: string | null
   flush?: boolean
+  page?: 'strategies' | 'discussions'
+  onNavigate?: (page: 'strategies' | 'discussions') => void
   children: ReactNode
 }
 
@@ -20,7 +22,16 @@ function UserGlyph() {
   )
 }
 
-export function Shell({ user, onLogout, loggingOut, logoutError, flush = false, children }: Props) {
+export function Shell({
+  user,
+  onLogout,
+  loggingOut,
+  logoutError,
+  flush = false,
+  page = 'strategies',
+  onNavigate,
+  children,
+}: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -53,6 +64,24 @@ export function Shell({ user, onLogout, loggingOut, logoutError, flush = false, 
           </span>
           <span className="word">M4ntis</span>
         </div>
+        {user && onNavigate ? (
+          <nav className="top-nav" aria-label="Sections">
+            <button
+              type="button"
+              className={page === 'strategies' ? 'nav-link active' : 'nav-link'}
+              onClick={() => onNavigate('strategies')}
+            >
+              Strategies
+            </button>
+            <button
+              type="button"
+              className={page === 'discussions' ? 'nav-link active' : 'nav-link'}
+              onClick={() => onNavigate('discussions')}
+            >
+              Discussions
+            </button>
+          </nav>
+        ) : null}
         {user ? (
           <div className="user-slot" ref={menuRef}>
             <button

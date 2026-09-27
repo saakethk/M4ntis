@@ -15,7 +15,14 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
-import { createStrategy, getStrategy, updateStrategy } from '../api'
+import {
+  createStrategy,
+  getDummyBacktest,
+  getStrategy,
+  runDummyBacktest,
+  updateStrategy,
+  type BacktestMenu,
+} from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, isBlockType } from '../blocks/catalog'
 import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/types'
 import { BlockNode } from '../flow/BlockNode'
@@ -54,6 +61,7 @@ function TrashIcon() {
 }
 
 type Props = {
+  userId: number
   strategyId: number | null
   unavailable?: boolean
   onClose: () => void
@@ -65,7 +73,7 @@ function documentPayload(raw: unknown): unknown {
   return JSON.parse(raw)
 }
 
-function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }: Props) {
+function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Props) {
   const blank = blankTemplate?.build() ?? { nodes: [], edges: [] }
   const [name, setName] = useState(strategyId == null && !unavailable ? 'Untitled strategy' : '')
   const [nodes, setNodes, onNodesChange] = useNodesState<BlockNodeT>(blank.nodes)
@@ -75,12 +83,34 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }:
   const [loaded, setLoaded] = useState(strategyId == null && !unavailable)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [running, setRunning] = useState(false)
+  const [backtest, setBacktest] = useState<BacktestMenu | null>(null)
+  const [backtestError, setBacktestError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
   const [compiledLog, setCompiledLog] = useState<string | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const skipFetchId = useRef<number | null>(null)
   const { screenToFlowPosition, getViewport } = useReactFlow()
+
+  useEffect(() => {
+    let ignore = false
+    getDummyBacktest()
+      .then((menu) => {
+        if (!ignore) {
+          setBacktest(menu)
+          setBacktestError(null)
+        }
+      })
+      .catch((error: unknown) => {
+        if (!ignore) {
+          setBacktestError(error instanceof Error ? error.message : 'Could not load the backtest.')
+        }
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   useEffect(() => {
     if (strategyId == null || unavailable) return
@@ -221,13 +251,13 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }:
     showMessage(summary, true)
   }
 
-  async function save() {
-    if (!loaded || saving) return
+  async function persist(): Promise<number | null> {
+    if (!loaded || saving) return null
     const trimmed = name.trim()
     if (!trimmed) {
       setSaved(false)
       showMessage('Name is required', true)
-      return
+      return null
     }
     setSaving(true)
     try {
@@ -240,15 +270,42 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }:
       setSaved(true)
       setMessage(null)
       setMessageError(false)
-      if (existingId == null) {
-        skipFetchId.current = savedRow.id
-        onCreated?.(savedRow.id)
-      }
+      return savedRow.id
     } catch (error) {
       setSaved(false)
       showMessage(error instanceof Error ? error.message : 'Could not save', true)
+      return null
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function runBacktest() {
+    if (!loaded || running || saving) return
+    setRunning(true)
+    setBacktest(null)
+    try {
+      const id = saved && storedId != null ? storedId : await persist()
+      if (id == null) return
+      const result = await runDummyBacktest(userId, id)
+      const ending = result.balances[result.balances.length - 1]
+      const starting = result.balances[0]
+      const equity = ending?.equity ?? 0
+      const returnPct =
+        starting && starting.equity !== 0 ? ((equity - starting.equity) / starting.equity) * 100 : 0
+      setBacktest({
+        dummy: result.dummy,
+        equity,
+        returnPct,
+        orders: result.orders,
+        balances: result.balances,
+      })
+      setBacktestError(null)
+      showMessage(`Dummy backtest finished. Ending equity ${equity.toLocaleString('en-US')}.`, false)
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : 'Could not run the backtest', true)
+    } finally {
+      setRunning(false)
     }
   }
 
@@ -291,16 +348,16 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }:
             <button type="button" className="quiet" onClick={compile} disabled={!loaded}>
               Compile
             </button>
-            <button type="button" className="quiet" onClick={() => void save()} disabled={!loaded || saving}>
+            <button type="button" className="quiet" onClick={() => void persist()} disabled={!loaded || saving || running}>
               {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
             </button>
             <button
               type="button"
-              className="quiet"
-              onClick={() => showMessage('Run is not available yet.', false)}
-              disabled={!loaded}
+              className="run-backtest"
+              onClick={() => void runBacktest()}
+              disabled={!loaded || saving || running}
             >
-              Run
+              {running ? 'Running…' : 'Run Backtest'}
             </button>
           </div>
         </div>
@@ -343,7 +400,49 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose, onCreated }:
           )}
         </div>
       </section>
+      <BacktestMenu menu={backtest} error={backtestError} />
     </div>
+  )
+}
+
+function money(value: number) {
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+}
+
+function BacktestMenu({ menu, error }: { menu: BacktestMenu | null; error: string | null }) {
+  return (
+    <aside className="backtest-menu" aria-label="Backtest">
+      <h2>Backtest</h2>
+      {error ? <p className="form-error">{error}</p> : null}
+      {menu ? (
+        <>
+          <p className="backtest-equity">{money(menu.equity)}</p>
+          <p className={menu.returnPct >= 0 ? 'backtest-return up' : 'backtest-return down'}>
+            {menu.returnPct >= 0 ? '+' : ''}
+            {menu.returnPct.toFixed(2)}%
+          </p>
+          <h3>Orders</h3>
+          <ul>
+            {menu.orders.map((order, index) => (
+              <li key={`${order.symbol}-${order.side}-${index}`}>
+                <span className={order.side === 'buy' ? 'up' : 'down'}>{order.side}</span>
+                {order.quantity} {order.symbol} at {order.price}
+              </li>
+            ))}
+          </ul>
+          <h3>Balance</h3>
+          <ul>
+            {menu.balances.map((point, index) => (
+              <li key={`${point.equity}-${index}`}>
+                Equity {money(point.equity)} · Cash {money(point.cash)}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        !error && <p className="backtest-wait">Loading backtest…</p>
+      )}
+    </aside>
   )
 }
 

@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react'
 import { getMe, logout, type User } from './api'
 import { AuthCard } from './components/AuthCard'
+import { Discussions } from './components/Discussions'
 import { Portfolio } from './components/Portfolio'
 import { Shell } from './components/Shell'
 import { StrategyEditor } from './components/StrategyEditor'
 import { parseRoute, routePath, type AppScreen } from './routes'
 
-function currentRoute(): AppScreen {
-  return parseRoute(window.location.pathname)
-}
+type Screen =
+  | { kind: 'home' }
+  | { kind: 'discussions' }
+  | { kind: 'new' }
+  | { kind: 'edit'; id: number }
+  | { kind: 'unavailable' }
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -75,7 +79,8 @@ export default function App() {
     go(parseRoute(`/strategy/${id}`))
   }
 
-  const editorOpen = user != null && screen.kind !== 'home'
+  const editorOpen =
+    user != null && (screen.kind === 'new' || screen.kind === 'edit' || screen.kind === 'unavailable')
   let main
   if (!ready) {
     main = (
@@ -102,10 +107,13 @@ export default function App() {
       </div>
     )
   } else if (screen.kind === 'home') {
-    main = <Portfolio onNew={() => go({ kind: 'new' })} onEdit={openStrategy} />
+    main = <Portfolio onNew={() => setScreen({ kind: 'new' })} onEdit={openStrategy} />
+  } else if (screen.kind === 'discussions') {
+    main = <Discussions onOpenStrategy={openStrategy} />
   } else {
     main = (
       <StrategyEditor
+        userId={user.id}
         strategyId={screen.kind === 'edit' ? screen.id : null}
         unavailable={screen.kind === 'unavailable'}
         onClose={() => go({ kind: 'home' })}
@@ -121,6 +129,12 @@ export default function App() {
       loggingOut={loggingOut}
       logoutError={logoutError}
       flush={editorOpen}
+      page={screen.kind === 'discussions' ? 'discussions' : 'strategies'}
+      onNavigate={
+        user
+          ? (next) => setScreen(next === 'discussions' ? { kind: 'discussions' } : { kind: 'home' })
+          : undefined
+      }
     >
       {main}
     </Shell>

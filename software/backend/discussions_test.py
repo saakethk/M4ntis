@@ -27,6 +27,13 @@ class _Result:
     def fetchone(self) -> tuple | None:
         return self._row
 
+    def fetchall(self) -> list:
+        if isinstance(self._row, list):
+            return self._row
+        if self._row is None:
+            return []
+        return [self._row]
+
 
 class _Conn:
     def __init__(self, rows: list[tuple | None]) -> None:
@@ -113,6 +120,56 @@ class PostPublishesStrategyTest(unittest.TestCase):
         self.assertIn("SELECT", conn.statements[0][0])
         self.assertNotIn("UPDATE", conn.statements[0][0])
         self.assertTrue(conn.closed)
+
+    def test_reply_to_a_missing_post_is_404(self) -> None:
+        conn = _Conn([None])
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(discussions, "_connect", return_value=conn),
+        ):
+            response = self.client.post(
+                "/discussions",
+                json={"body": "A reply", "parent_id": 99},
+            )
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("discussion_posts", conn.statements[0][0])
+
+    def test_list_returns_posts_for_the_signed_in_user(self) -> None:
+        from datetime import datetime, timezone
+
+        created = datetime(2024, 1, 2, tzinfo=timezone.utc)
+        conn = _Conn(
+            [[(3, 4, "owner@example.com", "Hello", None, None, 2, created, True)]]
+        )
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(discussions, "_connect", return_value=conn),
+        ):
+            response = self.client.get("/discussions")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()[0]["body"], "Hello")
+        self.assertEqual(response.json()[0]["likes_count"], 2)
+        self.assertTrue(response.json()[0]["liked"])
+        self.assertEqual(conn.statements[0][1], (4,))
+
+    def test_like_toggles_and_missing_post_is_404(self) -> None:
+        missing = _Conn([None])
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(discussions, "_connect", return_value=missing),
+        ):
+            response = self.client.post("/discussions/9/like")
+        self.assertEqual(response.status_code, 404)
+
+        liked = _Conn([(0,), None, None, (1,)])
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(discussions, "_connect", return_value=liked),
+        ):
+            response = self.client.post("/discussions/9/like")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"id": 9, "likes_count": 1, "liked": True})
+        self.assertIn("INSERT INTO discussion_likes", liked.statements[2][0])
 
 
 if __name__ == "__main__":

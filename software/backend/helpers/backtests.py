@@ -53,6 +53,22 @@ def dummy_balances() -> list[dict[str, Any]]:
     ]
 
 
+def dummy_menu() -> dict[str, Any]:
+    """Fixed backtest menu. Nothing is read from the database."""
+    orders = [_public_row(order) for order in dummy_orders()]
+    balances = [_public_row(point) for point in dummy_balances()]
+    start_equity = float(balances[0]["equity"])
+    end_equity = float(balances[-1]["equity"])
+    return_pct = 0.0 if start_equity == 0 else (end_equity - start_equity) / start_equity * 100
+    return {
+        "dummy": True,
+        "equity": end_equity,
+        "return_pct": round(return_pct, 2),
+        "orders": orders,
+        "balances": balances,
+    }
+
+
 def run_dummy_backtest(user_id: int, strategy_id: int) -> dict[str, Any]:
     """Record a dummy run of ``strategy_id`` for ``user_id``."""
     orders = dummy_orders()
