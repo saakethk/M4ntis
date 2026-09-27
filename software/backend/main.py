@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 import helpers.auth as auth
 import helpers.backtests as backtests
@@ -68,9 +68,31 @@ class StrategyCreate(BaseModel):
     visibility: str | None = None
 
 
+class GraphNode(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    id: str
+    type: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphEdge(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    source: str
+    sourceHandle: str
+    target: str
+    targetHandle: str
+
+
+class GraphBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    nodes: list[GraphNode] = Field(max_length=80)
+    edges: list[GraphEdge] = Field(default_factory=list, max_length=160)
+
+
 class LlmAsk(BaseModel):
     model_config = ConfigDict(extra="forbid")
     prompt: str
+    graph: GraphBody | None = None
 
 
 class BacktestCreate(BaseModel):
@@ -333,9 +355,14 @@ def compile_strategy_route(body: dict[str, Any], request: Request) -> dict:
 def ask_llm_route(body: LlmAsk, request: Request) -> dict:
     _require_user(request)
     try:
-        return llm.dummy_reply(body.prompt)
+        canvas = body.graph.model_dump() if body.graph is not None else None
+        return llm.ask(body.prompt, canvas)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except llm.AIConfigError as exc:
+        raise HTTPException(status_code=503, detail="Assistant is not configured") from exc
+    except llm.AIProviderError as exc:
+        raise HTTPException(status_code=502, detail="Assistant is unavailable") from exc
 
 
 @app.get("/backtests/dummy")

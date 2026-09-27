@@ -31,7 +31,8 @@ import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/ty
 import { BlockNode } from '../flow/BlockNode'
 import { START_NODE_ID, checkConnection, connect, makeNode } from '../flow/graph'
 import { fromDocument, toDocument, toIR } from '../flow/serialize'
-import { TEMPLATES, assistantCrossover, type AssistantProgram } from '../flow/templates'
+import { applyAssistantGraph, canvasSnapshot, type AssistantGraph } from '../flow/assistantGraph'
+import { TEMPLATES } from '../flow/templates'
 import { Assistant, BlockPalette, DRAG_MIME } from './BlockPalette'
 
 const nodeTypes: NodeTypes = Object.fromEntries(BLOCK_TYPES.map((type) => [type, BlockNode]))
@@ -195,16 +196,23 @@ function StrategyCanvas({
     [loaded, screenToFlowPosition, setNodes],
   )
 
-  const applyProgram = useCallback(
-    (program: AssistantProgram) => {
+  const applyGraph = useCallback(
+    (graph: AssistantGraph) => {
       if (!loaded) return
-      const graph = assistantCrossover(program)
-      setNodes(graph.nodes)
-      setEdges(graph.edges)
-      setSaved(false)
-      showMessage('Applied the assistant strategy.', false)
+      try {
+        const placed = applyAssistantGraph(graph, nodes)
+        setNodes(placed.nodes)
+        setEdges(placed.edges)
+        setSaved(false)
+        showMessage('Applied the assistant strategy.', false)
+        requestAnimationFrame(() => {
+          void fitView({ padding: 0.22, duration: 250 })
+        })
+      } catch (error) {
+        showMessage(error instanceof Error ? error.message : 'Could not apply those blocks.', true)
+      }
     },
-    [loaded, setEdges, setNodes, showMessage],
+    [fitView, loaded, nodes, setEdges, setNodes, showMessage],
   )
 
   const onDrop = useCallback(
@@ -493,7 +501,7 @@ function StrategyCanvas({
           disabled={!loaded || saving || running}
           onRun={() => void runBacktest()}
         />
-        <Assistant onApply={applyProgram} />
+        <Assistant graph={canvasSnapshot(nodes, edges)} onApply={applyGraph} />
       </aside>
     </div>
   )
