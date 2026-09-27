@@ -414,14 +414,6 @@ function StrategyCanvas({
             <button type="button" className="quiet" onClick={() => void persist()} disabled={!loaded || saving || running}>
               {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
             </button>
-            <button
-              type="button"
-              className="run-backtest"
-              onClick={() => void runBacktest()}
-              disabled={!loaded || saving || running}
-            >
-              {running ? 'Running…' : 'Run Backtest'}
-            </button>
           </div>
         </div>
         {historyOpen ? (
@@ -497,7 +489,11 @@ function StrategyCanvas({
         </div>
       </section>
       <aside className="editor-rail">
-        <BacktestPanel />
+        <BacktestPanel
+          running={running}
+          disabled={!loaded || saving || running}
+          onRun={() => void runBacktest()}
+        />
         <Assistant onApply={applyProgram} />
       </aside>
     </div>
@@ -518,7 +514,15 @@ const BACKTEST_PARAMETERS = {
   capital: 100_000,
 }
 
-function BacktestPanel() {
+function BacktestPanel({
+  running,
+  disabled,
+  onRun,
+}: {
+  running: boolean
+  disabled: boolean
+  onRun: () => void
+}) {
   const [symbol, setSymbol] = useState(BACKTEST_PARAMETERS.symbol)
   const [timeframe, setTimeframe] = useState(BACKTEST_PARAMETERS.timeframe)
   const [start, setStart] = useState(BACKTEST_PARAMETERS.start)
@@ -579,6 +583,9 @@ function BacktestPanel() {
           </span>
         </label>
       </div>
+      <button type="button" className="run-backtest" onClick={onRun} disabled={disabled}>
+        {running ? 'Running…' : 'Run Backtest'}
+      </button>
     </section>
   )
 }

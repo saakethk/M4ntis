@@ -1537,8 +1537,10 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
-.run-backtest {
+.backtest-menu .run-backtest {
+  width: 100%;
   height: 36px;
+  margin-top: 14px;
   border: 0;
   border-radius: 10px;
   background: #3d9a4a;
@@ -1547,10 +1549,12 @@ input:focus-visible {
   font-size: 14px;
   padding: 0 14px;
   white-space: nowrap;
+  cursor: pointer;
 }
 
-.run-backtest:disabled {
+.backtest-menu .run-backtest:disabled {
   opacity: 0.65;
+  cursor: default;
 }
 
 .backtest-result {
