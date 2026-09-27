@@ -110,6 +110,27 @@ export function createStrategy(body: StrategyWrite): Promise<StrategyRecord> {
   }).then(readRecord)
 }
 
+export type AssistantReply = {
+  reply: string
+  dummy: boolean
+}
+
+export function askAssistant(prompt: string): Promise<AssistantReply> {
+  return requestJson('/llm', {
+    method: 'POST',
+    body: JSON.stringify({ prompt }),
+  }).then(readAssistantReply)
+}
+
+function readAssistantReply(body: unknown): AssistantReply {
+  if (!body || typeof body !== 'object') throw new Error('Assistant response was not valid.')
+  const row = body as { reply?: unknown; dummy?: unknown }
+  if (typeof row.reply !== 'string' || !row.reply.trim()) {
+    throw new Error('Assistant response was not valid.')
+  }
+  return { reply: row.reply, dummy: row.dummy === true }
+}
+
 export function updateStrategy(id: number, body: StrategyWrite): Promise<StrategyRecord> {
   return requestJson(`/strategies/${id}`, {
     method: 'PUT',

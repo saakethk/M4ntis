@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 import helpers.auth as auth
 import helpers.backtests as backtests
 import helpers.discussions as discussions
+import helpers.llm as llm
 import helpers.strategies as strategies
 from helpers.db import env_port
 from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, search_symbols
@@ -62,6 +63,11 @@ class StrategyCreate(BaseModel):
     document: dict[str, Any]
     ir: dict[str, Any] | None = None
     visibility: str | None = None
+
+
+class LlmAsk(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    prompt: str
 
 
 class BacktestCreate(BaseModel):
@@ -268,6 +274,15 @@ def copy_strategy_route(strategy_id: int, request: Request) -> dict:
     except (RuntimeError, psycopg.Error) as exc:
         raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
     return {"id": new_id}
+
+
+@app.post("/llm")
+def ask_llm_route(body: LlmAsk, request: Request) -> dict:
+    _require_user(request)
+    try:
+        return llm.dummy_reply(body.prompt)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.post("/backtests", status_code=201)
