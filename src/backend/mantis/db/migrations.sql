@@ -1,4 +1,4 @@
--- Upgrades applied after the base schema in software/database/sql.
+-- Upgrades applied after the base schema in dev/software/database/sql.
 
 -- Sharing used to be a separate table. Visibility on the strategy replaced it.
 DROP TABLE IF EXISTS strategy_shares;

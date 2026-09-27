@@ -1,7 +1,7 @@
 """Run compiled programs on the TradeCPU FPGA over its UART link.
 
-The wire protocol is the board's (see ``software/compiler/tradecpu/hwtest.py`` and
-``hardware/python/balance_test.py``): send LOAD_PROGRAM, read the starting balance,
+The wire protocol is the board's (see ``dev/software/compiler/tradecpu/hwtest.py`` and
+``src/hardware/python/balance_test.py``): send LOAD_PROGRAM, read the starting balance,
 then for every tick send one price per stock slot and read DECISION messages until
 the board acknowledges the tick with a BALANCE message.
 
@@ -35,7 +35,7 @@ from tradecpu.hwtest import read_until_balance  # noqa: E402
 from tradecpu.isa import NUM_BUFFERS, load_program_message, tick_message  # noqa: E402
 from tradecpu.simulator import BalanceMsg, Decision  # noqa: E402
 
-DEFAULT_PORT = "COM4"  # same default as hardware/python/balance_test.py and tradecpu hwtest
+DEFAULT_PORT = "COM4"  # same default as src/hardware/python/balance_test.py and tradecpu hwtest
 DEFAULT_BAUD = 115200  # fixed by the board's UART
 READ_TIMEOUT_S = 2.0
 SETTLE_S = 0.5

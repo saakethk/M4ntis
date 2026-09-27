@@ -1,6 +1,6 @@
 """Create or upgrade the tables the backend uses, once per process.
 
-The base tables live in ``software/database/sql`` so the data loaders and this
+The base tables live in ``dev/software/database/sql`` so the data loaders and this
 server share one definition. ``migrations.sql`` next to this file holds upgrades
 that only the integration backend needs (older databases and new columns).
 """

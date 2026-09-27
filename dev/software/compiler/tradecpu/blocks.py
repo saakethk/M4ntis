@@ -1,6 +1,6 @@
 """Block catalog as the compiler sees it: ports and parameter constraints.
 
-Mirrors software/frontend/dev-sketchout/src/blocks/catalog.ts; tests/test_catalog_sync.py
+Mirrors src/frontend/src/blocks/catalog.ts; tests/test_catalog_sync.py
 checks the two stay in step via the frontend's exported examples/block_catalog.json.
 """
 
