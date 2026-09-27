@@ -179,6 +179,8 @@ Immutable snapshot of a strategy. `kind` is `save` or `backtest`. Creating, upda
 
 Index: `strategy_versions_strategy_id_idx` on `strategy_id`.
 
+Saving a strategy inserts a `save` row here. The table is created with the discussions schema, and `POST /strategies` creates it on first use when that loader has not run yet. Without the table, the version insert fails and the save returns 503.
+
 ## backtests
 
 One row per run, tied to the `strategy_versions` snapshot and to the user who ran it.
