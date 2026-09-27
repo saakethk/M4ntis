@@ -1,0 +1,94 @@
+/* AI analysis card on the backtest report. */
+
+.analysis-card {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-color: var(--ai-border);
+}
+
+.analysis-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.analysis-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--ai-ink);
+}
+
+.analysis-head .assistant-model {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analysis-head select {
+  height: 30px;
+  padding: 0 6px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.analysis-intro,
+.analysis-model {
+  color: var(--report-muted);
+  font-size: 13px;
+}
+
+.analysis-result {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ai-soft);
+}
+
+.analysis-question {
+  margin-bottom: 4px;
+  color: var(--ai-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.analysis-text {
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.analysis-model {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.analysis-form {
+  display: flex;
+  gap: 8px;
+}
+
+.analysis-form input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.analysis-form input:focus {
+  outline: none;
+  border-color: var(--ai-ink-2);
+  box-shadow: 0 0 0 3px var(--ai-ring);
+}

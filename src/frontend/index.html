@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>M4ntis</title>
+    <script>
+      // Mirrors src/lib/theme.ts so the first paint already has the right theme.
+      ;(function () {
+        var choice = 'system'
+        try {
+          var stored = localStorage.getItem('mantis.theme')
+          if (stored === 'light' || stored === 'dark' || stored === 'system') choice = stored
+        } catch (e) {}
+        var dark =
+          choice === 'dark' ||
+          (choice === 'system' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        var root = document.documentElement
+        root.dataset.theme = dark ? 'dark' : 'light'
+        root.style.colorScheme = dark ? 'dark' : 'light'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

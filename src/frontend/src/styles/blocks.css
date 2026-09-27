@@ -1,0 +1,480 @@
+/* Blocks on the canvas: node bodies, parameter fields, ports, handles, and wires. */
+
+.strategy-editor .react-flow__node {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.strategy-editor .react-flow__node:focus,
+.strategy-editor .react-flow__node:focus-visible {
+  outline: none;
+}
+
+.strategy-editor .react-flow__node:has(.ticker-search.open) {
+  z-index: 1100 !important;
+}
+
+.block {
+  position: relative;
+  width: 248px;
+  background: var(--surface);
+  border: 1px solid var(--field-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow), var(--shadow-block);
+  font-size: 12px;
+}
+
+.block.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow-block);
+}
+
+.node-error .block {
+  border-color: var(--danger-border);
+}
+
+.node-error .block::after {
+  content: '!';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.block.blocked {
+  border-style: dashed;
+}
+
+.block-start {
+  width: 230px;
+  padding-bottom: 10px;
+}
+
+.block-ticker {
+  width: 210px;
+}
+
+.block-unknown {
+  width: 220px;
+  padding: 12px;
+  color: var(--muted);
+}
+
+.block-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 4px;
+}
+
+.block-glyph {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.block-heading {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 1px;
+}
+
+.block-type {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.block-title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.block-sell .block-glyph {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.block-sell .block-type {
+  color: var(--danger);
+}
+
+.badge-blocked {
+  height: auto;
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--warning-chip);
+  color: var(--warning);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.block-params {
+  display: grid;
+  gap: 8px;
+  padding: 2px 12px 10px 50px;
+}
+
+label.param {
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.param-label {
+  display: flex;
+  flex-direction: column;
+}
+
+.param-hint {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.param-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.param-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* Compact value chips (Constant, Get Variable) */
+
+.block.block-slim {
+  width: max-content;
+  max-width: 260px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px 6px 12px;
+  border: 1px solid var(--slim-border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+.slim-label {
+  flex: none;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.block-slim .slim-input {
+  width: auto;
+  max-width: 148px;
+  height: 26px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+}
+
+/* Ticker search */
+
+.ticker-search {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ticker-chip {
+  height: 28px;
+  max-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ticker-search-input {
+  width: 130px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ticker-search-input::placeholder {
+  color: var(--faint);
+  font-weight: 600;
+}
+
+.ticker-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.ticker-matches {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 6;
+  width: 220px;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+
+.ticker-match {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.ticker-match:hover,
+.ticker-match.top,
+.ticker-match[aria-selected='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ticker-match-name {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.ticker-match-empty {
+  padding: 4px 8px;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* If / Else condition */
+
+.condition {
+  margin: 0 0 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--accent-line);
+  border-bottom: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.condition-title {
+  padding: 0 12px 4px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.condition-op {
+  display: flex;
+  gap: 4px;
+  padding: 4px 12px;
+}
+
+.op-btn {
+  flex: 1;
+  padding: 2px 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.op-btn.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Ports */
+
+.block-ports {
+  margin-top: 2px;
+  padding: 6px 0 10px;
+  border-top: 1px solid var(--port-divider);
+}
+
+.port-row {
+  display: flex;
+  justify-content: space-between;
+  min-height: 22px;
+}
+
+.port {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 16px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.port-out {
+  margin-left: auto;
+}
+
+.exec-outs {
+  display: flex;
+  justify-content: center;
+  height: 0;
+}
+
+.exec-outs.multi {
+  justify-content: space-around;
+  height: auto;
+  border-top: 1px solid var(--line);
+}
+
+.exec-out {
+  position: relative;
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 8px;
+}
+
+.exec-outs:not(.multi) .exec-out {
+  padding: 0;
+}
+
+.exec-label {
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.exec-out-then .exec-label,
+.exec-out-body .exec-label {
+  color: var(--accent);
+}
+
+.exec-out-else .exec-label {
+  color: var(--danger);
+}
+
+/* Handles: exec is a chevron in a rounded square, data is a dot. */
+
+.strategy-editor .react-flow__handle.handle-exec {
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  min-width: 0;
+  min-height: 0;
+  border: 1.5px solid var(--accent-line);
+  border-radius: 5px;
+  background: var(--surface);
+}
+
+.strategy-editor .react-flow__handle.handle-exec::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+
+.strategy-editor .react-flow__handle.handle-exec.react-flow__handle-bottom {
+  top: auto;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 50%);
+}
+
+.strategy-editor .react-flow__handle.handle-exec.react-flow__handle-bottom::after {
+  transform: translate(-50%, -65%) rotate(45deg);
+}
+
+.strategy-editor .react-flow__handle.handle-exec.react-flow__handle-top {
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.strategy-editor .react-flow__handle.handle-exec.react-flow__handle-top::after {
+  transform: translate(-50%, -35%) rotate(-135deg);
+}
+
+.strategy-editor .react-flow__handle.handle-data {
+  z-index: 2;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--surface);
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--handle-ring);
+}
+
+.strategy-editor .react-flow__edge.edge-exec .react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.strategy-editor .react-flow__edge.edge-data .react-flow__edge-path {
+  stroke: var(--faint);
+  stroke-width: 1.5;
+}
+
+.strategy-editor .react-flow__edge.selected .react-flow__edge-path,
+.strategy-editor .react-flow__connection-path {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+}
