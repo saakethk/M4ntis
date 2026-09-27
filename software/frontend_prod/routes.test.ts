@@ -8,6 +8,11 @@ describe('parseRoute', () => {
     assert.deepEqual(parseRoute(''), { kind: 'home' })
   })
 
+  it('reads the discussions page', () => {
+    assert.deepEqual(parseRoute('/discussions'), { kind: 'discussions' })
+    assert.deepEqual(parseRoute('/discussions/'), { kind: 'discussions' })
+  })
+
   it('reads a new unsaved strategy', () => {
     assert.deepEqual(parseRoute('/strategy/new'), { kind: 'new' })
     assert.deepEqual(parseRoute('/strategy/new/'), { kind: 'new' })
@@ -28,13 +33,14 @@ describe('parseRoute', () => {
 describe('routePath', () => {
   it('builds the portfolio and strategy urls', () => {
     assert.equal(routePath({ kind: 'home' }), '/')
+    assert.equal(routePath({ kind: 'discussions' }), '/discussions')
     assert.equal(routePath({ kind: 'new' }), '/strategy/new')
     assert.equal(routePath({ kind: 'edit', id: 4 }), '/strategy/4')
     assert.equal(routePath({ kind: 'unavailable' }), null)
   })
 
   it('round-trips paths that open a screen', () => {
-    for (const path of ['/', '/strategy/new', '/strategy/9']) {
+    for (const path of ['/', '/discussions', '/strategy/new', '/strategy/9']) {
       const screen = parseRoute(path)
       assert.equal(routePath(screen), path)
     }

@@ -7,12 +7,9 @@ import { Shell } from './components/Shell'
 import { StrategyEditor } from './components/StrategyEditor'
 import { parseRoute, routePath, type AppScreen } from './routes'
 
-type Screen =
-  | { kind: 'home' }
-  | { kind: 'discussions' }
-  | { kind: 'new' }
-  | { kind: 'edit'; id: number }
-  | { kind: 'unavailable' }
+function currentRoute(): AppScreen {
+  return parseRoute(window.location.pathname)
+}
 
 function currentRoute(): Screen {
   return parseRoute(window.location.pathname)
@@ -113,7 +110,7 @@ export default function App() {
   } else if (screen.kind === 'home') {
     main = <Portfolio onNew={() => go({ kind: 'new' })} onEdit={openStrategy} />
   } else if (screen.kind === 'discussions') {
-    main = <Discussions onOpenStrategy={openStrategy} />
+    main = <Discussions user={user} onOpenStrategy={openStrategy} />
   } else {
     main = (
       <StrategyEditor
@@ -136,7 +133,7 @@ export default function App() {
       page={screen.kind === 'discussions' ? 'discussions' : 'strategies'}
       onNavigate={
         user
-          ? (next) => setScreen(next === 'discussions' ? { kind: 'discussions' } : { kind: 'home' })
+          ? (next) => go(next === 'discussions' ? { kind: 'discussions' } : { kind: 'home' })
           : undefined
       }
     >
