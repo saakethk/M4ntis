@@ -219,6 +219,7 @@ export type DiscussionPost = {
   author: string
   body: string
   strategyId: number | null
+  strategyName: string | null
   parentId: number | null
   likesCount: number
   createdAt: string
@@ -273,6 +274,7 @@ function readDiscussion(body: unknown): DiscussionPost {
     author?: unknown
     body?: unknown
     strategy_id?: unknown
+    strategy_name?: unknown
     parent_id?: unknown
     likes_count?: unknown
     created_at?: unknown
@@ -287,6 +289,7 @@ function readDiscussion(body: unknown): DiscussionPost {
     author: row.author,
     body: row.body,
     strategyId: row.strategy_id == null ? null : readId(row.strategy_id),
+    strategyName: typeof row.strategy_name === 'string' && row.strategy_name.trim() ? row.strategy_name : null,
     parentId: row.parent_id == null ? null : readId(row.parent_id),
     likesCount: typeof row.likes_count === 'number' ? row.likes_count : 0,
     createdAt: typeof row.created_at === 'string' ? row.created_at : '',

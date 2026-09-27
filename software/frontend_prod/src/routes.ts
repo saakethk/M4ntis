@@ -1,5 +1,6 @@
 export type AppScreen =
   | { kind: 'home' }
+  | { kind: 'discussions' }
   | { kind: 'new' }
   | { kind: 'edit'; id: number }
   | { kind: 'unavailable' }
@@ -17,12 +18,13 @@ function strategyId(segment: string): number | null {
   return id
 }
 
-// Portfolio is `/`. A saved strategy is `/strategy/:id`. A strategy that has
-// not been saved yet is `/strategy/new`. Any other `/strategy/...` path is
-// not a project we can open.
+// Portfolio is `/`. Discussions are `/discussions`. A saved strategy is
+// `/strategy/:id`. A strategy that has not been saved yet is `/strategy/new`.
+// Any other `/strategy/...` path is not a project we can open.
 export function parseRoute(pathname: string): AppScreen {
   const path = normalizePath(pathname)
   if (path === '/' || path === '/strategy') return { kind: 'home' }
+  if (path === '/discussions') return { kind: 'discussions' }
   if (path === '/strategy/new') return { kind: 'new' }
   if (path.startsWith('/strategy/')) {
     const id = strategyId(path.slice('/strategy/'.length))
@@ -36,6 +38,8 @@ export function routePath(screen: AppScreen): string | null {
   switch (screen.kind) {
     case 'home':
       return '/'
+    case 'discussions':
+      return '/discussions'
     case 'new':
       return '/strategy/new'
     case 'edit':
