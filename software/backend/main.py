@@ -117,6 +117,8 @@ class LlmAsk(BaseModel):
     model_config = ConfigDict(extra="forbid")
     prompt: str
     graph: GraphBody | None = None
+    provider: str | None = None
+    model: str | None = None
 
 
 class BacktestCreate(BaseModel):
@@ -380,7 +382,7 @@ def ask_llm_route(body: LlmAsk, request: Request) -> dict:
     _require_user(request)
     try:
         canvas = body.graph.model_dump() if body.graph is not None else None
-        return llm.ask(body.prompt, canvas)
+        return llm.ask(body.prompt, canvas, provider=body.provider, model=body.model)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except llm.AIConfigError as exc:

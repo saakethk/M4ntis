@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 import main
 from helpers.ai_agent import AIConfigError, AIProviderError, ChatResponse
 from helpers.canvas import normalize_graph
-from helpers.llm import ask
+from helpers.llm import ASSISTANT_MODELS, ask, resolve_assistant_model
 
 
 BANDS = {
@@ -112,6 +112,39 @@ class AskTest(unittest.TestCase):
         with self.assertRaises(AIProviderError):
             ask("help", complete=lambda prompt: "  ")
 
+    def test_omitted_model_keeps_the_environment_default(self) -> None:
+        self.assertEqual(resolve_assistant_model(None, None), (None, None))
+        self.assertEqual(resolve_assistant_model("  ", ""), (None, None))
+
+    def test_known_models_resolve(self) -> None:
+        self.assertEqual(
+            resolve_assistant_model("gemini", "gemini-2.5-pro"),
+            ("gemini", "gemini-2.5-pro"),
+        )
+        self.assertEqual(
+            resolve_assistant_model(None, "Llama-3.3-8B-Instruct"),
+            ("meta", "Llama-3.3-8B-Instruct"),
+        )
+        self.assertEqual(resolve_assistant_model("meta", None), ("meta", "Llama-3.3-70B-Instruct"))
+        self.assertEqual(ASSISTANT_MODELS["gemini"][0], "gemini-2.0-flash")
+
+    def test_unknown_provider_and_model_are_rejected(self) -> None:
+        with self.assertRaises(ValueError) as unknown_provider:
+            ask("help", provider="cursor", model="gpt", complete=lambda prompt: "unused")
+        self.assertIn("Unknown provider", str(unknown_provider.exception))
+        called: list[str] = []
+        with self.assertRaises(ValueError) as unknown_model:
+            ask(
+                "help",
+                provider="gemini",
+                model="gpt",
+                complete=lambda prompt: called.append(prompt) or "unused",
+            )
+        self.assertIn("Unknown model", str(unknown_model.exception))
+        self.assertEqual(called, [])
+        with self.assertRaises(ValueError):
+            ask("help", provider="gemini", model="Llama-3.3-70B-Instruct", complete=lambda prompt: "unused")
+
 
 class NormalizeGraphTest(unittest.TestCase):
     def test_mean_reversion_graph_fills_defaults(self) -> None:
@@ -153,7 +186,7 @@ class LlmRouteTest(unittest.TestCase):
         agent = _FakeAgent(REPLY)
         with (
             patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
-            patch.object(main.llm.AIAgent, "from_env", return_value=agent),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent) as from_env,
         ):
             response = self.client.post(
                 "/llm",
@@ -162,6 +195,7 @@ class LlmRouteTest(unittest.TestCase):
                     "graph": {"nodes": [{"id": "start", "type": "start", "params": {}}], "edges": []},
                 },
             )
+        from_env.assert_called_once_with()
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertFalse(body["dummy"])
@@ -229,8 +263,66 @@ class LlmRouteTest(unittest.TestCase):
 
     def test_extra_fields_are_rejected(self) -> None:
         with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
-            response = self.client.post("/llm", json={"prompt": "help", "model": "gpt"})
+            response = self.client.post("/llm", json={"prompt": "help", "temperature": 0})
         self.assertEqual(response.status_code, 422)
+
+    def test_selected_model_is_passed_to_the_agent(self) -> None:
+        agent = _FakeAgent("A tick is one bar.")
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent) as from_env,
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "meta", "model": "Llama-3.3-8B-Instruct"},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        from_env.assert_called_once_with(provider="meta", model="Llama-3.3-8B-Instruct")
+
+    def test_unknown_model_is_400(self) -> None:
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env") as from_env,
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "gemini", "model": "gpt"},
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Unknown model", response.json()["detail"])
+        from_env.assert_not_called()
+
+    def test_unknown_provider_is_400(self) -> None:
+        with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "cursor", "model": "gemini-2.0-flash"},
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Unknown provider", response.json()["detail"])
+
+    def test_missing_selected_provider_key_is_503(self) -> None:
+        env = {
+            "AI_PROVIDER": "gemini",
+            "AI_MODEL": "gemini-2.0-flash",
+            "GEMINI_API_KEY": "present",
+            "META_API_KEY": "",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "AI_API_KEY": "",
+        }
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch("helpers.ai_agent._load_repo_env"),
+            patch.dict("os.environ", env),
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "meta", "model": "Llama-3.3-70B-Instruct"},
+            )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("META_API_KEY", response.json()["detail"])
+        self.assertIn(".env", response.json()["detail"])
 
     def test_missing_provider_is_503(self) -> None:
         with (

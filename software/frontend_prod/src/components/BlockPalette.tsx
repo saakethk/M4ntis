@@ -1,5 +1,12 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { askAssistant, type AssistantGraph } from '../api'
+import {
+  ASSISTANT_MODELS,
+  findAssistantModel,
+  modelChoiceId,
+  readStoredAssistantModel,
+  storeAssistantModel,
+} from '../assistantModels'
 import { BLOCK_DEFS, BLOCK_TYPES, CATEGORIES } from '../blocks/catalog'
 import type { BlockType } from '../blocks/types'
 
@@ -24,6 +31,13 @@ export function Assistant({
   const [graph, setGraph] = useState<AssistantGraph | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const [modelChoice, setModelChoice] = useState(() => readStoredAssistantModel())
+
+  function onModelChange(event: ChangeEvent<HTMLSelectElement>) {
+    const next = findAssistantModel(event.target.value)
+    setModelChoice(next)
+    storeAssistantModel(next)
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -32,7 +46,7 @@ export function Assistant({
     setPending(true)
     setError(null)
     try {
-      const body = await askAssistant(text, canvas)
+      const body = await askAssistant(text, canvas, modelChoice)
       setReply(body.reply)
       setGraph(body.graph)
     } catch (caught) {
@@ -48,6 +62,16 @@ export function Assistant({
     <form className="assistant" onSubmit={onSubmit}>
       <h2>AI Assistant</h2>
       <p>Ask for help with your strategy</p>
+      <label className="assistant-model">
+        Model
+        <select value={modelChoiceId(modelChoice)} disabled={pending} onChange={onModelChange}>
+          {ASSISTANT_MODELS.map((choice) => (
+            <option key={modelChoiceId(choice)} value={modelChoiceId(choice)}>
+              {choice.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <textarea
         value={prompt}
         placeholder="Describe a strategy..."

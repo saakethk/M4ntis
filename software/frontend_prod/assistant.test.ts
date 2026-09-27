@@ -1,5 +1,15 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import {
+  ASSISTANT_MODEL_STORAGE_KEY,
+  ASSISTANT_MODELS,
+  DEFAULT_ASSISTANT_MODEL,
+  findAssistantModel,
+  modelChoiceId,
+  readStoredAssistantModel,
+  storeAssistantModel,
+  type ModelStorage,
+} from './src/assistantModels.ts'
 import { applyAssistantGraph, readAssistantGraph } from './src/flow/assistantGraph.ts'
 import { makeNode } from './src/flow/graph.ts'
 
@@ -68,6 +78,57 @@ describe('applyAssistantGraph', () => {
       () => applyAssistantGraph({ nodes: [{ id: 'buy', type: 'buy', params: {} }], edges: [] }),
       /Start/,
     )
+  })
+})
+
+function memoryStorage(initial: Record<string, string> = {}): ModelStorage & { saved: Map<string, string> } {
+  const saved = new Map(Object.entries(initial))
+  return {
+    saved,
+    getItem: (key) => saved.get(key) ?? null,
+    setItem: (key, value) => {
+      saved.set(key, value)
+    },
+  }
+}
+
+describe('assistant models', () => {
+  it('defaults to Gemini 2.0 Flash and lists Gemini and Meta', () => {
+    assert.equal(DEFAULT_ASSISTANT_MODEL.provider, 'gemini')
+    assert.equal(DEFAULT_ASSISTANT_MODEL.model, 'gemini-2.0-flash')
+    assert.deepEqual(
+      ASSISTANT_MODELS.map((choice) => `${choice.provider}:${choice.model}`),
+      [
+        'gemini:gemini-2.0-flash',
+        'gemini:gemini-2.5-flash',
+        'gemini:gemini-2.5-pro',
+        'meta:Llama-3.3-70B-Instruct',
+        'meta:Llama-3.3-8B-Instruct',
+      ],
+    )
+  })
+
+  it('keeps the last choice and falls back when storage is empty or unknown', () => {
+    const storage = memoryStorage()
+    const llama = ASSISTANT_MODELS.find((choice) => choice.model === 'Llama-3.3-70B-Instruct')
+    assert.ok(llama)
+    storeAssistantModel(llama, storage)
+    assert.equal(storage.saved.get(ASSISTANT_MODEL_STORAGE_KEY), modelChoiceId(llama))
+    assert.deepEqual(readStoredAssistantModel(storage), llama)
+    assert.equal(readStoredAssistantModel(memoryStorage()).model, 'gemini-2.0-flash')
+    assert.equal(readStoredAssistantModel(memoryStorage({ [ASSISTANT_MODEL_STORAGE_KEY]: 'nope' })).model, 'gemini-2.0-flash')
+    assert.equal(findAssistantModel('meta:Llama-3.3-8B-Instruct').label, 'Llama 3.3 8B')
+    assert.equal(readStoredAssistantModel(null).model, 'gemini-2.0-flash')
+    const blocked: ModelStorage = {
+      getItem: () => {
+        throw new Error('denied')
+      },
+      setItem: () => {
+        throw new Error('denied')
+      },
+    }
+    assert.equal(readStoredAssistantModel(blocked).model, 'gemini-2.0-flash')
+    assert.doesNotThrow(() => storeAssistantModel(DEFAULT_ASSISTANT_MODEL, blocked))
   })
 })
 
