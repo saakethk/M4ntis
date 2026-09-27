@@ -10,10 +10,13 @@ import { parseRoute, routePath, type AppScreen } from './routes'
 function currentRoute(): AppScreen {
   return parseRoute(window.location.pathname)
 }
+<<<<<<< Updated upstream
 
 function currentRoute(): Screen {
   return parseRoute(window.location.pathname)
 }
+=======
+>>>>>>> Stashed changes
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
