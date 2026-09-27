@@ -204,6 +204,97 @@ function readBalance(body: unknown): BacktestBalance {
   return { cash: row.cash, equity: row.equity }
 }
 
+export type DiscussionPost = {
+  id: number
+  userId: number
+  author: string
+  body: string
+  strategyId: number | null
+  parentId: number | null
+  likesCount: number
+  createdAt: string
+  liked: boolean
+}
+
+export type DiscussionCreated = {
+  id: number
+  strategyId: number | null
+  strategyMadePublic: boolean
+}
+
+export function listDiscussions(): Promise<DiscussionPost[]> {
+  return requestJson('/discussions').then((body) => {
+    if (!Array.isArray(body)) throw new Error('Could not load discussions.')
+    return body.map(readDiscussion)
+  })
+}
+
+export function createDiscussion(body: {
+  body: string
+  strategyId?: number
+  parentId?: number
+}): Promise<DiscussionCreated> {
+  return requestJson('/discussions', {
+    method: 'POST',
+    body: JSON.stringify({
+      body: body.body,
+      ...(body.strategyId != null ? { strategy_id: body.strategyId } : {}),
+      ...(body.parentId != null ? { parent_id: body.parentId } : {}),
+    }),
+  }).then(readDiscussionCreated)
+}
+
+export function likeDiscussion(postId: number): Promise<{ id: number; likesCount: number; liked: boolean }> {
+  return requestJson(`/discussions/${postId}/like`, { method: 'POST' }).then((body) => {
+    if (!body || typeof body !== 'object') throw new Error('Discussion response was not valid.')
+    const row = body as { id?: unknown; likes_count?: unknown; liked?: unknown }
+    return {
+      id: readId(row.id),
+      likesCount: typeof row.likes_count === 'number' ? row.likes_count : 0,
+      liked: row.liked === true,
+    }
+  })
+}
+
+function readDiscussion(body: unknown): DiscussionPost {
+  if (!body || typeof body !== 'object') throw new Error('Discussion response was not valid.')
+  const row = body as {
+    id?: unknown
+    user_id?: unknown
+    author?: unknown
+    body?: unknown
+    strategy_id?: unknown
+    parent_id?: unknown
+    likes_count?: unknown
+    created_at?: unknown
+    liked?: unknown
+  }
+  if (typeof row.body !== 'string' || typeof row.author !== 'string') {
+    throw new Error('Discussion response was not valid.')
+  }
+  return {
+    id: readId(row.id),
+    userId: readId(row.user_id),
+    author: row.author,
+    body: row.body,
+    strategyId: row.strategy_id == null ? null : readId(row.strategy_id),
+    parentId: row.parent_id == null ? null : readId(row.parent_id),
+    likesCount: typeof row.likes_count === 'number' ? row.likes_count : 0,
+    createdAt: typeof row.created_at === 'string' ? row.created_at : '',
+    liked: row.liked === true,
+  }
+}
+
+function readDiscussionCreated(body: unknown): DiscussionCreated {
+  if (!body || typeof body !== 'object') throw new Error('Discussion response was not valid.')
+  const row = body as { id?: unknown; strategy_id?: unknown; strategy_made_public?: unknown }
+  return {
+    id: readId(row.id),
+    strategyId: row.strategy_id == null ? null : readId(row.strategy_id),
+    strategyMadePublic: row.strategy_made_public === true,
+  }
+}
+
 export function askAssistant(prompt: string): Promise<AssistantReply> {
   return requestJson('/llm', {
     method: 'POST',

@@ -306,6 +306,26 @@ def create_backtest_route(body: BacktestCreate, request: Request) -> dict:
         raise HTTPException(status_code=503, detail="Backtest database is unavailable") from exc
 
 
+@app.get("/discussions")
+def list_discussions_route(request: Request) -> list[dict]:
+    user = _require_user(request)
+    try:
+        return discussions.list_posts(user.id)
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Discussion database is unavailable") from exc
+
+
+@app.post("/discussions/{post_id}/like")
+def like_discussion_route(post_id: int, request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        return discussions.toggle_like(user.id, post_id)
+    except discussions.PostNotFound as exc:
+        raise HTTPException(status_code=404, detail="Post not found") from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Discussion database is unavailable") from exc
+
+
 @app.post("/discussions", status_code=201)
 def create_discussion_route(body: DiscussionCreate, request: Request) -> dict:
     user = _require_user(request)
@@ -316,6 +336,8 @@ def create_discussion_route(body: DiscussionCreate, request: Request) -> dict:
             strategy_id=body.strategy_id,
             parent_id=body.parent_id,
         )
+    except discussions.PostNotFound as exc:
+        raise HTTPException(status_code=404, detail="Post not found") from exc
     except strategies.StrategyNotFound as exc:
         raise HTTPException(status_code=404, detail="Strategy not found") from exc
     except strategies.StrategyForbidden as exc:
