@@ -166,7 +166,7 @@ Primary key: `(post_id, user_id)`.
 
 ## strategy_versions
 
-Immutable snapshot of the algorithm that a backtest ran. `document` and `ir` are copied from the strategy at that moment. A later save changes `strategies.document` and does not change this row. A backtest points at `strategy_version_id`, not at `strategies.document`.
+Immutable snapshot of a strategy. `kind` is `save` or `backtest`. Creating, updating the document, copying, or reverting writes a `save` row. A backtest writes a `backtest` row and points at that id. A later save does not change an older row. Revert copies a `save` row back onto `strategies` and writes a new `save` row, so the older versions stay in the list.
 
 | Column | Type |
 | --- | --- |
@@ -174,6 +174,7 @@ Immutable snapshot of the algorithm that a backtest ran. `document` and `ir` are
 | strategy_id | BIGINT NOT NULL REFERENCES strategies (id) ON DELETE CASCADE |
 | document | JSONB NOT NULL |
 | ir | JSONB |
+| kind | TEXT NOT NULL DEFAULT 'save' |
 | created_at | TIMESTAMPTZ NOT NULL DEFAULT now() |
 
 Index: `strategy_versions_strategy_id_idx` on `strategy_id`.

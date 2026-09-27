@@ -97,6 +97,9 @@ class VisibilityRulesTest(unittest.TestCase):
         )
         self.assertIn("strategies_visibility_check", loader)
         self.assertIn("if existing is not None", loader)
+        versions = (SOFTWARE / "database" / "sql" / "discussions_backtests.sql").read_text()
+        self.assertIn("kind TEXT NOT NULL DEFAULT 'save'", versions)
+        self.assertIn("ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'save'", versions)
 
 
 class _SessionStore:
@@ -206,9 +209,19 @@ class StrategyRoutesTest(unittest.TestCase):
             fetched = self.client.get("/strategies/1")
             updated = self.client.put("/strategies/1", json={"name": "Trend"})
             copied = self.client.post("/strategies/1/copy")
+            versions = self.client.get("/strategies/1/versions")
+            reverted = self.client.post("/strategies/1/versions/2/revert")
         self.assertEqual(
-            [created.status_code, listed.status_code, fetched.status_code, updated.status_code, copied.status_code],
-            [401, 401, 401, 401, 401],
+            [
+                created.status_code,
+                listed.status_code,
+                fetched.status_code,
+                updated.status_code,
+                copied.status_code,
+                versions.status_code,
+                reverted.status_code,
+            ],
+            [401, 401, 401, 401, 401, 401, 401],
         )
 
     def test_create_stores_a_private_strategy_for_the_session_user(self) -> None:
@@ -470,6 +483,39 @@ class StrategyRoutesTest(unittest.TestCase):
             response = self.client.post("/strategies/3/copy")
         self.assertEqual(response.status_code, 404)
 
+    def test_versions_list_and_revert_for_the_owner(self) -> None:
+        listed = [{"id": 8, "name": "Earlier", "created_at": "2026-09-26T12:00:00+00:00"}]
+        restored = {"id": 3, "name": "Earlier", "document": {"name": "Earlier"}, "ir": None}
+        _sign_in(self.client)
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(strategies, "list_versions", return_value=listed) as history,
+            patch.object(strategies, "revert_version", return_value=restored) as revert,
+        ):
+            history_response = self.client.get("/strategies/3/versions")
+            revert_response = self.client.post("/strategies/3/versions/8/revert")
+        self.assertEqual(history_response.status_code, 200)
+        self.assertEqual(history_response.json(), listed)
+        history.assert_called_once_with(4, 3)
+        self.assertEqual(revert_response.status_code, 200)
+        self.assertEqual(revert_response.json()["name"], "Earlier")
+        revert.assert_called_once_with(4, 3, 8)
+
+    def test_versions_hide_a_missing_strategy_and_reject_a_non_owner(self) -> None:
+        _sign_in(self.client)
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(strategies, "list_versions", side_effect=strategies.StrategyNotFound()),
+        ):
+            missing = self.client.get("/strategies/3/versions")
+        self.assertEqual(missing.status_code, 404)
+        with (
+            patch.object(auth, "user_from_token", return_value=OWNER),
+            patch.object(strategies, "revert_version", side_effect=strategies.StrategyForbidden()),
+        ):
+            forbidden = self.client.post("/strategies/3/versions/8/revert")
+        self.assertEqual(forbidden.status_code, 403)
+
     def test_database_outage_is_a_service_error(self) -> None:
         _sign_in(self.client)
         with (
@@ -481,11 +527,20 @@ class StrategyRoutesTest(unittest.TestCase):
 
 
 class _Result:
-    def __init__(self, row: tuple | None) -> None:
+    def __init__(self, row: tuple | list | None) -> None:
         self._row = row
 
     def fetchone(self) -> tuple | None:
+        if isinstance(self._row, list):
+            return self._row[0] if self._row else None
         return self._row
+
+    def fetchall(self) -> list:
+        if self._row is None:
+            return []
+        if isinstance(self._row, list):
+            return self._row
+        return [self._row]
 
 
 class _Conn:
@@ -553,6 +608,10 @@ class SaveStrategyDbTest(unittest.TestCase):
         )
         sql, params = conn.statements[0]
         self.assertIn("INSERT INTO strategies (user_id, name, visibility, document, ir)", sql)
+        version_sql, version_params = conn.statements[1]
+        self.assertIn("INSERT INTO strategy_versions", version_sql)
+        self.assertIn("'save'", version_sql)
+        self.assertEqual(version_params[0], 8)
         self.assertEqual(params[0], 4)
         self.assertEqual(params[1], "Trend")
         self.assertEqual(params[2], "public")
@@ -613,6 +672,91 @@ class SaveStrategyDbTest(unittest.TestCase):
             with self.assertRaises(strategies.StrategyNotFound):
                 strategies.update_strategy(4, 99, name="Nope")
         self.assertEqual(len(conn.statements), 1)
+
+    def test_update_with_a_document_records_a_save_version(self) -> None:
+        current = _saved_row(strategy_id=3)
+        saved = _saved_row(strategy_id=3, document={"name": "Breakout", "nodes": [1]})
+        conn = _Conn([current, saved])
+        with patch.object(strategies, "_connect", return_value=conn):
+            strategies.update_strategy(4, 3, document={"name": "Breakout", "nodes": [1]})
+        version_sql, version_params = conn.statements[2]
+        self.assertIn("INSERT INTO strategy_versions", version_sql)
+        self.assertIn("'save'", version_sql)
+        self.assertEqual(version_params[1].obj["name"], "Breakout")
+
+    def test_name_only_update_does_not_record_a_version(self) -> None:
+        conn = _Conn([_saved_row(strategy_id=3), _saved_row(strategy_id=3, name="Breakout")])
+        with patch.object(strategies, "_connect", return_value=conn):
+            strategies.update_strategy(4, 3, name="Breakout")
+        self.assertEqual(len(conn.statements), 2)
+
+    def test_copy_records_a_save_version(self) -> None:
+        conn = _Conn([_saved_row(), (12,)])
+        with patch.object(strategies, "_connect", return_value=conn):
+            new_id = strategies.copy_strategy(4, 8)
+        self.assertEqual(new_id, 12)
+        version_sql, version_params = conn.statements[2]
+        self.assertIn("'save'", version_sql)
+        self.assertEqual(version_params[0], 12)
+
+    def test_list_versions_returns_saves_newest_first_for_the_owner(self) -> None:
+        moment = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+        older = datetime(2026, 9, 26, 11, 0, tzinfo=timezone.utc)
+        conn = _Conn(
+            [
+                _saved_row(strategy_id=3, name="Trend"),
+                [
+                    (9, {"name": "  Later  "}, moment),
+                    (8, {"nodes": []}, older),
+                ],
+            ]
+        )
+        with patch.object(strategies, "_connect", return_value=conn):
+            result = strategies.list_versions(4, 3)
+        self.assertEqual(
+            result,
+            [
+                {"id": 9, "name": "Later", "created_at": moment.isoformat()},
+                {"id": 8, "name": "Trend", "created_at": older.isoformat()},
+            ],
+        )
+        self.assertIn("kind = 'save'", conn.statements[1][0])
+
+    def test_list_versions_rejects_a_non_owner(self) -> None:
+        conn = _Conn([_saved_row(strategy_id=3, user_id=9, visibility="public")])
+        with patch.object(strategies, "_connect", return_value=conn):
+            with self.assertRaises(strategies.StrategyForbidden):
+                strategies.list_versions(4, 3)
+        self.assertEqual(len(conn.statements), 1)
+
+    def test_revert_copies_the_saved_document_and_records_it_again(self) -> None:
+        earlier = {"name": "Earlier", "nodes": [1]}
+        conn = _Conn(
+            [
+                _saved_row(strategy_id=3),
+                (earlier, IR),
+                _saved_row(strategy_id=3, name="Earlier", document=earlier, ir=IR),
+            ]
+        )
+        with patch.object(strategies, "_connect", return_value=conn):
+            result = strategies.revert_version(4, 3, 8)
+        self.assertEqual(result["name"], "Earlier")
+        self.assertEqual(result["document"], earlier)
+        self.assertEqual(result["ir"], IR)
+        update_sql, update_params = conn.statements[2]
+        self.assertIn("UPDATE strategies", update_sql)
+        self.assertEqual(update_params[0], "Earlier")
+        version_sql, version_params = conn.statements[3]
+        self.assertIn("INSERT INTO strategy_versions", version_sql)
+        self.assertIn("'save'", version_sql)
+        self.assertTrue(conn.committed)
+
+    def test_revert_is_not_found_when_the_version_is_missing(self) -> None:
+        conn = _Conn([_saved_row(strategy_id=3), None])
+        with patch.object(strategies, "_connect", return_value=conn):
+            with self.assertRaises(strategies.StrategyNotFound):
+                strategies.revert_version(4, 3, 99)
+        self.assertEqual(len(conn.statements), 2)
 
     def test_update_requires_a_field(self) -> None:
         conn = _Conn([_saved_row(strategy_id=3)])

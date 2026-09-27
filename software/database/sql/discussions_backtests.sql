@@ -24,8 +24,12 @@ CREATE TABLE IF NOT EXISTS strategy_versions (
     strategy_id BIGINT NOT NULL REFERENCES strategies (id) ON DELETE CASCADE,
     document JSONB NOT NULL,
     ir JSONB,
+    kind TEXT NOT NULL DEFAULT 'save',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE strategy_versions
+ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'save';
 
 CREATE INDEX IF NOT EXISTS strategy_versions_strategy_id_idx ON strategy_versions (strategy_id);
 

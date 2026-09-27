@@ -240,6 +240,36 @@ def get_strategy_route(strategy_id: int, request: Request) -> dict:
         raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
 
 
+@app.get("/strategies/{strategy_id}/versions")
+def list_versions_route(strategy_id: int, request: Request) -> list:
+    user = _require_user(request)
+    try:
+        return strategies.list_versions(user.id, strategy_id)
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except strategies.StrategyForbidden as exc:
+        raise HTTPException(
+            status_code=403, detail="Only the owner can view saved versions"
+        ) from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
+
+
+@app.post("/strategies/{strategy_id}/versions/{version_id}/revert")
+def revert_version_route(strategy_id: int, version_id: int, request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        return strategies.revert_version(user.id, strategy_id, version_id)
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Saved version not found") from exc
+    except strategies.StrategyForbidden as exc:
+        raise HTTPException(
+            status_code=403, detail="Only the owner can revert this strategy"
+        ) from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
+
+
 @app.put("/strategies/{strategy_id}")
 def update_strategy_route(strategy_id: int, body: StrategyUpdate, request: Request) -> dict:
     user = _require_user(request)

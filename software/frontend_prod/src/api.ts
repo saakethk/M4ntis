@@ -103,6 +103,25 @@ export function getStrategy(id: number): Promise<StrategyRecord> {
   return requestJson(`/strategies/${id}`).then(readRecord)
 }
 
+export type StrategyVersion = {
+  id: number
+  name: string
+  createdAt: string
+}
+
+export function listStrategyVersions(strategyId: number): Promise<StrategyVersion[]> {
+  return requestJson(`/strategies/${strategyId}/versions`).then((body) => {
+    if (!Array.isArray(body)) throw new Error('Could not load saved versions.')
+    return body.map(readVersion)
+  })
+}
+
+export function revertStrategyVersion(strategyId: number, versionId: number): Promise<StrategyRecord> {
+  return requestJson(`/strategies/${strategyId}/versions/${versionId}/revert`, {
+    method: 'POST',
+  }).then(readRecord)
+}
+
 export function createStrategy(body: StrategyWrite): Promise<StrategyRecord> {
   return requestJson('/strategies', {
     method: 'POST',
@@ -407,6 +426,17 @@ async function requestJson(path: string, init: RequestInit = {}): Promise<unknow
   }
   if (!response.ok) throw new Error(await errorMessage(response))
   return response.json()
+}
+
+function readVersion(body: unknown): StrategyVersion {
+  if (!body || typeof body !== 'object') throw new Error('Could not load saved versions.')
+  const row = body as { id?: unknown; name?: unknown; created_at?: unknown }
+  if (typeof row.name !== 'string') throw new Error('Could not load saved versions.')
+  return {
+    id: readId(row.id),
+    name: row.name,
+    createdAt: typeof row.created_at === 'string' ? row.created_at : '',
+  }
 }
 
 function readSummary(body: unknown): StrategySummary {

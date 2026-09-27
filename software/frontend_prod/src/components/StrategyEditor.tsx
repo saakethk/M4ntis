@@ -20,10 +20,13 @@ import {
   createStrategy,
   getDummyBacktest,
   getStrategy,
+  listStrategyVersions,
+  revertStrategyVersion,
   runDummyBacktest,
   updateStrategy,
   type BacktestMenu,
   type CompileResult,
+  type StrategyVersion,
 } from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, isBlockType } from '../blocks/catalog'
 import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/types'
@@ -91,6 +94,10 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
   const [compiledLog, setCompiledLog] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [versions, setVersions] = useState<StrategyVersion[] | null>(null)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [revertingId, setRevertingId] = useState<number | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const skipFetchId = useRef<number | null>(null)
   const { screenToFlowPosition, getViewport } = useReactFlow()
@@ -250,23 +257,23 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
 
   const canDelete = nodes.some((node) => node.selected && !isProtectedNode(node))
 
-  async function compileDocument(document: unknown, saved: boolean) {
+  async function compileDocument(document: unknown, note: string) {
     try {
       const result = await compileStrategy(document)
-      showCompiled(result, saved)
+      showCompiled(result, note)
     } catch (error) {
       setCompiledLog(null)
       showMessage(error instanceof Error ? error.message : 'Could not compile', true)
     }
   }
 
-  function showCompiled(result: CompileResult, saved: boolean) {
+  function showCompiled(result: CompileResult, note: string) {
     const lines = result.diagnostics.map((item) =>
       item.node ? `${item.level}: ${item.message} [${item.node}]` : `${item.level}: ${item.message}`,
     )
     if (result.ok) {
       setCompiledLog(lines.length > 0 ? `${lines.join('\n')}\n\n${result.asm}` : result.asm)
-      showMessage(saved ? 'Saved and compiled' : 'Compiled', false)
+      showMessage(note, false)
       return
     }
     setCompiledLog(lines.join('\n') || result.detail || 'Could not compile')
@@ -281,7 +288,39 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
       showMessage('Name is required', true)
       return
     }
-    void compileDocument(toDocument(trimmed, nodes, edges, getViewport()), false)
+    void compileDocument(toDocument(trimmed, nodes, edges, getViewport()), 'Compiled')
+  }
+
+  async function openHistory() {
+    if (storedId == null || saving || revertingId != null) return
+    setHistoryOpen(true)
+    setHistoryError(null)
+    setVersions(null)
+    try {
+      setVersions(await listStrategyVersions(storedId))
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : 'Could not load saved versions.')
+    }
+  }
+
+  async function revert(versionId: number) {
+    if (storedId == null || revertingId != null) return
+    setRevertingId(versionId)
+    setHistoryError(null)
+    try {
+      const row = await revertStrategyVersion(storedId, versionId)
+      const graph = fromDocument(documentPayload(row.document))
+      setName(graph.name || row.name)
+      setNodes(graph.nodes)
+      setEdges(graph.edges)
+      setSaved(true)
+      setVersions(await listStrategyVersions(storedId))
+      await compileDocument(row.document, 'Reverted and compiled')
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : 'Could not revert this version.')
+    } finally {
+      setRevertingId(null)
+    }
   }
 
   async function persist(): Promise<number | null> {
@@ -306,7 +345,7 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
         skipFetchId.current = savedRow.id
         onCreated?.(savedRow.id)
       }
-      await compileDocument(document, true)
+      await compileDocument(document, 'Saved and compiled')
       return savedRow.id
     } catch (error) {
       setSaved(false)
@@ -382,6 +421,14 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
             >
               <TrashIcon />
             </button>
+            <button
+              type="button"
+              className="quiet"
+              onClick={() => void openHistory()}
+              disabled={!loaded || storedId == null || saving || running || revertingId != null}
+            >
+              History
+            </button>
             <button type="button" className="quiet" onClick={compile} disabled={!loaded}>
               Compile
             </button>
@@ -398,6 +445,39 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
             </button>
           </div>
         </div>
+        {historyOpen ? (
+          <section className="version-history" aria-label="Saved versions">
+            <div className="version-history-head">
+              <h2>Saved versions</h2>
+              <button type="button" className="quiet" onClick={() => setHistoryOpen(false)}>
+                Close
+              </button>
+            </div>
+            {historyError ? <p className="form-error">{historyError}</p> : null}
+            {versions == null && !historyError ? <p className="version-empty">Loading versions…</p> : null}
+            {versions != null && versions.length === 0 ? (
+              <p className="version-empty">No saved versions yet.</p>
+            ) : null}
+            {versions != null && versions.length > 0 ? (
+              <ul>
+                {versions.map((version) => (
+                  <li key={version.id} className="version-row">
+                    <span className="version-name">{version.name}</span>
+                    <time dateTime={version.createdAt}>{formatVersionTime(version.createdAt)}</time>
+                    <button
+                      type="button"
+                      className="quiet"
+                      onClick={() => void revert(version.id)}
+                      disabled={revertingId != null}
+                    >
+                      {revertingId === version.id ? 'Reverting…' : 'Revert'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+        ) : null}
         {compiledLog ? (
           <pre className="compile-log" aria-label="Compiled program">
             {compiledLog}
@@ -440,6 +520,12 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
       <BacktestMenu menu={backtest} error={backtestError} />
     </div>
   )
+}
+
+function formatVersionTime(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
 function money(value: number) {

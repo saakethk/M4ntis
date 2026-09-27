@@ -90,8 +90,8 @@ def run_dummy_backtest(user_id: int, strategy_id: int) -> dict[str, Any]:
                 raise StrategyNotFound()
             version = conn.execute(
                 """
-                INSERT INTO strategy_versions (strategy_id, document, ir)
-                VALUES (%s, %s, %s)
+                INSERT INTO strategy_versions (strategy_id, document, ir, kind)
+                VALUES (%s, %s, %s, 'backtest')
                 RETURNING id
                 """,
                 (
