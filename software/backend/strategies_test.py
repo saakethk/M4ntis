@@ -493,6 +493,7 @@ class _Conn:
         self._rows = list(rows)
         self.statements: list[tuple[str, object]] = []
         self.closed = False
+        self.committed = False
 
     def transaction(self) -> "_Conn":
         return self
@@ -507,6 +508,9 @@ class _Conn:
         self.statements.append((" ".join(sql.split()), params))
         row = self._rows.pop(0) if self._rows else None
         return _Result(row)
+
+    def commit(self) -> None:
+        self.committed = True
 
     def close(self) -> None:
         self.closed = True
@@ -556,6 +560,7 @@ class SaveStrategyDbTest(unittest.TestCase):
         self.assertEqual(params[3].obj, DOCUMENT)
         self.assertIsInstance(params[4], Jsonb)
         self.assertEqual(params[4].obj, IR)
+        self.assertTrue(conn.committed)
         self.assertTrue(conn.closed)
 
     def test_create_defaults_to_private_without_touching_a_client_user_id(self) -> None:
@@ -591,6 +596,7 @@ class SaveStrategyDbTest(unittest.TestCase):
         self.assertEqual(params[0], "Breakout")
         self.assertEqual(params[1], "public")
         self.assertEqual(params[-2:], [3, 4])
+        self.assertTrue(conn.committed)
         self.assertTrue(conn.closed)
 
     def test_update_rejects_a_non_owner_before_writing(self) -> None:
@@ -614,6 +620,93 @@ class SaveStrategyDbTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 strategies.update_strategy(4, 3)
         self.assertEqual(len(conn.statements), 1)
+
+
+class _DurableTx:
+    """Same rule as psycopg: only an idle connection commits on the way out."""
+
+    def __init__(self, conn: "_DurableConn") -> None:
+        self.conn = conn
+        self.outer = False
+
+    def __enter__(self) -> "_DurableTx":
+        self.outer = self.conn.status == "idle"
+        if self.outer:
+            self.conn.status = "intrans"
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+        if exc_type is not None:
+            self.conn.rollback()
+            return False
+        if self.outer:
+            self.conn.commit()
+        return False
+
+
+class _DurableConn:
+    """connect() leaves SET TIME ZONE uncommitted. close() drops that work."""
+
+    def __init__(self, row: tuple) -> None:
+        self._row = row
+        self.status = "intrans"
+        self.pending: tuple | None = None
+        self.durable: tuple | None = None
+        self.closed = False
+
+    def commit(self) -> None:
+        if self.pending is not None:
+            self.durable = self.pending
+            self.pending = None
+        self.status = "idle"
+
+    def rollback(self) -> None:
+        self.pending = None
+        self.status = "idle"
+
+    def transaction(self) -> _DurableTx:
+        return _DurableTx(self)
+
+    def execute(self, sql: str, params: object = None) -> _Result:
+        if self.status == "idle":
+            self.status = "intrans"
+        folded = " ".join(sql.split())
+        if folded.startswith("INSERT") or folded.startswith("UPDATE"):
+            self.pending = self._row
+        return _Result(self._row)
+
+    def close(self) -> None:
+        if self.status == "intrans":
+            self.rollback()
+        self.closed = True
+
+
+class StrategySurvivesCloseTest(unittest.TestCase):
+    def test_create_is_still_stored_after_close(self) -> None:
+        conn = _DurableConn(_saved_row())
+        with patch.object(strategies, "_connect", return_value=conn):
+            result = strategies.create_strategy(4, "Trend", DOCUMENT, None)
+        self.assertEqual(result["id"], 8)
+        self.assertEqual(conn.durable, _saved_row())
+        self.assertTrue(conn.closed)
+        self.assertEqual(conn.status, "idle")
+
+    def test_update_is_still_stored_after_close(self) -> None:
+        saved = _saved_row(strategy_id=3, name="Breakout")
+        conn = _DurableConn(saved)
+        with patch.object(strategies, "_connect", return_value=conn):
+            result = strategies.update_strategy(4, 3, name="Breakout")
+        self.assertEqual(result["name"], "Breakout")
+        self.assertEqual(conn.durable, saved)
+        self.assertTrue(conn.closed)
+
+    def test_copy_is_still_stored_after_close(self) -> None:
+        conn = _DurableConn(_saved_row(strategy_id=12))
+        with patch.object(strategies, "_connect", return_value=conn):
+            new_id = strategies.copy_strategy(4, 8)
+        self.assertEqual(new_id, 12)
+        self.assertEqual(conn.durable[0], 12)
+        self.assertTrue(conn.closed)
 
 
 if __name__ == "__main__":

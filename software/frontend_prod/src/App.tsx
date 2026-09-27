@@ -14,13 +14,17 @@ type Screen =
   | { kind: 'edit'; id: number }
   | { kind: 'unavailable' }
 
+function currentRoute(): Screen {
+  return parseRoute(window.location.pathname)
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null)
   const [ready, setReady] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
-  const [screen, setScreen] = useState<AppScreen>(currentRoute)
+  const [screen, setScreen] = useState<Screen>(currentRoute)
 
   useEffect(() => {
     function onPopState() {
@@ -107,7 +111,7 @@ export default function App() {
       </div>
     )
   } else if (screen.kind === 'home') {
-    main = <Portfolio onNew={() => setScreen({ kind: 'new' })} onEdit={openStrategy} />
+    main = <Portfolio onNew={() => go({ kind: 'new' })} onEdit={openStrategy} />
   } else if (screen.kind === 'discussions') {
     main = <Discussions onOpenStrategy={openStrategy} />
   } else {

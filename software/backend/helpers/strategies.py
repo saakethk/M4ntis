@@ -154,6 +154,10 @@ def create_strategy(
     values = new_strategy_values(user_id, name, document, ir, visibility)
     conn = _connect()
     try:
+        # connect() already ran SET TIME ZONE, which opens a transaction.
+        # transaction() would only be a savepoint, and close() would roll the
+        # insert back. The API would return an id that never shows up later.
+        conn.commit()
         with conn.transaction():
             record = conn.execute(
                 """
@@ -200,6 +204,7 @@ def update_strategy(
 ) -> dict[str, Any]:
     conn = _connect()
     try:
+        conn.commit()
         with conn.transaction():
             current = _select_one(conn, strategy_id)
             if current is None:
@@ -233,6 +238,7 @@ def update_strategy(
 def copy_strategy(viewer_id: int, strategy_id: int) -> int:
     conn = _connect()
     try:
+        conn.commit()
         with conn.transaction():
             current = _select_one(conn, strategy_id)
             if current is None or not can_view(current.user_id, current.visibility, viewer_id):

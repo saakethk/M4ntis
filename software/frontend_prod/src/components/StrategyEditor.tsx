@@ -73,7 +73,7 @@ function documentPayload(raw: unknown): unknown {
   return JSON.parse(raw)
 }
 
-function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Props) {
+function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCreated }: Props) {
   const blank = blankTemplate?.build() ?? { nodes: [], edges: [] }
   const [name, setName] = useState(strategyId == null && !unavailable ? 'Untitled strategy' : '')
   const [nodes, setNodes, onNodesChange] = useNodesState<BlockNodeT>(blank.nodes)
@@ -282,6 +282,11 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Pr
       setSaved(true)
       setMessage(null)
       setMessageError(false)
+      if (existingId == null) {
+        // Keep the canvas. The route change would otherwise reload this id.
+        skipFetchId.current = savedRow.id
+        onCreated?.(savedRow.id)
+      }
       return savedRow.id
     } catch (error) {
       setSaved(false)
