@@ -99,3 +99,9 @@ class AssistantAsk(Strict):
     provider: str | None = None
     model: str | None = None
     history: list[ChatTurn] = Field(default_factory=list, max_length=20)
+
+
+class AnalysisRequest(Strict):
+    provider: str | None = None
+    model: str | None = None
+    question: str = Field(default="", max_length=1000)

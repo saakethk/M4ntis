@@ -28,6 +28,39 @@ RESOLUTIONS = {
 }
 
 
+# Start-block resolutions (as in strategy documents) to bucket intervals.
+TICK_INTERVALS = {"1m": "1 minute", "5m": "5 minutes", "15m": "15 minutes", "30m": "30 minutes", "1h": "1 hour", "1d": "1 day"}
+
+
+def latest_closes(symbols: list[str], resolution: str, ticks: int) -> list[tuple[datetime, list[float]]]:
+    """The most recent ``ticks`` bars where every symbol traded, oldest first, as (bucket, closes in ``symbols`` order)."""
+    if resolution not in TICK_INTERVALS:
+        raise InvalidInput(f"Unknown resolution {resolution!r}")
+    interval = TICK_INTERVALS[resolution]
+    with db.session() as conn:
+        rows = conn.execute(
+            """
+            WITH recent AS (
+                SELECT max(ts) AS until FROM stock_minute_bars WHERE symbol = ANY(%(symbols)s)
+            )
+            SELECT time_bucket(%(interval)s::interval, ts, 'America/New_York') AS bucket,
+                   symbol, last(close, ts) AS close
+            FROM stock_minute_bars, recent
+            WHERE symbol = ANY(%(symbols)s)
+              -- Sessions, nights, and weekends: look back well past `ticks` buckets.
+              AND ts > recent.until - %(interval)s::interval * %(span)s
+            GROUP BY 1, 2
+            ORDER BY 1
+            """,
+            {"symbols": symbols, "interval": interval, "span": ticks * 8},
+        ).fetchall()
+    by_bucket: dict[datetime, dict[str, float]] = {}
+    for bucket, symbol, close in rows:
+        by_bucket.setdefault(bucket, {})[str(symbol)] = float(close)
+    complete = [(bucket, [closes[s] for s in symbols]) for bucket, closes in by_bucket.items() if len(closes) == len(symbols)]
+    return complete[-ticks:]
+
+
 def resolution_interval(resolution: str) -> str:
     try:
         return RESOLUTIONS[resolution.strip().lower()]

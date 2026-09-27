@@ -1,104 +1,89 @@
-"""Backtest runs and the performance metrics derived from them.
+"""Backtests run on the TradeCPU FPGA, and the performance metrics derived from them.
 
-Runs are currently *sample* runs: nothing is simulated against market data yet.
-A run snapshots the strategy as it is now (a ``backtest`` strategy version), then
-stores a fixed set of orders and balances. Everything downstream (storage, the
-report endpoint, metrics, and the UI) is real, so swapping :func:`sample_orders`
-and :func:`sample_balances` for a simulator is the only change a real backtester needs.
+A run:
+
+1. compiles the strategy and reads which stock each hardware slot holds,
+2. loads the most recent ``BACKTEST_TICKS`` bars (plus warm-up) of those stocks at the
+   strategy's resolution from ``stock_minute_bars``,
+3. picks each slot's price scale so its highest price fits the board's 16-bit tick
+   field, and compiles again with those scales,
+4. loads the program onto the FPGA and feeds it every tick
+   (:mod:`mantis.services.fpga`), and
+5. stores the board's own decisions as orders and its balance after every tick.
+
+Nothing is simulated in software. If the board is not connected, the run fails with
+503 and nothing is stored.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Any
 
 from psycopg.types.json import Jsonb
 
 from mantis import db
-from mantis.errors import Forbidden, NotFound
-from mantis.services import strategies
+from mantis.config import env
+from mantis.errors import Forbidden, InvalidInput, NotFound
+from mantis.services import compiler, fpga, market_data, strategies
 
-SAMPLE_START = datetime(2024, 1, 2, 14, 30, tzinfo=timezone.utc)
-
-
-def sample_orders() -> list[dict[str, Any]]:
-    return [
-        {"ts": SAMPLE_START, "symbol": "AAPL", "side": "buy", "quantity": 10, "price": 180.0},
-        {"ts": SAMPLE_START + timedelta(days=1), "symbol": "AAPL", "side": "sell", "quantity": 10, "price": 186.0},
-    ]
+DEFAULT_TICKS = 500
+TICK_MAX = 32767  # the board's price field is a signed 16-bit integer
+SOURCE = "fpga"
 
 
-def sample_balances() -> list[dict[str, Any]]:
-    return [
-        {"ts": SAMPLE_START, "cash": 100_000.0, "equity": 100_000.0},
-        {"ts": SAMPLE_START + timedelta(minutes=1), "cash": 98_200.0, "equity": 100_000.0},
-        {"ts": SAMPLE_START + timedelta(days=1), "cash": 100_060.0, "equity": 100_060.0},
-    ]
+def backtest_ticks() -> int:
+    raw = env("BACKTEST_TICKS", str(DEFAULT_TICKS))
+    if not raw.isdigit() or not 1 <= int(raw) <= 20_000:
+        raise InvalidInput("BACKTEST_TICKS must be a whole number from 1 to 20000")
+    return int(raw)
 
 
-def sample_menu() -> dict[str, Any]:
-    """The sample series without storing a run."""
-    orders = [_iso(order) for order in sample_orders()]
-    balances = [_iso(point) for point in sample_balances()]
-    metrics = performance(orders, balances)
-    return {
-        "dummy": True,
-        "equity": metrics["equity"],
-        "return_pct": metrics["return_pct"],
-        "orders": orders,
-        "balances": balances,
-    }
+def fpga_status() -> dict[str, Any]:
+    return fpga.status()
 
 
 def run_backtest(user_id: int, requested_user_id: int, strategy_id: int) -> dict[str, Any]:
-    """Record a sample run of a strategy the user can view."""
+    """Run a strategy the user can view on the FPGA and store the result."""
     if requested_user_id != user_id:
         raise Forbidden("You can only run a backtest as yourself")
-    orders = sample_orders()
-    balances = sample_balances()
-    with db.session() as conn, conn.transaction():
-        if conn.execute("SELECT 1 FROM users WHERE id = %s", (user_id,)).fetchone() is None:
-            raise NotFound("User not found")
+    board = fpga.status()
+    if not board["connected"]:
+        raise fpga.FpgaUnavailable(board["detail"])
+
+    with db.session() as conn:
         strategy = strategies.load_viewable(conn, user_id, strategy_id)
-        version_id = int(
-            conn.execute(
-                """
-                INSERT INTO strategy_versions (strategy_id, document, ir, kind)
-                VALUES (%s, %s, %s, 'backtest') RETURNING id
-                """,
-                (
-                    strategy_id,
-                    Jsonb(strategy.document),
-                    Jsonb(strategy.ir) if strategy.ir is not None else None,
-                ),
-            ).fetchone()[0]
+    manifest = compiler.compile_document(strategy.document)["manifest"]
+    slots = [b for b in manifest["buffers"] if b["used"]]
+    if not slots:
+        raise InvalidInput("This strategy reads no stock prices, so there is nothing to backtest. Add a Get ticker block.")
+    unnamed = [f"BUF{b['buf']}" for b in slots if not b["symbol"]]
+    if unnamed:
+        raise InvalidInput(f"Pick a stock for {', '.join(unnamed)} before running a backtest.")
+    symbols = [str(b["symbol"]) for b in slots]
+
+    bars = market_data.latest_closes(symbols, manifest["resolution"], manifest["warmupTicks"] + backtest_ticks())
+    if len(bars) <= manifest["warmupTicks"]:
+        raise InvalidInput(
+            f"Not enough {manifest['resolution']} price history for {', '.join(symbols)}: "
+            f"found {len(bars)} bars, the strategy needs more than {manifest['warmupTicks']} to warm up."
         )
-        backtest_id = int(
-            conn.execute(
-                "INSERT INTO backtests (strategy_version_id, user_id) VALUES (%s, %s) RETURNING id",
-                (version_id, user_id),
-            ).fetchone()[0]
-        )
-        conn.cursor().executemany(
-            """
-            INSERT INTO backtest_orders (backtest_id, ts, symbol, side, quantity, price)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            """,
-            [
-                (backtest_id, o["ts"], o["symbol"], o["side"], o["quantity"], o["price"])
-                for o in orders
-            ],
-        )
-        conn.cursor().executemany(
-            "INSERT INTO backtest_balances (backtest_id, ts, cash, equity) VALUES (%s, %s, %s, %s)",
-            [(backtest_id, b["ts"], b["cash"], b["equity"]) for b in balances],
-        )
+    exponents = {slot["buf"]: _price_exponent(max(closes[i] for _, closes in bars), slot["symbol"]) for i, slot in enumerate(slots)}
+    program = compiler.compile_document(strategy.document, exponents)["manifest"]
+    rounds = [_round(closes, slots, exponents) for _, closes in bars]
+
+    with fpga.board() as port:
+        run = fpga.run_program(port, [int(word, 16) for word in program["words"]], rounds)
+
+    orders, balances = _ledger(bars, slots, run, 10 ** program["balanceExponent"])
+    backtest_id, version_id = _store(user_id, strategy, orders, balances)
     return {
         "id": backtest_id,
         "user_id": user_id,
         "strategy_id": strategy_id,
         "strategy_version_id": version_id,
-        "dummy": True,
+        "source": SOURCE,
+        "ticks": len(bars),
         "orders": [_iso(order) for order in orders],
         "balances": [_iso(point) for point in balances],
     }
@@ -110,7 +95,7 @@ def get_backtest(viewer_id: int, backtest_id: int) -> dict[str, Any]:
         row = conn.execute(
             """
             SELECT b.id, b.user_id, b.created_at, b.strategy_version_id,
-                   v.strategy_id, s.name, s.user_id, s.visibility
+                   v.strategy_id, s.name, s.user_id, s.visibility, b.source
             FROM backtests b
             JOIN strategy_versions v ON v.id = b.strategy_version_id
             JOIN strategies s ON s.id = v.strategy_id
@@ -119,9 +104,7 @@ def get_backtest(viewer_id: int, backtest_id: int) -> dict[str, Any]:
             (backtest_id,),
         ).fetchone()
         runner_id = None if row is None else int(row[1])
-        if row is None or (
-            runner_id != viewer_id and not strategies.can_view(int(row[6]), str(row[7]), viewer_id)
-        ):
+        if row is None or (runner_id != viewer_id and not strategies.can_view(int(row[6]), str(row[7]), viewer_id)):
             raise NotFound("Backtest not found")
         order_rows = conn.execute(
             "SELECT ts, symbol, side, quantity, price FROM backtest_orders WHERE backtest_id = %s ORDER BY ts, id",
@@ -143,11 +126,76 @@ def get_backtest(viewer_id: int, backtest_id: int) -> dict[str, Any]:
         "strategy_name": str(row[5]),
         "strategy_version_id": int(row[3]),
         "created_at": row[2].isoformat(),
-        "dummy": True,
+        "source": str(row[8]),
         "orders": orders,
         "balances": balances,
         "metrics": performance(orders, balances),
     }
+
+
+def _price_exponent(highest: float, symbol: str) -> int:
+    """Cents when the price fits the 16-bit tick field, else dimes, else dollars."""
+    for exponent in (2, 1, 0):
+        if round(highest * 10**exponent) <= TICK_MAX:
+            return exponent
+    raise InvalidInput(f"{symbol} traded at ${highest:,.2f}, above the board's ${TICK_MAX:,} price limit.")
+
+
+def _round(closes: list[float], slots: list[dict[str, Any]], exponents: dict[int, int]) -> list[int]:
+    """One tick's prices for all five slots. Slots the program never reads get 0."""
+    prices = [0] * fpga.NUM_BUFFERS
+    for close, slot in zip(closes, slots):
+        prices[slot["buf"]] = max(1, min(TICK_MAX, round(close * 10 ** exponents[slot["buf"]])))
+    return prices
+
+
+def _ledger(
+    bars: list[tuple[datetime, list[float]]], slots: list[dict[str, Any]], run: fpga.BoardRun, balance_scale: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Orders from the board's decisions, and cash plus position value after every tick."""
+    column = {slot["buf"]: i for i, slot in enumerate(slots)}
+    symbol = {slot["buf"]: str(slot["symbol"]) for slot in slots}
+    position = {buf: 0 for buf in column}
+    orders: list[dict[str, Any]] = []
+    balances = [{"ts": bars[0][0], "cash": run.starting_balance / balance_scale, "equity": run.starting_balance / balance_scale}]
+    for (ts, closes), tick in zip(bars, run.ticks):
+        for decision in tick.decisions:
+            if decision.buf not in column:
+                continue
+            price = closes[column[decision.buf]]
+            position[decision.buf] += decision.quantity if decision.action == "buy" else -decision.quantity
+            orders.append({"ts": ts, "symbol": symbol[decision.buf], "side": decision.action, "quantity": decision.quantity, "price": price})
+        cash = tick.balance / balance_scale
+        holdings = sum(position[buf] * closes[i] for buf, i in column.items())
+        balances.append({"ts": ts, "cash": cash, "equity": round(cash + holdings, 2)})
+    return orders, balances
+
+
+def _store(
+    user_id: int, strategy: strategies.StrategyRow, orders: list[dict[str, Any]], balances: list[dict[str, Any]]
+) -> tuple[int, int]:
+    with db.session() as conn, conn.transaction():
+        version_id = int(
+            conn.execute(
+                "INSERT INTO strategy_versions (strategy_id, document, ir, kind) VALUES (%s, %s, %s, 'backtest') RETURNING id",
+                (strategy.id, Jsonb(strategy.document), Jsonb(strategy.ir) if strategy.ir is not None else None),
+            ).fetchone()[0]
+        )
+        backtest_id = int(
+            conn.execute(
+                "INSERT INTO backtests (strategy_version_id, user_id, source) VALUES (%s, %s, %s) RETURNING id",
+                (version_id, user_id, SOURCE),
+            ).fetchone()[0]
+        )
+        conn.cursor().executemany(
+            "INSERT INTO backtest_orders (backtest_id, ts, symbol, side, quantity, price) VALUES (%s, %s, %s, %s, %s, %s)",
+            [(backtest_id, o["ts"], o["symbol"], o["side"], o["quantity"], o["price"]) for o in orders],
+        )
+        conn.cursor().executemany(
+            "INSERT INTO backtest_balances (backtest_id, ts, cash, equity) VALUES (%s, %s, %s, %s)",
+            [(backtest_id, b["ts"], b["cash"], b["equity"]) for b in balances],
+        )
+    return backtest_id, version_id
 
 
 def performance(orders: list[dict[str, Any]], balances: list[dict[str, Any]]) -> dict[str, Any]:

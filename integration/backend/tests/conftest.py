@@ -19,7 +19,37 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from mantis.api.app import create_app  # noqa: E402
+from mantis.blocks.canvas import normalize_graph  # noqa: E402
+from mantis.blocks.document import document_from_canvas  # noqa: E402
+from mantis.config import COMPILER_ROOT  # noqa: E402
 from mantis.db import schema  # noqa: E402
+
+sys.path.insert(0, str(COMPILER_ROOT))
+
+# Buys while the 3-tick SMA of AAPL is above the 10-tick SMA and sells otherwise.
+CROSSOVER = document_from_canvas(
+    normalize_graph(
+        {
+            "nodes": [
+                {"id": "start", "type": "start", "params": {"resolution": "1m", "startingBalance": 10000}},
+                {"id": "t0", "type": "get_ticker", "params": {"symbol": "AAPL"}},
+                {"id": "fast", "type": "sma", "params": {"n": 3}},
+                {"id": "slow", "type": "sma", "params": {"n": 10}},
+                {"id": "cross", "type": "if", "params": {"operator": ">"}},
+                {"id": "buy", "type": "buy", "params": {"quantity": 1}},
+                {"id": "sell", "type": "sell", "params": {"quantity": 1}},
+            ],
+            "edges": [
+                {"source": "start", "sourceHandle": "exec:out", "target": "cross", "targetHandle": "exec:in"},
+                {"source": "fast", "sourceHandle": "data:out", "target": "cross", "targetHandle": "data:a"},
+                {"source": "slow", "sourceHandle": "data:out", "target": "cross", "targetHandle": "data:b"},
+                {"source": "cross", "sourceHandle": "exec:then", "target": "buy", "targetHandle": "exec:in"},
+                {"source": "cross", "sourceHandle": "exec:else", "target": "sell", "targetHandle": "exec:in"},
+            ],
+        }
+    ),
+    name="Crossover",
+)
 
 TABLES = (
     "backtest_balances",

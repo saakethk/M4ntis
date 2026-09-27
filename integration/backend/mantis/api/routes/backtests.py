@@ -1,4 +1,4 @@
-"""Backtest runs under ``/backtests``. Runs use sample data until the simulator lands."""
+"""Backtest runs under ``/backtests``. Runs execute on the TradeCPU FPGA only; without a board they fail with 503."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from mantis.services import backtests
 router = APIRouter(prefix="/backtests", tags=["backtests"])
 
 
-@router.get("/sample")
-def sample(_: CurrentUser) -> dict:
-    return backtests.sample_menu()
+@router.get("/fpga")
+def fpga(_: CurrentUser) -> dict:
+    return backtests.fpga_status()
 
 
 @router.post("", status_code=201)

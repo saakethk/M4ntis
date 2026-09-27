@@ -25,3 +25,6 @@ ALTER TABLE discussion_posts ADD COLUMN IF NOT EXISTS ai_summary TEXT;
 ALTER TABLE discussion_posts ADD COLUMN IF NOT EXISTS ai_summary_model TEXT;
 ALTER TABLE discussion_posts ADD COLUMN IF NOT EXISTS ai_summary_reply_count INTEGER;
 ALTER TABLE discussion_posts ADD COLUMN IF NOT EXISTS ai_summary_at TIMESTAMPTZ;
+
+-- Where a backtest ran. Runs before FPGA execution replayed a fixed sample series.
+ALTER TABLE backtests ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'sample';

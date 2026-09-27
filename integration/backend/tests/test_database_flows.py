@@ -5,14 +5,19 @@ These run only when ``MANTIS_TEST_DATABASE`` is set (see ``conftest.py``).
 
 from __future__ import annotations
 
+import math
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
+import psycopg
 from fastapi.testclient import TestClient
+from tradecpu.hwtest import FakeBoard
 
 from mantis.api.app import create_app
-from mantis.blocks.document import document_from_canvas
 from mantis.blocks.canvas import empty_canvas
-from tests.conftest import sign_up
+from mantis.blocks.document import document_from_canvas
+from mantis.services import fpga, market_data
+from tests.conftest import CROSSOVER, sign_up
 
 DOCUMENT = document_from_canvas(empty_canvas(), name="Opening drive")
 
@@ -76,17 +81,55 @@ def test_compile_saved_strategy_and_invalid_documents(database):
     assert client.post("/compile", json={"strategy_id": strategy_id, "extra": 1}).status_code == 422
 
 
-def test_backtests(database):
+def aapl_bars(resolution: str, ticks: int) -> list:
+    start = datetime(2026, 9, 1, 13, 30, tzinfo=timezone.utc)
+    return [(start + timedelta(minutes=i), [round(150 + 10 * math.sin(i / 5), 2)]) for i in range(min(ticks, 60))]
+
+
+def fake_board(monkeypatch) -> None:
+    monkeypatch.setattr(fpga, "status", lambda: {"connected": True, "port": "/dev/fake", "busy": False, "detail": "Connected at /dev/fake"})
+    monkeypatch.setattr(fpga, "open_port", FakeBoard)
+    monkeypatch.setattr(market_data, "latest_closes", lambda symbols, resolution, ticks: aapl_bars(resolution, ticks))
+
+
+def test_backtests_refuse_without_fpga(database, monkeypatch):
+    monkeypatch.setenv("FPGA_SERIAL_PORT", "")
     client = new_client()
     user = sign_up(client, "b@example.com")
-    strategy_id = client.post("/strategies", json={"name": "S", "document": DOCUMENT}).json()["id"]
+    strategy_id = client.post("/strategies", json={"name": "S", "document": CROSSOVER}).json()["id"]
+    assert client.get("/backtests/fpga").json()["connected"] is False
+    refused = client.post("/backtests", json={"user_id": user["id"], "strategy_id": strategy_id})
+    assert refused.status_code == 503 and "FPGA" in refused.json()["detail"]
+    with psycopg.connect(database) as conn:
+        assert conn.execute("SELECT count(*) FROM backtests").fetchone()[0] == 0
+
+
+def test_backtests_run_on_fpga(database, monkeypatch):
+    fake_board(monkeypatch)
+    client = new_client()
+    user = sign_up(client, "b@example.com")
+    strategy_id = client.post("/strategies", json={"name": "S", "document": CROSSOVER}).json()["id"]
     assert client.post("/backtests", json={"user_id": user["id"] + 1, "strategy_id": strategy_id}).status_code == 403
+
     run = client.post("/backtests", json={"user_id": user["id"], "strategy_id": strategy_id})
-    assert run.status_code == 201
+    assert run.status_code == 201, run.text
+    assert run.json()["source"] == "fpga" and run.json()["ticks"] == 60
     report = client.get(f"/backtests/{run.json()['id']}").json()
-    assert report["strategy_name"] == "S"
-    assert report["metrics"]["num_trades"] == 1 and report["metrics"]["trade_returns"] == [60.0]
+    assert report["strategy_name"] == "S" and report["source"] == "fpga"
+    assert report["orders"] and {o["symbol"] for o in report["orders"]} == {"AAPL"}
+    assert len(report["balances"]) == 61 and report["balances"][0]["cash"] == 10000
+    assert report["metrics"]["num_trades"] > 0
     assert new_client().get(f"/backtests/{run.json()['id']}").status_code == 401
+
+
+def test_backtests_wait_for_a_busy_fpga(database, monkeypatch):
+    fake_board(monkeypatch)
+    client = new_client()
+    user = sign_up(client, "b@example.com")
+    strategy_id = client.post("/strategies", json={"name": "S", "document": CROSSOVER}).json()["id"]
+    with fpga.board():
+        busy = client.post("/backtests", json={"user_id": user["id"], "strategy_id": strategy_id})
+    assert busy.status_code == 409 and "busy" in busy.json()["detail"]
 
 
 def test_discussions_publish_like_and_summaries(database):

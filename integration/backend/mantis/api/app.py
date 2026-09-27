@@ -10,7 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from mantis.api.routes import assistant, auth, backtests, compile, discussions, strategies, symbols
+from mantis.api.routes import analysis, assistant, auth, backtests, compile, discussions, strategies, symbols
 from mantis.config import env_port
 from mantis.errors import MantisError
 from mantis.services.compiler import CompilationFailed, InvalidCompileBody
@@ -44,7 +44,7 @@ def create_app() -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    for module in (auth, symbols, strategies, compile, assistant, backtests, discussions):
+    for module in (auth, symbols, strategies, compile, assistant, backtests, analysis, discussions):
         app.include_router(module.router)
     return app
 
