@@ -280,7 +280,6 @@ function ConditionPanel({
   ports: PortDef[];
 }) {
   const [a, b] = ports;
-  const hint = COMPARISON_OPERATORS.find((o) => o.value === operator)?.hint;
   return (
     <div className="condition">
       <div className="condition-title">Condition</div>
@@ -292,14 +291,12 @@ function ConditionPanel({
             type="button"
             className={`nodrag op-btn ${o.value === operator ? 'active' : ''}`}
             onClick={() => onOperator(o.value)}
-            title={o.hint}
           >
             {o.label}
           </button>
         ))}
       </div>
       <DataIn port={b} />
-      {hint && <div className="condition-hint">compiles to {hint}</div>}
     </div>
   );
 }
@@ -738,10 +735,6 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
           ))}
         </div>
       )}
-
-      <div className="block-footer" title={def.statusNote}>
-        <code>{def.compilesTo}</code>
-      </div>
 
       {execOuts.length > 0 && (
         <div className={`exec-outs ${execOuts.length > 1 ? 'multi' : ''}`}>
