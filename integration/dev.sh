@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Start the integration backend and frontend together. Ctrl-C stops both.
+# Works with macOS's bash 3.2 and on Linux (no setsid, wait -n, or GNU sed needed).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,41 +20,48 @@ if [[ ! -d "$HERE/software/node_modules" ]]; then
   npm install --prefix "$HERE/software"
 fi
 
+# Job control puts each background job in its own process group, so cleanup can
+# stop a whole job (e.g. npm and the vite process it spawns) with one signal.
+set -m
 pids=()
 
 cleanup() {
-  local status=$?
   trap '' INT TERM
   trap - EXIT
   local pid
   for pid in "${pids[@]}"; do
-    kill -TERM -- -"$pid" 2>/dev/null || true
+    kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null || true
   done
-  sleep 0.4
+  sleep 0.5
   for pid in "${pids[@]}"; do
-    kill -KILL -- -"$pid" 2>/dev/null || true
+    kill -KILL -- "-$pid" 2>/dev/null || true
   done
   wait 2>/dev/null || true
-  exit "$status"
 }
 trap cleanup EXIT INT TERM
 
-# Each process runs in its own session so cleanup can stop its whole process group.
+# Run a command in a directory, prefixing each output line with a label.
 start() {
   local label=$1 dir=$2
   shift 2
-  setsid bash -c '
-    set -o pipefail
-    cd "$1"
-    shift
-    label=$1
-    shift
-    "$@" 2>&1 | sed -u "s/^/[$label] /"
-  ' bash "$dir" "$label" "$@" &
+  (
+    cd "$dir"
+    "$@" 2>&1 | while IFS= read -r line; do printf '[%s] %s\n' "$label" "$line"; done
+  ) &
   pids+=("$!")
 }
 
 echo "Starting backend on ${BACKEND_PORT} and frontend on ${FRONTEND_PORT}"
 start backend "$HERE/backend" python3 -u main.py
 start frontend "$HERE/software" npm run dev
-wait -n
+
+# Stop both as soon as either exits.
+while true; do
+  for pid in "${pids[@]}"; do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      echo "A server exited; stopping the other."
+      exit 1
+    fi
+  done
+  sleep 1
+done
