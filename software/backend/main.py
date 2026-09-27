@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import helpers.auth as auth
 import helpers.backtests as backtests
@@ -69,14 +69,26 @@ class StrategyCreate(BaseModel):
 
 
 class GraphNode(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # The editor node also carries position, measured size, and data.params.
+    model_config = ConfigDict(extra="ignore")
     id: str
     type: str
     params: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="before")
+    @classmethod
+    def params_from_editor_node(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or isinstance(value.get("params"), dict):
+            return value
+        data = value.get("data")
+        if isinstance(data, dict) and isinstance(data.get("params"), dict):
+            return {**value, "params": data["params"]}
+        return value
+
 
 class GraphEdge(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # React Flow edges also carry id, kind, class, and path options.
+    model_config = ConfigDict(extra="ignore")
     source: str
     sourceHandle: str
     target: str
@@ -84,9 +96,21 @@ class GraphEdge(BaseModel):
 
 
 class GraphBody(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
     nodes: list[GraphNode] = Field(max_length=80)
     edges: list[GraphEdge] = Field(default_factory=list, max_length=160)
+
+    @model_validator(mode="before")
+    @classmethod
+    def drop_edges_without_ports(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or not isinstance(value.get("edges"), list):
+            return value
+        edges = [
+            edge
+            for edge in value["edges"]
+            if isinstance(edge, dict) and edge.get("sourceHandle") and edge.get("targetHandle")
+        ]
+        return {**value, "edges": edges}
 
 
 class LlmAsk(BaseModel):

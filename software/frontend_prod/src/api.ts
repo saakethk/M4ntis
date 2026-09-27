@@ -606,7 +606,10 @@ async function errorMessage(response: Response): Promise<string> {
         .map((item) => {
           if (typeof item === 'string') return item
           if (item && typeof item === 'object' && 'msg' in item && typeof item.msg === 'string') {
-            return item.msg
+            const loc = 'loc' in item && Array.isArray(item.loc)
+              ? item.loc.filter((part) => part !== 'body').join('.')
+              : ''
+            return loc ? `${loc}: ${item.msg}` : item.msg
           }
           return ''
         })
