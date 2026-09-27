@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { askAssistant, type AssistantProgram } from '../api'
+import { askAssistant, type AssistantGraph } from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, CATEGORIES } from '../blocks/catalog'
 import type { BlockType } from '../blocks/types'
 
@@ -12,10 +12,16 @@ const GROUPS = CATEGORIES.map((category) => ({
   ),
 })).filter((group) => group.blocks.length > 0)
 
-export function Assistant({ onApply }: { onApply?: (program: AssistantProgram) => void }) {
+export function Assistant({
+  graph: canvas,
+  onApply,
+}: {
+  graph: AssistantGraph
+  onApply?: (graph: AssistantGraph) => void
+}) {
   const [prompt, setPrompt] = useState('')
   const [reply, setReply] = useState<string | null>(null)
-  const [program, setProgram] = useState<AssistantProgram | null>(null)
+  const [graph, setGraph] = useState<AssistantGraph | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -26,12 +32,12 @@ export function Assistant({ onApply }: { onApply?: (program: AssistantProgram) =
     setPending(true)
     setError(null)
     try {
-      const body = await askAssistant(text)
+      const body = await askAssistant(text, canvas)
       setReply(body.reply)
-      setProgram(body.program)
+      setGraph(body.graph)
     } catch (caught) {
       setReply(null)
-      setProgram(null)
+      setGraph(null)
       setError(caught instanceof Error ? caught.message : 'Could not reach the server.')
     } finally {
       setPending(false)
@@ -52,9 +58,9 @@ export function Assistant({ onApply }: { onApply?: (program: AssistantProgram) =
         {pending ? 'Asking…' : 'Ask'}
       </button>
       {reply && <p className="assistant-reply">{reply}</p>}
-      {program && onApply ? (
-        <button type="button" className="assistant-apply" onClick={() => onApply(program)}>
-          Apply to canvas
+      {graph && onApply ? (
+        <button type="button" className="assistant-apply" onClick={() => onApply(graph)}>
+          Apply {graph.nodes.length} blocks
         </button>
       ) : null}
       {error && <p className="assistant-error">{error}</p>}

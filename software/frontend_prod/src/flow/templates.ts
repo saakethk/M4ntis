@@ -11,36 +11,6 @@ export interface Template {
 const start = (balance = 100000, resolution = '5m') =>
   makeNode('start', { x: 0, y: -200 }, { startingBalance: balance, resolution }, START_NODE_ID);
 
-export interface AssistantProgram {
-  resolution: string
-  symbol: string
-  fast: number
-  slow: number
-  quantity: number
-}
-
-/** Canvas for an assistant suggestion: Start sets the bar size, Get ticker holds the stock. */
-export function assistantCrossover(program: AssistantProgram): { nodes: BlockNode[]; edges: BlockEdge[] } {
-  return {
-    nodes: [
-      start(100000, program.resolution),
-      makeNode('get_ticker', { x: -420, y: -20 }, { symbol: program.symbol }, 'aapl'),
-      makeNode('sma', { x: -420, y: 120 }, { buffer: 0, n: program.fast }, 'sma_fast'),
-      makeNode('sma', { x: -420, y: 300 }, { buffer: 0, n: program.slow }, 'sma_slow'),
-      makeNode('if', { x: 0, y: 170 }, { operator: '>' }, 'if_cross'),
-      makeNode('buy', { x: -160, y: 440 }, { buffer: 0, quantity: program.quantity }, 'buy'),
-      makeNode('sell', { x: 160, y: 440 }, { buffer: 0, quantity: program.quantity }, 'sell'),
-    ],
-    edges: [
-      makeEdge(START_NODE_ID, 'exec:out', 'if_cross', 'exec:in'),
-      makeEdge('sma_fast', 'data:out', 'if_cross', 'data:a'),
-      makeEdge('sma_slow', 'data:out', 'if_cross', 'data:b'),
-      makeEdge('if_cross', 'exec:then', 'buy', 'exec:in'),
-      makeEdge('if_cross', 'exec:else', 'sell', 'exec:in'),
-    ],
-  }
-}
-
 export const TEMPLATES: Template[] = [
   {
     id: 'blank',

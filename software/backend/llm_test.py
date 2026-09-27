@@ -9,64 +9,119 @@ from fastapi.testclient import TestClient
 
 import main
 from helpers.ai_agent import AIConfigError, AIProviderError, ChatResponse
-from helpers.auth import User
+from helpers.canvas import normalize_graph
 from helpers.llm import ask
 
 
-PROGRAM = {
-    "resolution": "1m",
-    "symbol": "AAPL",
-    "fast": 8,
-    "slow": 20,
-    "quantity": 4,
+BANDS = {
+    "nodes": [
+        {"id": "start", "type": "start", "params": {"resolution": "15m"}},
+        {"id": "t0", "type": "get_ticker", "params": {"symbol": "nvda"}},
+        {"id": "bands", "type": "mean_reversion_bands", "params": {"n": 20, "k": 2}},
+        {"id": "low", "type": "if", "params": {"operator": "<="}},
+        {"id": "buy", "type": "buy", "params": {"quantity": 5}},
+    ],
+    "edges": [
+        {"source": "start", "sourceHandle": "exec:out", "target": "low", "targetHandle": "exec:in"},
+        {"source": "bands", "sourceHandle": "data:lower", "target": "low", "targetHandle": "data:a"},
+        {"from": "t0", "sourceHandle": "data:out", "to": "low", "targetHandle": "data:b"},
+        {"source": "low", "sourceHandle": "exec:then", "target": "buy", "targetHandle": "exec:in"},
+    ],
 }
 
-CROSSOVER = (
-    "Every 1 minute, compare the 8-bar average with the 20-bar average and buy 4 AAPL when it is higher.\n\n"
-    '```json\n{"program": {"resolution": "1m", "symbol": "aapl", "fast": 8, "slow": 20, "quantity": 4}}\n```'
+REPLY = (
+    "Buy 5 NVDA when price is at or below the lower band.\n\n"
+    '```json\n{"graph": {"nodes": ['
+    '{"id": "start", "type": "start", "params": {"resolution": "15m"}},'
+    '{"id": "t0", "type": "get_ticker", "params": {"symbol": "nvda"}},'
+    '{"id": "bands", "type": "mean_reversion_bands", "params": {"n": 20, "k": 2}},'
+    '{"id": "low", "type": "if", "params": {"operator": "<="}},'
+    '{"id": "buy", "type": "buy", "params": {"quantity": 5}}'
+    '], "edges": ['
+    '{"source": "start", "sourceHandle": "exec:out", "target": "low", "targetHandle": "exec:in"},'
+    '{"source": "bands", "sourceHandle": "data:lower", "target": "low", "targetHandle": "data:a"},'
+    '{"source": "t0", "sourceHandle": "data:out", "target": "low", "targetHandle": "data:b"},'
+    '{"source": "low", "sourceHandle": "exec:then", "target": "buy", "targetHandle": "exec:in"}'
+    ']}}\n```'
 )
 
 
 class AskTest(unittest.TestCase):
-    def test_explanation_has_no_program(self) -> None:
+    def test_explanation_has_no_graph(self) -> None:
         body = ask("what is a tick?", complete=lambda prompt: "A tick is one bar at the Start resolution.")
         self.assertEqual(body["dummy"], False)
         self.assertEqual(body["reply"], "A tick is one bar at the Start resolution.")
-        self.assertIsNone(body["program"])
+        self.assertIsNone(body["graph"])
 
-    def test_crossover_reply_keeps_the_prose_and_program(self) -> None:
+    def test_graph_reply_keeps_the_prose_and_blocks(self) -> None:
         seen: list[str] = []
 
         def complete(prompt: str) -> str:
             seen.append(prompt)
-            return CROSSOVER
+            return REPLY
 
-        body = ask("  buy Apple when the fast average wins  ", complete=complete)
-        self.assertEqual(seen, ["buy Apple when the fast average wins"])
-        self.assertEqual(body["program"], PROGRAM)
-        self.assertIn("buy 4 AAPL", str(body["reply"]))
+        canvas = {"nodes": [{"id": "start", "type": "start", "params": {"resolution": "5m"}}], "edges": []}
+        body = ask("  buy when price touches the lower band  ", canvas, complete=complete)
+        self.assertIn("Current canvas:", seen[0])
+        self.assertIn('"resolution":"5m"', seen[0])
+        self.assertIn("User request:\nbuy when price touches the lower band", seen[0])
+        graph = body["graph"]
+        self.assertIsInstance(graph, dict)
+        self.assertEqual(
+            [node["type"] for node in graph["nodes"]],  # type: ignore[index]
+            ["start", "get_ticker", "mean_reversion_bands", "if", "buy"],
+        )
+        ticker = graph["nodes"][1]  # type: ignore[index]
+        self.assertEqual(ticker["params"]["symbol"], "NVDA")
+        self.assertEqual(ticker["params"]["buffer"], 0)
+        self.assertIn("lower band", str(body["reply"]))
         self.assertNotIn("```", str(body["reply"]))
+        self.assertEqual(len(graph["edges"]), 4)  # type: ignore[arg-type]
 
-    def test_invalid_program_is_dropped(self) -> None:
-        raw = 'Use a coarser resolution.\n```json\n{"program": {"resolution": "1w", "symbol": "AAPL", "fast": 50, "slow": 10, "quantity": 4}}\n```'
-        body = ask("fifty day average", complete=lambda prompt: raw)
-        self.assertIsNone(body["program"])
+    def test_invalid_graph_is_dropped(self) -> None:
+        raw = 'Use a coarser resolution.\n```json\n{"graph": {"nodes": [{"id": "start", "type": "start", "params": {}}, {"id": "a", "type": "log", "params": {}}], "edges": []}}\n```'
+        body = ask("add a log", complete=lambda prompt: raw)
+        self.assertIsNone(body["graph"])
         self.assertEqual(body["reply"], "Use a coarser resolution.")
 
-    def test_json_reply_object_is_accepted(self) -> None:
-        raw = '{"reply": "Buy when the fast average is above the slow one.", "program": {"resolution": "5m", "symbol": "MSFT", "fast": 10.0, "slow": 30, "quantity": 10}}'
-        body = ask("sma crossover on microsoft", complete=lambda prompt: raw)
-        self.assertEqual(body["reply"], "Buy when the fast average is above the slow one.")
-        self.assertEqual(body["program"]["symbol"], "MSFT")
-        self.assertEqual(body["program"]["fast"], 10)
+    def test_cycle_is_dropped(self) -> None:
+        raw = (
+            '```json\n{"graph": {"nodes": ['
+            '{"id": "start", "type": "start", "params": {}},'
+            '{"id": "a", "type": "set_var", "params": {"slot": "VAR1"}},'
+            '{"id": "b", "type": "set_var", "params": {"slot": "VAR2"}}'
+            '], "edges": ['
+            '{"source": "start", "sourceHandle": "exec:out", "target": "a", "targetHandle": "exec:in"},'
+            '{"source": "a", "sourceHandle": "exec:out", "target": "b", "targetHandle": "exec:in"},'
+            '{"source": "b", "sourceHandle": "exec:out", "target": "a", "targetHandle": "exec:in"}'
+            ']}}\n```'
+        )
+        body = ask("loop the sets", complete=lambda prompt: raw)
+        self.assertIsNone(body["graph"])
 
     def test_blank_prompt_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             ask("   ", complete=lambda prompt: "unused")
 
+    def test_bad_canvas_is_rejected(self) -> None:
+        with self.assertRaises(ValueError) as caught:
+            ask("help", {"nodes": [{"id": "x", "type": "nope", "params": {}}], "edges": []})
+        self.assertEqual(str(caught.exception), "Canvas graph is not valid")
+
     def test_empty_model_text_is_an_error(self) -> None:
         with self.assertRaises(AIProviderError):
             ask("help", complete=lambda prompt: "  ")
+
+
+class NormalizeGraphTest(unittest.TestCase):
+    def test_mean_reversion_graph_fills_defaults(self) -> None:
+        graph = normalize_graph(BANDS)
+        buy = next(node for node in graph["nodes"] if node["type"] == "buy")
+        self.assertEqual(buy["params"]["buffer"], 0)
+        self.assertEqual(buy["params"]["quantity"], 5)
+        bands = next(node for node in graph["nodes"] if node["type"] == "mean_reversion_bands")
+        self.assertEqual(bands["params"]["buffer"], 0)
+        self.assertEqual(graph["edges"][2]["source"], "t0")
 
 
 class _FakeAgent:
@@ -94,35 +149,52 @@ class LlmRouteTest(unittest.TestCase):
             response = self.client.post("/llm", json={"prompt": "help"})
         self.assertEqual(response.status_code, 401)
 
-    def test_ask_returns_the_model_reply(self) -> None:
-        agent = _FakeAgent(CROSSOVER)
+    def test_ask_returns_the_model_graph(self) -> None:
+        agent = _FakeAgent(REPLY)
         with (
-            patch.object(main.auth, "user_from_token", return_value=User(4, "a@b.com")),
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
             patch.object(main.llm.AIAgent, "from_env", return_value=agent),
         ):
-            response = self.client.post("/llm", json={"prompt": "help me buy AAPL"})
+            response = self.client.post(
+                "/llm",
+                json={
+                    "prompt": "add a lower band buy",
+                    "graph": {"nodes": [{"id": "start", "type": "start", "params": {}}], "edges": []},
+                },
+            )
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertFalse(body["dummy"])
-        self.assertEqual(body["program"], PROGRAM)
-        self.assertIn("buy 4 AAPL", body["reply"])
-        self.assertIn("Canvas program", agent.kwargs["system_prompt"])
-        self.assertEqual(agent.kwargs["temperature"], 0.2)
+        self.assertEqual(body["graph"]["nodes"][1]["params"]["symbol"], "NVDA")
+        self.assertIn("lower band", body["reply"])
+        self.assertIn("Canvas graph", agent.kwargs["system_prompt"])
+        self.assertIn("mean_reversion_bands", agent.kwargs["system_prompt"])
+        self.assertEqual(agent.kwargs["max_tokens"], 4096)
+        self.assertIn("Current canvas:", agent.kwargs["messages"])
 
     def test_empty_prompt_is_400(self) -> None:
-        with patch.object(main.auth, "user_from_token", return_value=User(4, "a@b.com")):
+        with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
             response = self.client.post("/llm", json={"prompt": "  "})
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["detail"], "Prompt is required")
 
+    def test_invalid_canvas_is_400(self) -> None:
+        with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "graph": {"nodes": [{"id": "x", "type": "log", "params": {}}], "edges": []}},
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["detail"], "Canvas graph is not valid")
+
     def test_extra_fields_are_rejected(self) -> None:
-        with patch.object(main.auth, "user_from_token", return_value=User(4, "a@b.com")):
+        with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
             response = self.client.post("/llm", json={"prompt": "help", "model": "gpt"})
         self.assertEqual(response.status_code, 422)
 
     def test_missing_provider_is_503(self) -> None:
         with (
-            patch.object(main.auth, "user_from_token", return_value=User(4, "a@b.com")),
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
             patch.object(main.llm.AIAgent, "from_env", side_effect=AIConfigError("set AI_PROVIDER")),
         ):
             response = self.client.post("/llm", json={"prompt": "help"})
@@ -131,7 +203,7 @@ class LlmRouteTest(unittest.TestCase):
 
     def test_provider_failure_is_502(self) -> None:
         with (
-            patch.object(main.auth, "user_from_token", return_value=User(4, "a@b.com")),
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
             patch.object(main.llm.AIAgent, "from_env", side_effect=AIProviderError("openai", "bad key", 401)),
         ):
             response = self.client.post("/llm", json={"prompt": "help"})

@@ -2,6 +2,9 @@
 // HttpOnly cookie; this module never stores it or the password.
 
 import { resolveApiBase } from './apiBase.ts'
+import { readAssistantGraph, type AssistantGraph } from './flow/assistantGraph.ts'
+
+export type { AssistantGraph }
 
 export type User = {
   id: number
@@ -151,18 +154,10 @@ export function createStrategy(body: StrategyWrite): Promise<StrategyRecord> {
   }).then(readRecord)
 }
 
-export type AssistantProgram = {
-  resolution: string
-  symbol: string
-  fast: number
-  slow: number
-  quantity: number
-}
-
 export type AssistantReply = {
   reply: string
   dummy: boolean
-  program: AssistantProgram | null
+  graph: AssistantGraph | null
 }
 
 export type BacktestOrder = {
@@ -454,45 +449,20 @@ function readDiscussionCreated(body: unknown): DiscussionCreated {
   }
 }
 
-export function askAssistant(prompt: string): Promise<AssistantReply> {
+export function askAssistant(prompt: string, graph: AssistantGraph): Promise<AssistantReply> {
   return requestJson('/llm', {
     method: 'POST',
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, graph }),
   }).then(readAssistantReply)
 }
 
 function readAssistantReply(body: unknown): AssistantReply {
   if (!body || typeof body !== 'object') throw new Error('Assistant response was not valid.')
-  const row = body as { reply?: unknown; dummy?: unknown; program?: unknown }
+  const row = body as { reply?: unknown; dummy?: unknown; graph?: unknown }
   if (typeof row.reply !== 'string' || !row.reply.trim()) {
     throw new Error('Assistant response was not valid.')
   }
-  return { reply: row.reply, dummy: row.dummy === true, program: readProgram(row.program) }
-}
-
-function readProgram(body: unknown): AssistantProgram | null {
-  if (body == null) return null
-  if (!body || typeof body !== 'object') throw new Error('Assistant response was not valid.')
-  const row = body as {
-    resolution?: unknown
-    symbol?: unknown
-    fast?: unknown
-    slow?: unknown
-    quantity?: unknown
-  }
-  if (typeof row.resolution !== 'string' || typeof row.symbol !== 'string') {
-    throw new Error('Assistant response was not valid.')
-  }
-  if (typeof row.fast !== 'number' || typeof row.slow !== 'number' || typeof row.quantity !== 'number') {
-    throw new Error('Assistant response was not valid.')
-  }
-  return {
-    resolution: row.resolution,
-    symbol: row.symbol,
-    fast: row.fast,
-    slow: row.slow,
-    quantity: row.quantity,
-  }
+  return { reply: row.reply, dummy: row.dummy === true, graph: readAssistantGraph(row.graph) }
 }
 
 export function updateStrategy(id: number, body: StrategyWrite): Promise<StrategyRecord> {
