@@ -90,6 +90,25 @@ class ProviderRequestTest(unittest.TestCase):
         self.assertIn("max_completion_tokens", body)
         self.assertNotIn("max_tokens", body)
 
+    def test_meta_request_body_uses_muse_spark_model_id(self):
+        seen: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["body"] = json.loads(request.content)
+            return httpx.Response(200, json=REPLIES["meta"])
+
+        AIAgent(
+            "meta",
+            "muse-spark-1.3",
+            api_key="test-key",
+            system_prompt="SYS",
+            client=httpx.Client(transport=httpx.MockTransport(handler)),
+        ).chat("ping")
+        self.assertEqual(seen["body"]["model"], "muse-spark-1.3")
+        self.assertNotIn("max_tokens", seen["body"])
+        self.assertEqual(seen["body"]["max_completion_tokens"], 1024)
+        self.assertEqual(seen["body"]["temperature"], 0.3)
+
     def test_anthropic_request(self):
         req, body, reply = self.capture("anthropic")
         self.assertEqual(str(req.url), "https://api.anthropic.com/v1/messages")
