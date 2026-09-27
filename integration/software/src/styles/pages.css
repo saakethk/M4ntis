@@ -402,3 +402,56 @@
     padding: 28px 16px 48px;
   }
 }
+
+.card .metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.card .metric {
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.card .metric-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.card .metric-value {
+  margin-top: 6px;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.card .metric-value.up {
+  color: var(--accent);
+}
+
+.card .metric-value.down {
+  color: var(--danger);
+}
+
+.backtest-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.backtest-when {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 14px;
+}

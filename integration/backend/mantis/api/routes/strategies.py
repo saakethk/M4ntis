@@ -6,7 +6,7 @@ from fastapi import APIRouter
 
 from mantis.api.deps import CurrentUser
 from mantis.api.schemas import StrategyCreate, StrategyUpdate
-from mantis.services import strategies
+from mantis.services import backtest_summaries, strategies
 
 router = APIRouter(prefix="/strategies", tags=["strategies"])
 
@@ -18,7 +18,7 @@ def create(body: StrategyCreate, user: CurrentUser) -> dict:
 
 @router.get("")
 def list_owned(user: CurrentUser) -> list:
-    return strategies.list_strategies(user.id)
+    return backtest_summaries.list_strategies_with_latest(user.id)
 
 
 @router.get("/{strategy_id}")

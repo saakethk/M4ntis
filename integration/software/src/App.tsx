@@ -97,7 +97,7 @@ export default function App() {
       </div>
     )
   } else if (screen.kind === 'home') {
-    main = <Portfolio onNew={() => newStrategy()} onEdit={openStrategy} onImport={newStrategy} />
+    main = <Portfolio onNew={() => newStrategy()} onEdit={openStrategy} onImport={newStrategy} onOpenBacktest={(id) => go({ kind: 'backtest', id })} />
   } else if (screen.kind === 'discussions') {
     main = <Discussions user={user} onOpenStrategy={openStrategy} />
   } else if (screen.kind === 'backtest') {

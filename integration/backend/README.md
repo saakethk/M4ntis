@@ -32,7 +32,7 @@ All routes except `/health`, `/symbols`, and `/auth/register|login` need the `se
 | `GET /symbols?q=&limit=` · `GET /symbols/{symbol}` | Ticker and company search |
 | `POST /auth/register` · `POST /auth/login` | `{email, password}`; sets a 14-day HttpOnly `session` cookie |
 | `POST /auth/logout` · `GET /auth/me` | End the session · current user |
-| `POST /strategies` · `GET /strategies` | Create (`{name, document, ir?, visibility?}`) · list your strategies |
+| `POST /strategies` · `GET /strategies` | Create (`{name, document, ir?, visibility?}`) · list your strategies, each with `last_backtest` (`{id, created_at, source, return_pct, max_drawdown_pct, num_trades}` or null) |
 | `GET /strategies/{id}` | A strategy you own or that is public, with `owned` |
 | `PUT /strategies/{id}` | Owner updates any of `name`, `document`, `ir`, `visibility` |
 | `POST /strategies/{id}/copy` | Private copy of a strategy you can view |

@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react'
-import { getStrategy, listStrategies, type StrategySummary } from '../../api/strategies.ts'
+import { getStrategy, listStrategies, type BacktestSummary, type StrategySummary } from '../../api/strategies.ts'
 import { PlusIcon, SearchIcon, UploadIcon, DownloadIcon } from '../../components/icons.tsx'
 import { fromDocument } from '../../flow/serialize.ts'
 import { parseProgramFile, programFileName, programFileText } from '../../flow/programFile.ts'
 import type { LoadedStrategy } from '../../flow/serialize.ts'
 import { downloadText, pickTextFile } from '../../lib/files.ts'
-import { relativeTime } from '../../lib/format.ts'
+import { pct, relativeTime, signedPct } from '../../lib/format.ts'
 import { filterStrategies, portfolioView, type VisibilityFilter } from './portfolio.ts'
 
 type Props = {
   onNew: () => void
   onEdit: (id: number) => void
   onImport: (program: LoadedStrategy) => void
+  onOpenBacktest: (id: number) => void
 }
 
 const FILTERS: { id: VisibilityFilter; label: string }[] = [
@@ -20,7 +21,7 @@ const FILTERS: { id: VisibilityFilter; label: string }[] = [
   { id: 'public', label: 'Public' },
 ]
 
-export function Portfolio({ onNew, onEdit, onImport }: Props) {
+export function Portfolio({ onNew, onEdit, onImport, onOpenBacktest }: Props) {
   const [rows, setRows] = useState<StrategySummary[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -130,6 +131,7 @@ export function Portfolio({ onNew, onEdit, onImport }: Props) {
                 </div>
                 <h2>{row.name}</h2>
                 <p className="created">{row.updatedAt ? `Updated ${relativeTime(row.updatedAt)}` : 'Saved strategy'}</p>
+                <LastBacktest summary={row.lastBacktest} onOpen={onOpenBacktest} />
                 <button type="button" className="card-open" onClick={() => onEdit(row.id)}>
                   Open editor
                 </button>
@@ -145,5 +147,36 @@ export function Portfolio({ onNew, onEdit, onImport }: Props) {
         ) : null}
       </div>
     </section>
+  )
+}
+
+function LastBacktest({ summary, onOpen }: { summary: BacktestSummary | null; onOpen: (id: number) => void }) {
+  const returnPct = summary?.returnPct ?? null
+  const drawdownPct = summary?.maxDrawdownPct ?? null
+  const tone = returnPct == null || returnPct === 0 ? '' : returnPct > 0 ? ' up' : ' down'
+  return (
+    <>
+      <div className="metrics">
+        <div className="metric">
+          <p className="metric-label">Return</p>
+          <p className={`metric-value${tone}`}>{returnPct == null ? '–' : signedPct(returnPct)}</p>
+        </div>
+        <div className="metric">
+          <p className="metric-label">Max drawdown</p>
+          <p className="metric-value">{drawdownPct == null ? '–' : pct(drawdownPct)}</p>
+        </div>
+      </div>
+      <div className="backtest-row">
+        <div>
+          <p className="metric-label">Last backtest</p>
+          <p className="backtest-when">{summary ? relativeTime(summary.createdAt) || 'Unknown' : 'Never run'}</p>
+        </div>
+        {summary ? (
+          <button type="button" className="text-btn" onClick={() => onOpen(summary.id)}>
+            View report
+          </button>
+        ) : null}
+      </div>
+    </>
   )
 }

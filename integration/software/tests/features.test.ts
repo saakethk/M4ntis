@@ -77,8 +77,8 @@ describe('assistant graphs', () => {
 
 describe('portfolio', () => {
   const rows: StrategySummary[] = [
-    { id: 1, name: 'Opening Drive', visibility: 'private', updatedAt: '' },
-    { id: 2, name: 'Close Auction', visibility: 'public', updatedAt: '' },
+    { id: 1, name: 'Opening Drive', visibility: 'private', updatedAt: '', lastBacktest: null },
+    { id: 2, name: 'Close Auction', visibility: 'public', updatedAt: '', lastBacktest: null },
   ]
 
   it('chooses the view and filters by name and visibility', () => {

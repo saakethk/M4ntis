@@ -1,4 +1,4 @@
-import { id, list, optionalStr, postJson, putJson, record, requestJson, str } from './http.ts'
+import { id, isRecord, list, optionalNum, optionalStr, postJson, putJson, record, requestJson, str } from './http.ts'
 
 export type Visibility = 'private' | 'public'
 
@@ -7,6 +7,17 @@ export type StrategySummary = {
   name: string
   visibility: Visibility
   updatedAt: string
+  lastBacktest: BacktestSummary | null
+}
+
+/** Headline figures of a strategy's most recent backtest. Metrics are null when they could not be computed. */
+export type BacktestSummary = {
+  id: number
+  createdAt: string
+  source: string
+  returnPct: number | null
+  maxDrawdownPct: number | null
+  numTrades: number | null
 }
 
 export type StrategyRecord = {
@@ -62,6 +73,18 @@ function readSummary(body: unknown): StrategySummary {
     name: str(row, 'name', 'Strategy'),
     visibility: row.visibility === 'public' ? 'public' : 'private',
     updatedAt: optionalStr(row, 'updated_at'),
+    lastBacktest: isRecord(row.last_backtest) ? readBacktestSummary(row.last_backtest) : null,
+  }
+}
+
+function readBacktestSummary(row: Record<string, unknown>): BacktestSummary {
+  return {
+    id: id(row.id, 'Backtest'),
+    createdAt: optionalStr(row, 'created_at'),
+    source: optionalStr(row, 'source'),
+    returnPct: optionalNum(row, 'return_pct', 'Backtest'),
+    maxDrawdownPct: optionalNum(row, 'max_drawdown_pct', 'Backtest'),
+    numTrades: optionalNum(row, 'num_trades', 'Backtest'),
   }
 }
 
