@@ -352,6 +352,44 @@ export function updateStrategy(id: number, body: StrategyWrite): Promise<Strateg
   }).then(readRecord)
 }
 
+export type CompileDiagnostic = {
+  level: string
+  message: string
+  node?: string
+}
+
+export type CompileResult = {
+  ok: boolean
+  asm: string
+  detail: string
+  diagnostics: CompileDiagnostic[]
+}
+
+export async function compileStrategy(document: unknown): Promise<CompileResult> {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}/compile`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(document),
+    })
+  } catch {
+    throw new Error('Could not reach the server.')
+  }
+  let body: unknown = null
+  try {
+    body = await response.json()
+  } catch {
+    body = null
+  }
+  // A rejected strategy is 400 with diagnostics. Other failures have no program to show.
+  if (!response.ok && response.status !== 400) {
+    throw new Error(compileDetail(body) || response.statusText || 'Could not compile')
+  }
+  return readCompile(body)
+}
+
 async function requestJson(path: string, init: RequestInit = {}): Promise<unknown> {
   const headers = new Headers(init.headers)
   if (init.body != null && !headers.has('Content-Type')) {
@@ -392,6 +430,34 @@ function readRecord(body: unknown): StrategyRecord {
     document: row.document,
     ir: row.ir,
   }
+}
+
+function readCompile(body: unknown): CompileResult {
+  if (!body || typeof body !== 'object') throw new Error('Compile response was not valid.')
+  const row = body as { ok?: unknown; asm?: unknown; detail?: unknown; diagnostics?: unknown }
+  return {
+    ok: row.ok === true,
+    asm: typeof row.asm === 'string' ? row.asm : '',
+    detail: compileDetail(body),
+    diagnostics: Array.isArray(row.diagnostics) ? row.diagnostics.map(readDiagnostic) : [],
+  }
+}
+
+function readDiagnostic(body: unknown): CompileDiagnostic {
+  if (!body || typeof body !== 'object') throw new Error('Compile response was not valid.')
+  const row = body as { level?: unknown; message?: unknown; node?: unknown }
+  if (typeof row.message !== 'string') throw new Error('Compile response was not valid.')
+  return {
+    level: typeof row.level === 'string' ? row.level : 'error',
+    message: row.message,
+    ...(typeof row.node === 'string' ? { node: row.node } : {}),
+  }
+}
+
+function compileDetail(body: unknown): string {
+  if (!body || typeof body !== 'object') return ''
+  const detail = (body as { detail?: unknown }).detail
+  return typeof detail === 'string' ? detail : ''
 }
 
 function readId(value: unknown): number {
