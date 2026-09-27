@@ -1375,6 +1375,40 @@ input:focus-visible {
   padding-bottom: 10px;
 }
 
+.strategy-editor .start-every {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px 8px 50px;
+}
+
+.strategy-editor .start-every span {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.strategy-editor .block.block-ticker {
+  width: 200px;
+}
+
+.strategy-editor .ticker-row {
+  padding: 0 12px 8px 50px;
+}
+
+.strategy-editor .ticker-chip {
+  height: 28px;
+  max-width: 120px;
+  padding: 0 10px;
+  border: 1px solid #d9eedd;
+  border-radius: 999px;
+  background: #f3faf4;
+  color: #3d9a4a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .strategy-editor .start-symbols {
   display: flex;
   flex-wrap: wrap;

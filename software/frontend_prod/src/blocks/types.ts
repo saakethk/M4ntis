@@ -18,6 +18,7 @@ export type BlockCategory =
 
 export type BlockType =
   | 'start'
+  | 'get_ticker'
   | 'current_price'
   | 'sum_n_ticks'
   | 'price_n_ticks_ago'

@@ -11,6 +11,7 @@ DEFAULTS = {
     "start": {"startingBalance": 100000, "resolution": "5m", "symbol0": "AAPL",
               "symbol1": "", "symbol2": "", "symbol3": "", "symbol4": ""},
     "current_price": {"buffer": 0},
+    "get_ticker": {"symbol": "AAPL"},
     "sum_n_ticks": {"buffer": 0, "n": 5},
     "price_n_ticks_ago": {"buffer": 0, "n": 1},
     "constant": {"value": 0},

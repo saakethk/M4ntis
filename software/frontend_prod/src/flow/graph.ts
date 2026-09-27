@@ -1,5 +1,5 @@
 import { BLOCK_DEFS, defaultParams, historyTicks, isDataBlock, portsOf } from '../blocks/catalog';
-import { NUM_VAR_SLOTS, ticksToDuration } from '../blocks/hardware';
+import { NUM_STOCK_BUFFERS, NUM_VAR_SLOTS, ticksToDuration } from '../blocks/hardware';
 import type {
   BlockEdge,
   BlockNode,
@@ -146,6 +146,20 @@ export function reachableExecNodes(nodes: BlockNode[], edges: BlockEdge[]) {
   return order;
 }
 
+/** Tickers in Get-ticker creation order. Older graphs keep symbols stored on Start. */
+export function tickerSymbols(nodes: BlockNode[]): string[] {
+  const tickers = nodes
+    .filter((n) => n.type === 'get_ticker')
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .slice(0, NUM_STOCK_BUFFERS)
+    .map((n) => String(n.data.params.symbol ?? '').trim());
+  if (tickers.length > 0) {
+    return Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => tickers[i] ?? '');
+  }
+  const start = nodes.find((n) => n.id === START_NODE_ID)?.data.params ?? {};
+  return Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => String(start[`symbol${i}`] ?? ''));
+}
+
 export function analyze(nodes: BlockNode[], edges: BlockEdge[]): Diagnostic[] {
   const out: Diagnostic[] = [];
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -213,15 +227,23 @@ export function analyze(nodes: BlockNode[], edges: BlockEdge[]): Diagnostic[] {
     }
     if (def.history && (reachable.has(n.id) || (isDataBlock(type) && consumed.has(n.id)))) {
       history = Math.max(history, historyTicks(type, n.data.params));
-      const buf = Number(n.data.params.buffer);
-      if (!startParams[`symbol${buf}`]) unassignedBuffers.set(buf, n.id);
+      const buf = Number(n.data.params.buffer ?? 0);
+      if (type !== 'get_ticker' && !tickerSymbols(nodes)[buf]) unassignedBuffers.set(buf, n.id);
     }
   }
 
-  for (const [buf, nodeId] of unassignedBuffers) {
+  const tickerCount = nodes.filter((n) => n.type === 'get_ticker').length;
+  if (tickerCount > NUM_STOCK_BUFFERS) {
     out.push({
       level: 'error',
-      message: `BUF${buf} is used but has no stock assigned on the Start block`,
+      message: `Only ${NUM_STOCK_BUFFERS} Get ticker blocks fit. Remove ${tickerCount - NUM_STOCK_BUFFERS}.`,
+    });
+  }
+
+  for (const [, nodeId] of unassignedBuffers) {
+    out.push({
+      level: 'error',
+      message: 'This block needs a Get ticker for that stock',
       nodeId,
     });
   }

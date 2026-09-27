@@ -197,7 +197,7 @@ class Strategy:
                 self.err("every node must be an object")
                 continue
             nid, ntype = str(raw.get("id")), raw.get("type")
-            if not isinstance(ntype, str) or ntype not in BLOCKS:
+            if not isinstance(ntype, str) or (ntype not in BLOCKS and ntype != "get_ticker"):
                 self.err(f"unknown block type {ntype!r}", nid)
                 continue
             if nid in self.nodes:
@@ -208,12 +208,17 @@ class Strategy:
             if not isinstance(params, dict):
                 self.err(f"{ntype}: data.params must be an object", nid)
                 continue
+            if ntype == "get_ticker":
+                # Same lowering as current_price. The symbol is copied onto Start below.
+                self.nodes[nid] = GNode(nid, ntype, dict(params), BLOCKS["current_price"])
+                continue
             self.nodes[nid] = GNode(nid, ntype, dict(params), BLOCKS[ntype])
 
         starts = [n for n in self.nodes.values() if n.type == "start"]
         if len(starts) != 1:
             self.err(f"expected exactly one Start block, found {len(starts)}")
         self.start = starts[0] if starts else None
+        self._bind_tickers()
 
         self.data_src: dict[tuple[str, str], tuple[str, str]] = {}
         self.exec_next: dict[tuple[str, str], str] = {}
@@ -241,6 +246,18 @@ class Strategy:
         for n in self.nodes.values():
             if n.spec.exec_in and n.id not in self.reachable:
                 self.warn(f"{n.type} is not reachable from Start and is not compiled", n.id)
+
+    def _bind_tickers(self) -> None:
+        """Get ticker blocks fill BUF0.. in node-id order and stamp those symbols onto Start."""
+        tickers = sorted((n for n in self.nodes.values() if n.type == "get_ticker"), key=lambda n: n.id)
+        if len(tickers) > NUM_BUFFERS:
+            self.err(f"only {NUM_BUFFERS} Get ticker blocks fit in hardware")
+        for i, n in enumerate(tickers[:NUM_BUFFERS]):
+            n.params["buffer"] = i
+            sym = n.params.get("symbol")
+            if isinstance(sym, str) and sym.strip() and self.start is not None:
+                self.start.params[f"symbol{i}"] = sym.strip().upper()
+                n.params["symbol"] = sym.strip().upper()
 
     def err(self, msg: str, node: str | None = None) -> None:
         self.errors.append(Diagnostic("error", msg, node))
@@ -296,6 +313,12 @@ class Strategy:
                 self.err(f"{n.type}: {key}={v!r} must be one of {', '.join(map(str, p.choices))}", n.id)
             elif p.kind == "symbol" and not isinstance(v, str):
                 self.err(f"{n.type}: {key} must be a ticker symbol", n.id)
+        if n.type == "get_ticker":
+            sym = n.params.get("symbol")
+            if not isinstance(sym, str) or not sym.strip():
+                self.err("get_ticker: missing parameter 'symbol'", n.id)
+            elif not re.fullmatch(r"[A-Z][A-Z0-9.]{0,7}", sym.strip().upper()):
+                self.err(f"get_ticker: symbol {sym!r} is not a ticker", n.id)
         if n.type == "for" and n.params.get("step") == 0:
             self.err("for: step cannot be 0", n.id)
 
@@ -454,7 +477,7 @@ class Compiler:
             raise CompileError([Diagnostic("error", UNSUPPORTED[t], n.id)])
         if n.spec.history:
             self._use_buffer(int(p["buffer"]), history_ticks(n.spec, p))
-        if t == "current_price":
+        if t in ("current_price", "get_ticker"):
             return Price(p["buffer"], 0)
         if t == "price_n_ticks_ago":
             return Price(p["buffer"], p["n"])
@@ -839,7 +862,7 @@ class Compiler:
         start = g.start.params if g.start else {}
         for b in sorted(self.used_buffers):
             if not start.get(f"symbol{b}"):
-                g.err(f"BUF{b} is used but no symbol is assigned to it on the Start block", g.start.id if g.start else None)
+                g.err(f"BUF{b} is used but no Get ticker block supplies it", g.start.id if g.start else None)
 
     def compile(self) -> list[Item]:
         g = self.g
