@@ -146,6 +146,44 @@ export function reachableExecNodes(nodes: BlockNode[], edges: BlockEdge[]) {
   return order;
 }
 
+/**
+ * Store a searched ticker on a Price N ticks ago node and point it at a buffer.
+ * With no Get ticker blocks, the symbol is written onto Start. Otherwise it uses
+ * the matching Get ticker, or the next free buffer slot.
+ */
+export function assignPriceTicker(nodes: BlockNode[], nodeId: string, symbol: string): BlockNode[] {
+  const upper = symbol.trim().toUpperCase();
+  if (!upper) return nodes;
+  const tickers = nodes
+    .filter((node) => node.type === 'get_ticker')
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const match = tickers.findIndex(
+    (node) => String(node.data.params.symbol ?? '').trim().toUpperCase() === upper,
+  );
+  const self = nodes.find((node) => node.id === nodeId);
+  const currentBuffer = Number(self?.data.params.buffer ?? 0);
+  const fallback =
+    Number.isInteger(currentBuffer) && currentBuffer >= 0 && currentBuffer < NUM_STOCK_BUFFERS
+      ? currentBuffer
+      : 0;
+  const buffer =
+    match >= 0 ? match : tickers.length > 0 && tickers.length < NUM_STOCK_BUFFERS ? tickers.length : fallback;
+  const stampStart = match < 0 && tickers.length < NUM_STOCK_BUFFERS;
+
+  return nodes.map((node) => {
+    if (node.id === nodeId) {
+      return { ...node, data: { params: { ...node.data.params, symbol: upper, buffer } } };
+    }
+    if (stampStart && node.id === START_NODE_ID) {
+      return {
+        ...node,
+        data: { params: { ...node.data.params, [`symbol${buffer}`]: upper } },
+      };
+    }
+    return node;
+  });
+}
+
 /** Tickers in Get-ticker creation order. Older graphs keep symbols stored on Start. */
 export function tickerSymbols(nodes: BlockNode[]): string[] {
   const tickers = nodes
@@ -228,7 +266,8 @@ export function analyze(nodes: BlockNode[], edges: BlockEdge[]): Diagnostic[] {
     if (def.history && (reachable.has(n.id) || (isDataBlock(type) && consumed.has(n.id)))) {
       history = Math.max(history, historyTicks(type, n.data.params));
       const buf = Number(n.data.params.buffer ?? 0);
-      if (type !== 'get_ticker' && !tickerSymbols(nodes)[buf]) unassignedBuffers.set(buf, n.id);
+      const ownSymbol = type === 'price_n_ticks_ago' ? String(n.data.params.symbol ?? '').trim() : '';
+      if (type !== 'get_ticker' && !ownSymbol && !tickerSymbols(nodes)[buf]) unassignedBuffers.set(buf, n.id);
     }
   }
 

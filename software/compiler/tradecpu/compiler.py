@@ -248,7 +248,11 @@ class Strategy:
                 self.warn(f"{n.type} is not reachable from Start and is not compiled", n.id)
 
     def _bind_tickers(self) -> None:
-        """Get ticker blocks fill BUF0.. in node-id order and stamp those symbols onto Start."""
+        """Get ticker blocks fill BUF0.. in node-id order and stamp those symbols onto Start.
+
+        Price N ticks ago can name its own ticker. That symbol uses the buffer that
+        already has it, or the next free buffer.
+        """
         tickers = sorted((n for n in self.nodes.values() if n.type == "get_ticker"), key=lambda n: n.id)
         if len(tickers) > NUM_BUFFERS:
             self.err(f"only {NUM_BUFFERS} Get ticker blocks fit in hardware")
@@ -258,6 +262,41 @@ class Strategy:
             if isinstance(sym, str) and sym.strip() and self.start is not None:
                 self.start.params[f"symbol{i}"] = sym.strip().upper()
                 n.params["symbol"] = sym.strip().upper()
+        self._bind_price_symbols()
+
+    def _bind_price_symbols(self) -> None:
+        if self.start is None:
+            return
+        nodes = sorted(
+            (n for n in self.nodes.values() if n.type == "price_n_ticks_ago"),
+            key=lambda n: n.id,
+        )
+        for n in nodes:
+            raw = n.params.get("symbol")
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            sym = raw.strip().upper()
+            if not re.fullmatch(r"[A-Z][A-Z0-9.]{0,7}", sym):
+                self.err(f"price_n_ticks_ago: symbol {raw!r} is not a ticker", n.id)
+                continue
+            n.params["symbol"] = sym
+            found: int | None = None
+            for i in range(NUM_BUFFERS):
+                current = self.start.params.get(f"symbol{i}")
+                if isinstance(current, str) and current.strip().upper() == sym:
+                    found = i
+                    break
+            if found is None:
+                for i in range(NUM_BUFFERS):
+                    current = self.start.params.get(f"symbol{i}")
+                    if not (isinstance(current, str) and current.strip()):
+                        self.start.params[f"symbol{i}"] = sym
+                        found = i
+                        break
+            if found is None:
+                self.err(f"price_n_ticks_ago: no free buffer for {sym}", n.id)
+            else:
+                n.params["buffer"] = found
 
     def err(self, msg: str, node: str | None = None) -> None:
         self.errors.append(Diagnostic("error", msg, node))

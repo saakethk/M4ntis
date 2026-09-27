@@ -79,6 +79,22 @@ class TestProgramShape(unittest.TestCase):
         self.assertEqual(r.manifest["buffers"][0]["symbol"], "AAPL")
         self.assertTrue(r.manifest["buffers"][0]["used"])
 
+    def test_price_n_ticks_ago_symbol_gets_its_own_buffer(self):
+        d = Doc(symbol0="")
+        d.add("tick", "get_ticker", symbol="AAPL")
+        d.add("ago", "price_n_ticks_ago", symbol="nvda", n=3, buffer=0)
+        d.add("if1", "if", operator=">")
+        d.add("buy", "buy", quantity=1, buffer=0)
+        d.add("const", "constant", value=1)
+        d.exec("start", "if1").data("ago", "if1", "a").data("const", "if1", "b")
+        d.exec("if1", "buy", "then")
+        r = compile_strategy(d.json())
+        self.assertEqual(r.manifest["buffers"][0]["symbol"], "AAPL")
+        self.assertEqual(r.manifest["buffers"][1]["symbol"], "NVDA")
+        self.assertTrue(r.manifest["buffers"][1]["used"])
+        self.assertIn("GETSTOCKPRICEBEFORE", r.asm)
+        self.assertIn("BUF1", r.asm)
+
     def test_only_rtl_opcodes(self):
         r = compile_strategy(sma_crossover(5, 20).json())
         self.assertTrue(only_rtl_ops(r.items))
