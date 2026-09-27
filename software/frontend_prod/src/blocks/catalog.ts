@@ -11,6 +11,15 @@ import type {
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 
+const EVERY_LABEL: Record<string, string> = {
+  '1m': '1 minute',
+  '5m': '5 minutes',
+  '15m': '15 minutes',
+  '30m': '30 minutes',
+  '1h': '1 hour',
+  '1d': '1 day',
+};
+
 const EXEC_IN: PortDef = { id: 'exec:in', kind: 'exec', direction: 'in' };
 const EXEC_OUT: PortDef = { id: 'exec:out', kind: 'exec', direction: 'out', label: 'next' };
 const DATA_OUT: PortDef = { id: 'data:out', kind: 'data', direction: 'out', label: 'value' };
@@ -35,7 +44,7 @@ const execOut = (name: string, label = name): PortDef => ({
 
 const bufferParam: ParamDef = {
   key: 'buffer',
-  label: 'Stock',
+  label: 'Ticker',
   type: 'select',
   default: 0,
   options: range(NUM_STOCK_BUFFERS).map((i) => ({ value: i, label: `BUF${i}` })),
@@ -81,7 +90,7 @@ const symbolParam = (buf: number): ParamDef => ({
   key: `symbol${buf}`,
   label: `BUF${buf}`,
   type: 'select',
-  default: buf === 0 ? 'AAPL' : '',
+  default: '',
   options: [{ value: '', label: '—' }, ...NASDAQ_100.map((s) => ({ value: s, label: s }))],
 });
 
@@ -127,10 +136,10 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
       { key: 'startingBalance', label: 'Starting Balance ($)', type: 'number', default: 100000, min: 0, max: 21000000 },
       {
         key: 'resolution',
-        label: 'Resolution',
+        label: 'Every',
         type: 'select',
         default: '5m',
-        options: RESOLUTIONS.map((r) => ({ value: r.value, label: r.label })),
+        options: RESOLUTIONS.map((r) => ({ value: r.value, label: EVERY_LABEL[r.value] ?? r.label })),
       },
       ...range(NUM_STOCK_BUFFERS).map(symbolParam),
     ],
@@ -140,6 +149,26 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
   },
 
   // 2. Market data
+  get_ticker: {
+    type: 'get_ticker',
+    label: 'Get ticker',
+    category: 'reserved',
+    description: 'Price of one stock. AAPL is Apple.',
+    ports: [dataOut('out', 'price')],
+    params: [
+      {
+        key: 'symbol',
+        label: 'Ticker',
+        type: 'select',
+        default: 'AAPL',
+        options: NASDAQ_100.map((s) => ({ value: s, label: s })),
+      },
+      bufferParam,
+    ],
+    compilesTo: 'GETSTOCKPRICE',
+    status: 'confirmed',
+    history: '1',
+  },
   current_price: {
     type: 'current_price',
     label: 'Current Price',

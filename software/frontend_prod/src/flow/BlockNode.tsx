@@ -2,6 +2,7 @@ import { Handle, Position, useReactFlow, useStore, type NodeProps } from '@xyflo
 import { memo, useState } from 'react';
 import { BLOCK_DEFS, CATEGORIES, COMPARISON_OPERATORS, portsOf } from '../blocks/catalog';
 import { NUM_STOCK_BUFFERS, ticksToDuration } from '../blocks/hardware';
+import { NASDAQ_100 } from '../blocks/symbols';
 import type { BlockDef, BlockNode as BlockNodeT, BlockType, ParamDef, ParamValue, PortDef } from '../blocks/types';
 import { START_NODE_ID } from './graph';
 
@@ -331,24 +332,6 @@ function isSymbolSource(def: BlockDef): boolean {
   return def.params.every((param) => param.key === 'buffer' || param.key.startsWith('symbol'));
 }
 
-function SymbolEntry({ onAdd }: { onAdd: (symbol: string) => boolean }) {
-  const [draft, setDraft] = useState('');
-  return (
-    <input
-      className="nodrag start-symbol-input"
-      value={draft}
-      placeholder="Add symbol"
-      aria-label="Add symbol"
-      onChange={(event) => setDraft(event.target.value.toUpperCase())}
-      onKeyDown={(event) => {
-        if (event.key !== 'Enter') return;
-        event.preventDefault();
-        if (onAdd(draft)) setDraft('');
-      }}
-    />
-  );
-}
-
 function SymbolText({ symbols }: { symbols: string[] }) {
   if (symbols.length === 0) return <span className="symbol-text">—</span>;
   return (
@@ -404,11 +387,19 @@ function FlowHandles({ type }: { type: BlockType }) {
   );
 }
 
-/** Start block's resolution and BUF0..BUF4 symbols, joined into one string so nodes only re-render when they change. */
+/** Resolution from Start. Tickers come from Get ticker blocks, then from symbols saved on older Start blocks. */
 function useStrategyContext() {
   const joined = useStore((s) => {
     const p = s.nodeLookup.get(START_NODE_ID)?.data?.params as Record<string, ParamValue> | undefined;
-    const symbols = Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => p?.[`symbol${i}`] ?? '');
+    const tickers = s.nodes
+      .filter((node) => node.type === 'get_ticker')
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .slice(0, NUM_STOCK_BUFFERS)
+      .map((node) => String((node.data?.params as Record<string, ParamValue> | undefined)?.symbol ?? ''));
+    const symbols =
+      tickers.length > 0
+        ? Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => tickers[i] ?? '')
+        : Array.from({ length: NUM_STOCK_BUFFERS }, (_, i) => p?.[`symbol${i}`] ?? '');
     return [p?.resolution ?? '', ...symbols].join('|');
   });
   const [resolution, ...symbols] = joined.split('|');
@@ -422,18 +413,10 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
   if (!def) return <div className="block block-unknown">Unknown block: {type}</div>;
 
   if (def.type === 'start') {
-    const slots = def.params.filter((param) => param.key.startsWith('symbol'));
-    const tickers = assignedSymbols(def, data.params);
+    const resolutionParam = def.params.find((param) => param.key === 'resolution');
+    const resolutionOptions = resolutionParam?.type === 'select' ? resolutionParam.options : [];
     const setParam = (key: string, value: ParamValue) =>
       updateNodeData(id, { params: { ...data.params, [key]: value } });
-    const addSymbol = (raw: string) => {
-      const symbol = raw.trim().toUpperCase();
-      if (!/^[A-Z][A-Z0-9.]{0,7}$/.test(symbol)) return false;
-      const open = slots.find((param) => String(data.params[param.key] ?? '').trim() === '');
-      if (!open) return false;
-      setParam(open.key, symbol);
-      return true;
-    };
     return (
       <div className={['block', 'block-start', selected ? 'selected' : ''].join(' ')}>
         <div className="block-header">
@@ -453,27 +436,59 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
             <span className="block-title">{def.label}</span>
           </div>
         </div>
-        <div className="start-symbols" aria-label="Assigned symbols">
-          {slots.map((param) => {
-            const symbol = String(data.params[param.key] ?? '').trim();
-            if (!symbol) return null;
-            return (
-              <span className="start-symbol" key={param.key}>
+        <label className="start-every">
+          <span>Every</span>
+          <select
+            className="nodrag param-input"
+            value={String(data.params.resolution ?? '5m')}
+            onChange={(event) => setParam('resolution', event.target.value)}
+          >
+            {resolutionOptions.map((option) => (
+              <option key={String(option.value)} value={String(option.value)}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <FlowHandles type={def.type} />
+      </div>
+    );
+  }
+
+  if (def.type === 'get_ticker') {
+    const setParam = (key: string, value: ParamValue) =>
+      updateNodeData(id, { params: { ...data.params, [key]: value } });
+    return (
+      <div className={['block', 'block-ticker', selected ? 'selected' : ''].join(' ')}>
+        <div className="block-header">
+          <span className="block-glyph" aria-hidden="true">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+              <path
+                d={GLYPHS.reserved}
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <div className="block-heading">
+            <span className="block-title">{def.label}</span>
+          </div>
+        </div>
+        <div className="ticker-row">
+          <select
+            className="nodrag ticker-chip"
+            aria-label="Ticker"
+            value={String(data.params.symbol ?? 'AAPL')}
+            onChange={(event) => setParam('symbol', event.target.value)}
+          >
+            {NASDAQ_100.map((symbol) => (
+              <option key={symbol} value={symbol}>
                 {symbol}
-                <button
-                  type="button"
-                  className="nodrag"
-                  aria-label={`Remove ${symbol}`}
-                  onClick={() => setParam(param.key, '')}
-                >
-                  ×
-                </button>
-              </span>
-            );
-          })}
-          {tickers.length < slots.length && (
-            <SymbolEntry onAdd={addSymbol} />
-          )}
+              </option>
+            ))}
+          </select>
         </div>
         <FlowHandles type={def.type} />
       </div>
@@ -495,7 +510,7 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
           ...p,
           options: p.options.map((o) => ({
             ...o,
-            label: symbols[Number(o.value)] ? `${o.label} · ${symbols[Number(o.value)]}` : `${o.label} (unassigned)`,
+            label: symbols[Number(o.value)] ? String(symbols[Number(o.value)]) : 'No ticker',
           })),
         }
       : p;
