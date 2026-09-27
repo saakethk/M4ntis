@@ -15,8 +15,8 @@ BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parents[1]
 
 # The compiler and base SQL schemas are shared with the rest of the repository.
-COMPILER_ROOT = REPO_ROOT / "software" / "compiler"
-DATABASE_SQL_DIR = REPO_ROOT / "software" / "database" / "sql"
+COMPILER_ROOT = REPO_ROOT / "dev" / "software" / "compiler"
+DATABASE_SQL_DIR = REPO_ROOT / "dev" / "software" / "database" / "sql"
 
 _env_loaded = False
 
