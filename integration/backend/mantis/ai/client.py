@@ -58,7 +58,8 @@ class ChatClient:
         self.provider = PROVIDERS[provider]
         self.model = model
         self.api_key = api_key if api_key is not None else (os.environ.get(self.provider.api_key_env) or "").strip()
-        self.base_url = base_url or self.provider.default_base_url
+        # <PROVIDER>_BASE_URL (e.g. META_BASE_URL) points one provider at a gateway or proxy.
+        self.base_url = base_url or env(f"{provider.upper()}_BASE_URL") or self.provider.default_base_url
         if not self.base_url:
             raise AIConfigError(f"{provider} needs AI_BASE_URL")
         # A self-hosted OpenAI-compatible server (e.g. Ollama) may not need a key.

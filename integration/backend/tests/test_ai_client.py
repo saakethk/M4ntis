@@ -19,7 +19,7 @@ REPLIES = {
 
 @pytest.fixture(autouse=True)
 def no_ai_env(monkeypatch):
-    for name in ("AI_PROVIDER", "AI_MODEL", "AI_BASE_URL", "GEMINI_API_KEY", "META_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
+    for name in ("AI_PROVIDER", "AI_MODEL", "AI_BASE_URL", "META_BASE_URL", "GEMINI_API_KEY", "META_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -50,6 +50,11 @@ def test_meta_uses_the_model_api_with_max_completion_tokens():
     assert body["max_completion_tokens"] == 50 and "temperature" not in body
     assert body["messages"][0] == {"role": "system", "content": "be brief"}
     assert reply.input_tokens == 3
+
+
+def test_provider_base_url_can_be_overridden(monkeypatch):
+    monkeypatch.setenv("META_BASE_URL", "http://gateway.local/v1")
+    assert ChatClient("meta", "muse-spark-1.3", api_key="k").base_url == "http://gateway.local/v1"
 
 
 def test_retries_then_raises_provider_error(monkeypatch):
