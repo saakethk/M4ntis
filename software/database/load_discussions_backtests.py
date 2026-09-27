@@ -2,9 +2,10 @@
 
 Run from the repository root after users and strategies exist:
 
-    python software/database/load_users.py
-    python software/database/load_strategies.py
-    python software/database/load_discussions_backtests.py
+    python3 -m pip install -r software/backend/requirements.txt
+    python3 software/database/load_users.py
+    python3 software/database/load_strategies.py
+    python3 software/database/load_discussions_backtests.py
 
 The statements use CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS,
 so running the loader again leaves the existing rows in place.
@@ -15,7 +16,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-import psycopg
+try:
+    import psycopg
+except ModuleNotFoundError as exc:
+    raise SystemExit(
+        "psycopg is not installed for this Python.\n"
+        "From the repo root, run:\n"
+        "  python3 -m pip install -r software/backend/requirements.txt"
+    ) from exc
 from dotenv import load_dotenv
 
 SQL_PATH = Path(__file__).resolve().parent / "sql" / "discussions_backtests.sql"

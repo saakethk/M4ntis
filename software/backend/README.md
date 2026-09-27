@@ -19,6 +19,7 @@ This is the code to expose the backend code like the FPGA interface and such to 
 - POST /discussions with `{ "body", "strategy_id"?, "parent_id"? }` creates a post for the signed-in user. Returns `{ "id", "strategy_id", "strategy_made_public" }`. If the author owns `strategy_id` and it is private, the strategy becomes `public` (view-only) and `strategy_made_public` is true. A non-owner cannot publish someone else's private strategy.
 
 ## To Run
-1. cd software/backend
-2. python main.py
+1. From the repo root: `python3 -m pip install -r software/backend/requirements.txt`
+2. cd software/backend
+3. python3 main.py
    The listen port comes from BACKEND_PORT in the repo-root .env (default 8001). The frontend dev server uses FRONTEND_PORT (default 8002).
