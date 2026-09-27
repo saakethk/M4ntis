@@ -93,13 +93,12 @@ function memoryStorage(initial: Record<string, string> = {}): ModelStorage & { s
 }
 
 describe('assistant models', () => {
-  it('defaults to Gemini 2.0 Flash and lists Gemini and Meta', () => {
+  it('defaults to Gemini 2.5 Flash and lists Gemini and Meta', () => {
     assert.equal(DEFAULT_ASSISTANT_MODEL.provider, 'gemini')
-    assert.equal(DEFAULT_ASSISTANT_MODEL.model, 'gemini-2.0-flash')
+    assert.equal(DEFAULT_ASSISTANT_MODEL.model, 'gemini-2.5-flash')
     assert.deepEqual(
       ASSISTANT_MODELS.map((choice) => `${choice.provider}:${choice.model}`),
       [
-        'gemini:gemini-2.0-flash',
         'gemini:gemini-2.5-flash',
         'gemini:gemini-2.5-pro',
         'meta:Llama-3.3-70B-Instruct',
@@ -115,10 +114,10 @@ describe('assistant models', () => {
     storeAssistantModel(llama, storage)
     assert.equal(storage.saved.get(ASSISTANT_MODEL_STORAGE_KEY), modelChoiceId(llama))
     assert.deepEqual(readStoredAssistantModel(storage), llama)
-    assert.equal(readStoredAssistantModel(memoryStorage()).model, 'gemini-2.0-flash')
-    assert.equal(readStoredAssistantModel(memoryStorage({ [ASSISTANT_MODEL_STORAGE_KEY]: 'nope' })).model, 'gemini-2.0-flash')
+    assert.equal(readStoredAssistantModel(memoryStorage()).model, 'gemini-2.5-flash')
+    assert.equal(readStoredAssistantModel(memoryStorage({ [ASSISTANT_MODEL_STORAGE_KEY]: 'nope' })).model, 'gemini-2.5-flash')
     assert.equal(findAssistantModel('meta:Llama-3.3-8B-Instruct').label, 'Llama 3.3 8B')
-    assert.equal(readStoredAssistantModel(null).model, 'gemini-2.0-flash')
+    assert.equal(readStoredAssistantModel(null).model, 'gemini-2.5-flash')
     const blocked: ModelStorage = {
       getItem: () => {
         throw new Error('denied')
@@ -127,7 +126,7 @@ describe('assistant models', () => {
         throw new Error('denied')
       },
     }
-    assert.equal(readStoredAssistantModel(blocked).model, 'gemini-2.0-flash')
+    assert.equal(readStoredAssistantModel(blocked).model, 'gemini-2.5-flash')
     assert.doesNotThrow(() => storeAssistantModel(DEFAULT_ASSISTANT_MODEL, blocked))
   })
 })

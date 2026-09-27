@@ -157,6 +157,9 @@ class AgentBehaviourTest(unittest.TestCase):
         with patch.dict("os.environ", {"OPENAI_API_KEY": ""}):
             with self.assertRaises(AIConfigError):
                 AIAgent("openai", "m")
+        with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", {"OPENAI_API_KEY": "   "}):
+            with self.assertRaises(AIConfigError):
+                AIAgent("openai", "m")
 
     def test_from_env(self):
         env = {"AI_PROVIDER": "gemini", "AI_MODEL": "some-model", "GEMINI_API_KEY": "k"}
@@ -168,7 +171,7 @@ class AgentBehaviourTest(unittest.TestCase):
     def test_from_env_override_uses_that_providers_key(self):
         env = {
             "AI_PROVIDER": "gemini",
-            "AI_MODEL": "gemini-2.0-flash",
+            "AI_MODEL": "gemini-2.5-flash",
             "GEMINI_API_KEY": "gemini-key",
             "META_API_KEY": "meta-key",
             "OPENAI_API_KEY": "",
@@ -185,7 +188,7 @@ class AgentBehaviourTest(unittest.TestCase):
     def test_from_env_override_names_the_missing_key(self):
         env = {
             "AI_PROVIDER": "gemini",
-            "AI_MODEL": "gemini-2.0-flash",
+            "AI_MODEL": "gemini-2.5-flash",
             "GEMINI_API_KEY": "gemini-key",
             "META_API_KEY": "",
             "OPENAI_API_KEY": "",
@@ -209,10 +212,11 @@ class AgentBehaviourTest(unittest.TestCase):
             "AI_API_KEY": "",
             "GEMINI_API_KEY": "k",
         }
-        with patch.dict("os.environ", env):
+        # Ignore the repo-root .env so a local AI_MODEL does not hide the code default.
+        with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", env):
             agent = AIAgent.from_env()
         self.assertEqual(agent.provider.name, "gemini")
-        self.assertEqual(agent.model, "gemini-2.0-flash")
+        self.assertEqual(agent.model, "gemini-2.5-flash")
         agent.close()
 
     def test_from_env_names_the_missing_settings(self):

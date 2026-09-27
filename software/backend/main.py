@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import uvicorn
@@ -23,6 +24,21 @@ from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, sear
 
 BACKEND_PORT = env_port("BACKEND_PORT", 8001)
 FRONTEND_PORT = env_port("FRONTEND_PORT", 8002)
+# Provider errors sometimes echo the credential that was sent. Keep those out of the UI.
+_SECRET = re.compile(
+    r"(?i)(?:bearer\s+)\S+"
+    r"|AIza[0-9A-Za-z_\-]{10,}"
+    r"|\bsk-[A-Za-z0-9_\-]{8,}"
+    r"|(?:api[_-]?key|x-goog-api-key)\s*[:=]\s*\S+"
+)
+
+
+def _assistant_failure_detail(exc: BaseException) -> str:
+    """One sentence the UI can show: the provider's reason, without a copied API key."""
+    text = _SECRET.sub("[redacted]", " ".join(str(exc).split()))
+    if not text:
+        return "Assistant is unavailable"
+    return f"Assistant is unavailable: {text}"
 
 
 def frontend_origins(frontend_port: int) -> list[str]:
@@ -392,7 +408,7 @@ def ask_llm_route(body: LlmAsk, request: Request) -> dict:
     except llm.AIConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except llm.AIProviderError as exc:
-        raise HTTPException(status_code=502, detail="Assistant is unavailable") from exc
+        raise HTTPException(status_code=502, detail=_assistant_failure_detail(exc)) from exc
 
 
 @app.get("/backtests/dummy")

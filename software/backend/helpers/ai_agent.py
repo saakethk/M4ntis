@@ -246,7 +246,7 @@ PROVIDERS: dict[str, Provider] = {
 _DEFAULT_MODEL = {
     "openai": "gpt-4o-mini",
     "anthropic": "claude-3-5-haiku-latest",
-    "gemini": "gemini-2.0-flash",
+    "gemini": "gemini-2.5-flash",
     "meta": "Llama-3.3-70B-Instruct",
 }
 _NOT_CONFIGURED = (
@@ -284,7 +284,8 @@ class AIAgent:
         self.provider = PROVIDERS[provider]
         self.model = model
         self.system_prompt = load_system_prompt() if system_prompt is None else system_prompt
-        self.api_key = api_key if api_key is not None else os.environ.get(self.provider.api_key_env, "")
+        raw_key = api_key if api_key is not None else os.environ.get(self.provider.api_key_env, "")
+        self.api_key = raw_key.strip()
         self.base_url = base_url or self.provider.default_base_url
         if not self.base_url:
             raise AIConfigError(f"{provider} needs a base_url")

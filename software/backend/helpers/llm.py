@@ -18,10 +18,11 @@ MAX_PROMPT_LENGTH = 2000
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 # Models the assistant panel can select. The first id for a provider is its default.
-# Gemini ids are Gemini API model codes. Meta ids are Llama API model ids for
-# https://api.llama.com/compat/v1, the same form as Llama-3.3-70B-Instruct.
+# Gemini ids are Gemini API model codes. gemini-2.0-flash was shut down on
+# 2026-06-01, so the default is gemini-2.5-flash. Meta ids are Llama API model
+# ids for https://api.llama.com/compat/v1, the same form as Llama-3.3-70B-Instruct.
 ASSISTANT_MODELS: dict[str, tuple[str, ...]] = {
-    "gemini": ("gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"),
+    "gemini": ("gemini-2.5-flash", "gemini-2.5-pro"),
     "meta": ("Llama-3.3-70B-Instruct", "Llama-3.3-8B-Instruct"),
 }
 

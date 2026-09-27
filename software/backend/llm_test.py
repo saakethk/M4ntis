@@ -126,7 +126,7 @@ class AskTest(unittest.TestCase):
             ("meta", "Llama-3.3-8B-Instruct"),
         )
         self.assertEqual(resolve_assistant_model("meta", None), ("meta", "Llama-3.3-70B-Instruct"))
-        self.assertEqual(ASSISTANT_MODELS["gemini"][0], "gemini-2.0-flash")
+        self.assertEqual(ASSISTANT_MODELS["gemini"][0], "gemini-2.5-flash")
 
     def test_unknown_provider_and_model_are_rejected(self) -> None:
         with self.assertRaises(ValueError) as unknown_provider:
@@ -274,7 +274,7 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post(
                 "/llm",
-                json={"prompt": "help", "provider": "gemini", "model": "gemini-2.0-flash"},
+                json={"prompt": "help", "provider": "gemini", "model": "gemini-2.5-flash"},
             )
         self.assertEqual(response.status_code, 200, response.text)
         self.assertNotIn("Extra inputs are not permitted", response.text)
@@ -309,7 +309,7 @@ class LlmRouteTest(unittest.TestCase):
         with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
             response = self.client.post(
                 "/llm",
-                json={"prompt": "help", "provider": "cursor", "model": "gemini-2.0-flash"},
+                json={"prompt": "help", "provider": "cursor", "model": "gemini-2.5-flash"},
             )
         self.assertEqual(response.status_code, 400)
         self.assertIn("Unknown provider", response.json()["detail"])
@@ -317,7 +317,7 @@ class LlmRouteTest(unittest.TestCase):
     def test_missing_selected_provider_key_is_503(self) -> None:
         env = {
             "AI_PROVIDER": "gemini",
-            "AI_MODEL": "gemini-2.0-flash",
+            "AI_MODEL": "gemini-2.5-flash",
             "GEMINI_API_KEY": "present",
             "META_API_KEY": "",
             "OPENAI_API_KEY": "",
@@ -353,4 +353,21 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post("/llm", json={"prompt": "help"})
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(response.json()["detail"], "Assistant is unavailable")
+        self.assertEqual(response.json()["detail"], "Assistant is unavailable: openai: bad key (HTTP 401)")
+
+    def test_provider_failure_does_not_echo_an_api_key(self) -> None:
+        leaked = "AIzaSyDUMMYKEYVALUE1234567890"
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(
+                main.llm.AIAgent,
+                "from_env",
+                side_effect=AIProviderError("gemini", f"rejected bearer {leaked}", 400),
+            ),
+        ):
+            response = self.client.post("/llm", json={"prompt": "help"})
+        self.assertEqual(response.status_code, 502)
+        detail = response.json()["detail"]
+        self.assertNotIn(leaked, detail)
+        self.assertIn("Assistant is unavailable:", detail)
+        self.assertIn("[redacted]", detail)

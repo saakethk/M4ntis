@@ -8,7 +8,6 @@ export type AssistantModelChoice = {
 }
 
 export const ASSISTANT_MODELS: readonly AssistantModelChoice[] = [
-  { provider: 'gemini', model: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
   { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   { provider: 'gemini', model: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
   { provider: 'meta', model: 'Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B' },
