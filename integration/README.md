@@ -57,7 +57,8 @@ production; any PostgreSQL 14+ works for everything except market-data bars).
    | `AI_PROVIDER`, `AI_MODEL` | Default assistant model, e.g. `gemini` / `gemini-3.8-flash` |
    | `BACKEND_PORT`, `FRONTEND_PORT` | Default 8001 and 8002 |
    | `FPGA_SERIAL_PORT`, `FPGA_BAUD` | TradeCPU board serial port (defaults to `COM4` on Windows; set e.g. `/dev/cu.usbserial-XXXX` on macOS/Linux) and baud rate (default 115200) |
-   | `BACKTEST_TICKS` | Ticks per backtest after warm-up (default 500) |
+   | `BACKTEST_TICKS` | Ticks per backtest after warm-up when no date range is chosen (default 500) |
+   | `BACKTEST_MAX_TICKS` | Max ticks after warm-up for a custom date range (default 20000) |
 
    Tables are created automatically the first time the backend connects. Ticker
    search reads `stock_symbols`, which the loaders in `software/database` fill.

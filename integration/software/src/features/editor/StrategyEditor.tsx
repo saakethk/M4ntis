@@ -31,6 +31,7 @@ import { downloadText, pickTextFile } from '../../lib/files.ts'
 import { useResolvedTheme } from '../../lib/theme.ts'
 import { AssistantPanel } from '../assistant/AssistantPanel.tsx'
 import { BacktestPanel } from './BacktestPanel.tsx'
+import type { BacktestRangeChoice } from './backtestRange.ts'
 import { BlockPalette, DRAG_MIME } from './BlockPalette.tsx'
 import { ChecksPanel, type CompileCheck } from './ChecksPanel.tsx'
 import { HistoryPanel } from './HistoryPanel.tsx'
@@ -81,6 +82,7 @@ function StrategyCanvas({ userId, strategyId, initialProgram, unavailable = fals
   const [compiled, setCompiled] = useState<CompileCheck | null>(null)
   const [note, setNote] = useState<Note | null>(unavailable ? { text: 'Could not open this strategy.', error: true } : null)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [saveCount, setSaveCount] = useState(0)
   const [tab, setTab] = useState<RailTab>('assistant')
   const canvasRef = useRef<HTMLDivElement>(null)
   const colorMode = useResolvedTheme()
@@ -256,6 +258,7 @@ function StrategyCanvas({ userId, strategyId, initialProgram, unavailable = fals
       const errors = result?.diagnostics.filter((d) => d.level === 'error').length ?? 0
       show(errors > 0 ? `Saved. ${errors} compiler error${errors === 1 ? '' : 's'}, see Checks.` : creating && !owned ? 'Saved your copy.' : 'Saved.', errors > 0)
       if (errors > 0) setTab('checks')
+      setSaveCount((count) => count + 1)
       return row.id
     } catch (error) {
       show(error instanceof Error ? error.message : 'Could not save.', true)
@@ -272,12 +275,12 @@ function StrategyCanvas({ userId, strategyId, initialProgram, unavailable = fals
     show(result.ok ? 'Compiles for TradeCPU.' : 'The compiler found problems. See Checks.', !result.ok)
   }
 
-  async function startBacktest() {
+  async function startBacktest(range: BacktestRangeChoice) {
     if (!loaded || running || saving) return
     setRunning(true)
     try {
       const saved = !dirty && storedId != null ? storedId : await persist()
-      if (saved != null) onOpenBacktest(await runBacktest(userId, saved))
+      if (saved != null) onOpenBacktest(await runBacktest(userId, saved, range))
     } catch (error) {
       show(error instanceof Error ? error.message : 'Could not run the backtest.', true)
     } finally {
@@ -454,7 +457,15 @@ function StrategyCanvas({ userId, strategyId, initialProgram, unavailable = fals
           <ChecksPanel local={local} compiled={compiled} checking={checking} nodes={nodes} disabled={!loaded} onCheck={() => void runCheck()} onFocusNode={focusNode} />
         ) : null}
         {tab === 'backtest' ? (
-          <BacktestPanel nodes={nodes} running={running} disabled={!loaded || busy} canRun={owned} onRun={() => void startBacktest()} />
+          <BacktestPanel
+            nodes={nodes}
+            strategyId={storedId}
+            saveCount={saveCount}
+            running={running}
+            disabled={!loaded || busy}
+            canRun={owned}
+            onRun={(range) => void startBacktest(range)}
+          />
         ) : null}
       </aside>
     </div>

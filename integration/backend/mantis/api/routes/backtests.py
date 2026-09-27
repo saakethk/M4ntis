@@ -16,9 +16,14 @@ def fpga(_: CurrentUser) -> dict:
     return backtests.fpga_status()
 
 
+@router.get("/range")
+def range(strategy_id: int, user: CurrentUser) -> dict:
+    return backtests.backtest_available_range(user.id, strategy_id)
+
+
 @router.post("", status_code=201)
 def run(body: BacktestCreate, user: CurrentUser) -> dict:
-    return backtests.run_backtest(user.id, body.user_id, body.strategy_id)
+    return backtests.run_backtest(user.id, body.user_id, body.strategy_id, body.start, body.end)
 
 
 @router.get("/{backtest_id:int}")

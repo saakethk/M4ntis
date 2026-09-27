@@ -40,7 +40,8 @@ All routes except `/health`, `/symbols`, and `/auth/register|login` need the `se
 | `POST /compile` | Compile a `m4ntis.strategy/v1` document or `{strategy_id?, document?, price_exponents?}`. 200: `{ok, asm, hex, manifest, diagnostics}`; rejected: 400 `{ok: false, detail, diagnostics}` |
 | `GET /llm/models` | Assistant models, each with `available` (API key configured), and the default |
 | `POST /llm` | `{prompt, graph?, provider?, model?, history?}` → `{reply, graph, steps, model}`; `graph` is the edited canvas or `null` |
-| `POST /backtests` · `GET /backtests/{id}` | `{user_id, strategy_id}` → run on the TradeCPU FPGA over the latest `BACKTEST_TICKS` bars from TimescaleDB · report with metrics and `source` (`fpga`, or `sample` for old runs). No board: 503; board in use: 409 |
+| `GET /backtests/range?strategy_id=` | Symbols, resolution, and ISO dates with minute bars for every stock the strategy reads |
+| `POST /backtests` · `GET /backtests/{id}` | `{user_id, strategy_id, start?, end?}` → run on the TradeCPU FPGA over the latest `BACKTEST_TICKS` bars or a custom calendar range (up to `BACKTEST_MAX_TICKS` after warm-up) from TimescaleDB · report with metrics, `range_start`/`range_end`, and `source` (`fpga`, or `sample` for old runs). No board: 503; board in use: 409 |
 | `POST /backtests/{id}/analysis` | `{provider?, model?, question?}` → `{id, analysis, model}`: the chosen model explains a run you can view and suggests changes; not cached |
 | `GET /backtests/fpga` | `{connected, port, busy, detail}` for the board at `FPGA_SERIAL_PORT`, without opening it |
 | `GET /discussions` · `POST /discussions` | Feed (with cached summaries) · post `{body, strategy_id?, parent_id?}`; attaching your private strategy publishes it |

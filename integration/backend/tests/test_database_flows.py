@@ -6,7 +6,7 @@ These run only when ``MANTIS_TEST_DATABASE`` is set (see ``conftest.py``).
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import patch
 
 import psycopg
@@ -92,6 +92,19 @@ def fake_board(monkeypatch) -> None:
     monkeypatch.setattr(market_data, "latest_closes", lambda symbols, resolution, ticks: aapl_bars(resolution, ticks))
 
 
+def fake_available_range(_symbols):
+    days = [date(2024, 1, 2), date(2024, 1, 3), date(2024, 1, 5)]
+    return {"start": days[0], "end": days[-1], "days": days}
+
+
+def fake_closes_between(symbols, resolution, start, end, warmup):
+    del symbols, resolution
+    base = datetime(start.year, start.month, start.day, 13, 30, tzinfo=timezone.utc)
+    warmup_bars = [(base - timedelta(minutes=warmup - i), [150.0]) for i in range(warmup)]
+    in_range = [(base + timedelta(days=day), [150.0 + day]) for day in range((end - start).days + 1)]
+    return warmup_bars + in_range
+
+
 def test_backtests_refuse_without_fpga(database, monkeypatch):
     monkeypatch.setenv("FPGA_SERIAL_PORT", "")
     monkeypatch.setattr("serial.tools.list_ports.comports", lambda: [])
@@ -121,6 +134,54 @@ def test_backtests_run_on_fpga(database, monkeypatch):
     assert len(report["balances"]) == 61 and report["balances"][0]["cash"] == 10000
     assert report["metrics"]["num_trades"] > 0
     assert new_client().get(f"/backtests/{run.json()['id']}").status_code == 401
+
+
+def test_backtest_range_endpoint(database, monkeypatch):
+    fake_board(monkeypatch)
+    monkeypatch.setattr(market_data, "available_range", fake_available_range)
+    client = new_client()
+    user = sign_up(client, "range@example.com")
+    strategy_id = client.post("/strategies", json={"name": "S", "document": CROSSOVER}).json()["id"]
+    payload = client.get(f"/backtests/range?strategy_id={strategy_id}").json()
+    assert payload["symbols"] == ["AAPL"]
+    assert payload["start"] == "2024-01-02"
+    assert payload["days"] == ["2024-01-02", "2024-01-03", "2024-01-05"]
+
+
+def test_backtests_with_custom_range(database, monkeypatch):
+    fake_board(monkeypatch)
+    monkeypatch.setattr(market_data, "available_range", fake_available_range)
+    monkeypatch.setattr(market_data, "closes_between", fake_closes_between)
+    client = new_client()
+    user = sign_up(client, "range-run@example.com")
+    strategy_id = client.post("/strategies", json={"name": "S", "document": CROSSOVER}).json()["id"]
+    run = client.post(
+        "/backtests",
+        json={"user_id": user["id"], "strategy_id": strategy_id, "start": "2024-01-02", "end": "2024-01-03"},
+    )
+    assert run.status_code == 201, run.text
+    report = client.get(f"/backtests/{run.json()['id']}").json()
+    assert report["range_start"] == "2024-01-02"
+    assert report["range_end"] is not None
+
+
+def test_backtests_reject_bad_range(database, monkeypatch):
+    fake_board(monkeypatch)
+    monkeypatch.setattr(market_data, "available_range", fake_available_range)
+    client = new_client()
+    user = sign_up(client, "bad-range@example.com")
+    strategy_id = client.post("/strategies", json={"name": "S", "document": CROSSOVER}).json()["id"]
+    bad = client.post(
+        "/backtests",
+        json={"user_id": user["id"], "strategy_id": strategy_id, "start": "2024-01-06", "end": "2024-01-06"},
+    )
+    assert bad.status_code == 400
+    assert "2024-01-02" in bad.json()["detail"] and "2024-01-05" in bad.json()["detail"]
+    reversed_ = client.post(
+        "/backtests",
+        json={"user_id": user["id"], "strategy_id": strategy_id, "start": "2024-01-05", "end": "2024-01-02"},
+    )
+    assert reversed_.status_code == 400 and "start" in reversed_.json()["detail"].lower()
 
 
 def test_backtests_wait_for_a_busy_fpga(database, monkeypatch):

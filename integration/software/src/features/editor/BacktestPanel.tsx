@@ -1,27 +1,43 @@
-import { useCallback, useEffect, useState } from 'react'
-import { getFpgaStatus, type FpgaStatus } from '../../api/backtests.ts'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { getBacktestRange, getFpgaStatus, type BacktestRange, type FpgaStatus } from '../../api/backtests.ts'
 import { RESOLUTIONS } from '../../blocks/hardware.ts'
 import type { BlockNode } from '../../blocks/types.ts'
 import { START_NODE_ID } from '../../flow/graph.ts'
 import { tickerSymbols } from '../../flow/tickers.ts'
 import { money } from '../../lib/format.ts'
+import {
+  formatShortDate,
+  isRangeValid,
+  snapToAvailableDay,
+  type BacktestRangeChoice,
+} from './backtestRange.ts'
 
 type Props = {
   nodes: BlockNode[]
+  strategyId: number | null
+  saveCount: number
   running: boolean
   disabled: boolean
   canRun: boolean
-  onRun: () => void
+  onRun: (range: BacktestRangeChoice) => void
 }
 
 /** What a run will use (read from the Start and Get ticker blocks), whether the FPGA is attached, and the button to start it. */
-export function BacktestPanel({ nodes, running, disabled, canRun, onRun }: Props) {
+export function BacktestPanel({ nodes, strategyId, saveCount, running, disabled, canRun, onRun }: Props) {
   const start = nodes.find((node) => node.id === START_NODE_ID)?.data.params ?? {}
   const resolution = RESOLUTIONS.find((r) => r.value === start.resolution)?.label ?? String(start.resolution ?? '')
   const tickers = tickerSymbols(nodes).filter(Boolean)
+  const marketKey = `${tickers.join(',')}|${String(start.resolution ?? '')}`
   const [board, setBoard] = useState<FpgaStatus | null>(null)
   const [checking, setChecking] = useState(true)
   const [boardError, setBoardError] = useState<string | null>(null)
+  const [available, setAvailable] = useState<BacktestRange | null>(null)
+  const [rangeError, setRangeError] = useState<string | null>(null)
+  const [loadingRange, setLoadingRange] = useState(false)
+  const [useLatest, setUseLatest] = useState(true)
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [rangeHint, setRangeHint] = useState<string | null>(null)
 
   const refresh = useCallback(() => {
     setChecking(true)
@@ -37,6 +53,80 @@ export function BacktestPanel({ nodes, running, disabled, canRun, onRun }: Props
   useEffect(() => {
     if (!running) refresh()
   }, [running, refresh])
+
+  useEffect(() => {
+    if (strategyId == null) {
+      setAvailable(null)
+      setRangeError(null)
+      return
+    }
+    let ignore = false
+    setLoadingRange(true)
+    getBacktestRange(strategyId)
+      .then((next) => {
+        if (ignore) return
+        setAvailable(next)
+        setRangeError(null)
+      })
+      .catch((caught: unknown) => {
+        if (ignore) return
+        setAvailable(null)
+        setRangeError(caught instanceof Error ? caught.message : 'Could not load available dates.')
+      })
+      .finally(() => {
+        if (!ignore) setLoadingRange(false)
+      })
+    return () => {
+      ignore = true
+    }
+  }, [strategyId, saveCount, marketKey])
+
+  const days = available?.days ?? []
+  const minDay = available?.start ?? ''
+  const maxDay = available?.end ?? ''
+
+  const rangeChoice = useMemo((): BacktestRangeChoice => {
+    if (useLatest) return null
+    if (!startDate || !endDate) return null
+    return { start: startDate, end: endDate }
+  }, [useLatest, startDate, endDate])
+
+  const rangeOk = isRangeValid(startDate || null, endDate || null, days, useLatest)
+
+  function pickStart(next: string) {
+    setRangeHint(null)
+    if (!next) {
+      setStartDate('')
+      return
+    }
+    const snapped = snapToAvailableDay(next, days)
+    setStartDate(snapped.date)
+    if (snapped.hint) setRangeHint(snapped.hint)
+    if (endDate && snapped.date > endDate) setEndDate(snapped.date)
+  }
+
+  function pickEnd(next: string) {
+    setRangeHint(null)
+    if (!next) {
+      setEndDate('')
+      return
+    }
+    const snapped = snapToAvailableDay(next, days)
+    setEndDate(snapped.date)
+    if (snapped.hint) setRangeHint(snapped.hint)
+    if (startDate && snapped.date < startDate) setStartDate(snapped.date)
+  }
+
+  function useLatestMode() {
+    setUseLatest(true)
+    setRangeHint(null)
+  }
+
+  function useCustomMode() {
+    setUseLatest(false)
+    if (!startDate && minDay) setStartDate(minDay)
+    if (!endDate && maxDay) setEndDate(maxDay)
+  }
 
   const connected = board?.connected === true && boardError == null
 
@@ -74,8 +164,74 @@ export function BacktestPanel({ nodes, running, disabled, canRun, onRun }: Props
           <dd>{tickers.length > 0 ? tickers.join(', ') : 'None yet'}</dd>
         </div>
       </dl>
-      <p className="rail-note">Runs feed the latest ~500 ticks of real price history to the board. Saving happens first.</p>
-      <button type="button" className="rail-action" onClick={onRun} disabled={disabled || running || !canRun || !connected}>
+      <div className="backtest-range">
+        <div className="backtest-range-head">
+          <h3>Date range</h3>
+          <div className="backtest-range-presets">
+            <button type="button" className={`quiet compact${useLatest ? ' active' : ''}`} onClick={useLatestMode} disabled={running}>
+              Latest
+            </button>
+            <button
+              type="button"
+              className={`quiet compact${!useLatest ? ' active' : ''}`}
+              onClick={useCustomMode}
+              disabled={running || strategyId == null}
+            >
+              Custom
+            </button>
+          </div>
+        </div>
+        {strategyId == null ? (
+          <p className="rail-note">Save to pick a date range.</p>
+        ) : loadingRange ? (
+          <p className="rail-note">Loading available dates…</p>
+        ) : rangeError ? (
+          <p className="rail-note">{rangeError}</p>
+        ) : days.length === 0 ? (
+          <p className="rail-note">No price data for these stocks yet.</p>
+        ) : (
+          <>
+            <p className="rail-note">
+              Data available: {formatShortDate(minDay)} – {formatShortDate(maxDay)} · {days.length} trading days
+            </p>
+            {!useLatest ? (
+              <div className="backtest-range-fields">
+                <label>
+                  Start
+                  <input
+                    type="date"
+                    value={startDate}
+                    min={minDay}
+                    max={maxDay}
+                    disabled={running}
+                    onChange={(event) => pickStart(event.target.value)}
+                  />
+                </label>
+                <label>
+                  End
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={minDay}
+                    max={maxDay}
+                    disabled={running}
+                    onChange={(event) => pickEnd(event.target.value)}
+                  />
+                </label>
+              </div>
+            ) : (
+              <p className="rail-note">Uses the latest ~500 ticks after warm-up.</p>
+            )}
+            {rangeHint ? <p className="rail-note">{rangeHint}</p> : null}
+          </>
+        )}
+      </div>
+      <button
+        type="button"
+        className="rail-action"
+        onClick={() => onRun(rangeChoice)}
+        disabled={disabled || running || !canRun || !connected || (!useLatest && !rangeOk)}
+      >
         {running ? 'Running on FPGA…' : 'Run on FPGA'}
       </button>
       {!connected && !checking ? (

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -35,6 +36,8 @@ class StrategyUpdate(Strict):
 class BacktestCreate(Strict):
     user_id: int
     strategy_id: int
+    start: date | None = None
+    end: date | None = None
 
 
 class DiscussionCreate(Strict):

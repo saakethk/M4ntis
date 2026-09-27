@@ -37,6 +37,14 @@ export type FpgaStatus = {
   detail: string
 }
 
+export type BacktestRange = {
+  symbols: string[]
+  resolution: string
+  start: string | null
+  end: string | null
+  days: string[]
+}
+
 export type BacktestReport = {
   id: number
   strategyId: number
@@ -44,6 +52,8 @@ export type BacktestReport = {
   createdAt: string
   /** `fpga` for runs on the TradeCPU board; `sample` for runs from before FPGA execution. */
   source: string
+  rangeStart: string | null
+  rangeEnd: string | null
   orders: BacktestOrder[]
   balances: BacktestBalance[]
   metrics: BacktestMetrics
@@ -51,9 +61,32 @@ export type BacktestReport = {
 
 const WHAT = 'Backtest'
 
-/** Start a run and return its id. */
-export async function runBacktest(userId: number, strategyId: number): Promise<number> {
-  return id(record(await postJson('/backtests', { user_id: userId, strategy_id: strategyId }), WHAT).id, WHAT)
+/** Start a run and return its id. Omit ``range`` to use the latest bars. */
+export async function runBacktest(
+  userId: number,
+  strategyId: number,
+  range?: { start: string; end: string } | null,
+): Promise<number> {
+  const body: Record<string, unknown> = { user_id: userId, strategy_id: strategyId }
+  if (range) {
+    body.start = range.start
+    body.end = range.end
+  }
+  return id(record(await postJson('/backtests', body), WHAT).id, WHAT)
+}
+
+/** Calendar days with minute bars for every stock the strategy reads. */
+export async function getBacktestRange(strategyId: number): Promise<BacktestRange> {
+  const row = record(await requestJson(`/backtests/range?strategy_id=${strategyId}`), 'Backtest range')
+  const days = list(row.days, 'Backtest range')
+  if (days.some((item) => typeof item !== 'string')) throw new Error('Backtest range response was not valid.')
+  return {
+    symbols: list(row.symbols, 'Backtest range').map((item) => String(item)),
+    resolution: str(row, 'resolution', 'Backtest range'),
+    start: optionalStr(row, 'start'),
+    end: optionalStr(row, 'end'),
+    days: days as string[],
+  }
 }
 
 /** Whether the TradeCPU board is attached. Backtests are refused without it. */
@@ -75,6 +108,8 @@ export async function getBacktest(backtestId: number): Promise<BacktestReport> {
     strategyName: str(row, 'strategy_name', WHAT),
     createdAt: optionalStr(row, 'created_at'),
     source: str(row, 'source', WHAT),
+    rangeStart: optionalStr(row, 'range_start'),
+    rangeEnd: optionalStr(row, 'range_end'),
     orders: list(row.orders, WHAT).map(readOrder),
     balances: list(row.balances, WHAT).map(readBalance),
     metrics: readMetrics(row.metrics),

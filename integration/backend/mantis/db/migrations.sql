@@ -28,3 +28,7 @@ ALTER TABLE discussion_posts ADD COLUMN IF NOT EXISTS ai_summary_at TIMESTAMPTZ;
 
 -- Where a backtest ran. Runs before FPGA execution replayed a fixed sample series.
 ALTER TABLE backtests ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'sample';
+
+-- Calendar window for custom-range runs (also set for latest-ticks runs from the bars used).
+ALTER TABLE backtests ADD COLUMN IF NOT EXISTS range_start DATE;
+ALTER TABLE backtests ADD COLUMN IF NOT EXISTS range_end DATE;

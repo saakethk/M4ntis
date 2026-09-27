@@ -4,7 +4,7 @@ A run:
 
 1. compiles the strategy and reads which stock each hardware slot holds,
 2. loads the most recent ``BACKTEST_TICKS`` bars (plus warm-up) of those stocks at the
-   strategy's resolution from ``stock_minute_bars``,
+   strategy's resolution from ``stock_minute_bars``, or a chosen calendar range,
 3. picks each slot's price scale so its highest price fits the board's 16-bit tick
    field, and compiles again with those scales,
 4. loads the program onto the FPGA and feeds it every tick
@@ -17,8 +17,9 @@ Nothing is simulated in software. If the board is not connected, the run fails w
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from psycopg.types.json import Jsonb
 
@@ -28,8 +29,10 @@ from mantis.errors import Forbidden, InvalidInput, NotFound
 from mantis.services import compiler, fpga, market_data, strategies
 
 DEFAULT_TICKS = 500
+DEFAULT_MAX_TICKS = 20_000
 TICK_MAX = 32767  # the board's price field is a signed 16-bit integer
 SOURCE = "fpga"
+NY = ZoneInfo("America/New_York")
 
 
 def backtest_ticks() -> int:
@@ -39,11 +42,40 @@ def backtest_ticks() -> int:
     return int(raw)
 
 
+def backtest_max_ticks() -> int:
+    raw = env("BACKTEST_MAX_TICKS", str(DEFAULT_MAX_TICKS))
+    if not raw.isdigit() or not 1 <= int(raw) <= 20_000:
+        raise InvalidInput("BACKTEST_MAX_TICKS must be a whole number from 1 to 20000")
+    return int(raw)
+
+
 def fpga_status() -> dict[str, Any]:
     return fpga.status()
 
 
-def run_backtest(user_id: int, requested_user_id: int, strategy_id: int) -> dict[str, Any]:
+def backtest_available_range(user_id: int, strategy_id: int) -> dict[str, Any]:
+    """Symbols, resolution, and calendar days with complete minute-bar coverage."""
+    _, manifest, _, symbols = _strategy_market_context(user_id, strategy_id)
+    span = market_data.available_range(symbols)
+    days = span["days"]
+    start = span["start"]
+    end = span["end"]
+    return {
+        "symbols": symbols,
+        "resolution": manifest["resolution"],
+        "start": start.isoformat() if start else None,
+        "end": end.isoformat() if end else None,
+        "days": [day.isoformat() for day in days],
+    }
+
+
+def run_backtest(
+    user_id: int,
+    requested_user_id: int,
+    strategy_id: int,
+    start: date | None = None,
+    end: date | None = None,
+) -> dict[str, Any]:
     """Run a strategy the user can view on the FPGA and store the result."""
     if requested_user_id != user_id:
         raise Forbidden("You can only run a backtest as yourself")
@@ -51,23 +83,31 @@ def run_backtest(user_id: int, requested_user_id: int, strategy_id: int) -> dict
     if not board["connected"]:
         raise fpga.FpgaUnavailable(board["detail"])
 
-    with db.session() as conn:
-        strategy = strategies.load_viewable(conn, user_id, strategy_id)
-    manifest = compiler.compile_document(strategy.document)["manifest"]
-    slots = [b for b in manifest["buffers"] if b["used"]]
-    if not slots:
-        raise InvalidInput("This strategy reads no stock prices, so there is nothing to backtest. Add a Get ticker block.")
-    unnamed = [f"BUF{b['buf']}" for b in slots if not b["symbol"]]
-    if unnamed:
-        raise InvalidInput(f"Pick a stock for {', '.join(unnamed)} before running a backtest.")
-    symbols = [str(b["symbol"]) for b in slots]
+    strategy, manifest, slots, symbols = _strategy_market_context(user_id, strategy_id)
+    warmup = int(manifest["warmupTicks"])
 
-    bars = market_data.latest_closes(symbols, manifest["resolution"], manifest["warmupTicks"] + backtest_ticks())
-    if len(bars) <= manifest["warmupTicks"]:
+    if (start is None) ^ (end is None):
+        raise InvalidInput("Provide both start and end dates, or omit both to use the latest bars.")
+    if start is not None and end is not None:
+        if start > end:
+            raise InvalidInput("Backtest start must be on or before end.")
+        avail = market_data.available_range(symbols)
+        _ensure_range_has_data(symbols, start, end, avail)
+        bars = market_data.closes_between(symbols, manifest["resolution"], start, end, warmup)
+        in_range = len(bars) - warmup
+        if in_range > backtest_max_ticks():
+            raise InvalidInput(
+                f"This range needs {in_range} ticks after warm-up; the limit is {backtest_max_ticks()}. Narrow the dates."
+            )
+    else:
+        bars = market_data.latest_closes(symbols, manifest["resolution"], warmup + backtest_ticks())
+
+    if len(bars) <= warmup:
         raise InvalidInput(
             f"Not enough {manifest['resolution']} price history for {', '.join(symbols)}: "
-            f"found {len(bars)} bars, the strategy needs more than {manifest['warmupTicks']} to warm up."
+            f"found {len(bars)} bars, the strategy needs more than {warmup} to warm up."
         )
+    range_start, range_end = _bar_range_dates(bars, warmup)
     exponents = {slot["buf"]: _price_exponent(max(closes[i] for _, closes in bars), slot["symbol"]) for i, slot in enumerate(slots)}
     program = compiler.compile_document(strategy.document, exponents)["manifest"]
     rounds = [_round(closes, slots, exponents) for _, closes in bars]
@@ -76,7 +116,7 @@ def run_backtest(user_id: int, requested_user_id: int, strategy_id: int) -> dict
         run = fpga.run_program(port, [int(word, 16) for word in program["words"]], rounds)
 
     orders, balances = _ledger(bars, slots, run, 10 ** program["balanceExponent"])
-    backtest_id, version_id = _store(user_id, strategy, orders, balances)
+    backtest_id, version_id = _store(user_id, strategy, orders, balances, range_start, range_end)
     return {
         "id": backtest_id,
         "user_id": user_id,
@@ -84,6 +124,8 @@ def run_backtest(user_id: int, requested_user_id: int, strategy_id: int) -> dict
         "strategy_version_id": version_id,
         "source": SOURCE,
         "ticks": len(bars),
+        "range_start": range_start.isoformat(),
+        "range_end": range_end.isoformat(),
         "orders": [_iso(order) for order in orders],
         "balances": [_iso(point) for point in balances],
     }
@@ -95,7 +137,8 @@ def get_backtest(viewer_id: int, backtest_id: int) -> dict[str, Any]:
         row = conn.execute(
             """
             SELECT b.id, b.user_id, b.created_at, b.strategy_version_id,
-                   v.strategy_id, s.name, s.user_id, s.visibility, b.source
+                   v.strategy_id, s.name, s.user_id, s.visibility, b.source,
+                   b.range_start, b.range_end
             FROM backtests b
             JOIN strategy_versions v ON v.id = b.strategy_version_id
             JOIN strategies s ON s.id = v.strategy_id
@@ -119,6 +162,8 @@ def get_backtest(viewer_id: int, backtest_id: int) -> dict[str, Any]:
         for r in order_rows
     ]
     balances = [{"ts": r[0].isoformat(), "cash": float(r[1]), "equity": float(r[2])} for r in balance_rows]
+    range_start = row[9]
+    range_end = row[10]
     return {
         "id": int(row[0]),
         "user_id": runner_id,
@@ -127,10 +172,53 @@ def get_backtest(viewer_id: int, backtest_id: int) -> dict[str, Any]:
         "strategy_version_id": int(row[3]),
         "created_at": row[2].isoformat(),
         "source": str(row[8]),
+        "range_start": range_start.isoformat() if range_start is not None else None,
+        "range_end": range_end.isoformat() if range_end is not None else None,
         "orders": orders,
         "balances": balances,
         "metrics": performance(orders, balances),
     }
+
+
+def _strategy_market_context(user_id: int, strategy_id: int) -> tuple[strategies.StrategyRow, dict[str, Any], list[dict[str, Any]], list[str]]:
+    with db.session() as conn:
+        strategy = strategies.load_viewable(conn, user_id, strategy_id)
+    manifest = compiler.compile_document(strategy.document)["manifest"]
+    slots = [b for b in manifest["buffers"] if b["used"]]
+    if not slots:
+        raise InvalidInput("This strategy reads no stock prices, so there is nothing to backtest. Add a Get ticker block.")
+    unnamed = [f"BUF{b['buf']}" for b in slots if not b["symbol"]]
+    if unnamed:
+        raise InvalidInput(f"Pick a stock for {', '.join(unnamed)} before running a backtest.")
+    symbols = [str(b["symbol"]) for b in slots]
+    return strategy, manifest, slots, symbols
+
+
+def _ensure_range_has_data(symbols: list[str], start: date, end: date, avail: dict[str, date | list[date]]) -> None:
+    days = set(avail["days"])
+    span_start = avail["start"]
+    span_end = avail["end"]
+    if not days or span_start is None or span_end is None:
+        raise InvalidInput(f"No price data for {', '.join(symbols)}. Add market data before running a backtest.")
+    for day in (start, end):
+        if day not in days:
+            raise InvalidInput(
+                f"No price data for {', '.join(symbols)} on {day.isoformat()}. "
+                f"Pick dates between {span_start.isoformat()} and {span_end.isoformat()}."
+            )
+
+
+def _bar_range_dates(bars: list[tuple[datetime, list[float]]], warmup: int) -> tuple[date, date]:
+    active = bars[warmup:]
+    first = _bar_trading_day(active[0][0])
+    last = _bar_trading_day(active[-1][0])
+    return first, last
+
+
+def _bar_trading_day(ts: datetime) -> date:
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=NY)
+    return ts.astimezone(NY).date()
 
 
 def _price_exponent(highest: float, symbol: str) -> int:
@@ -172,7 +260,12 @@ def _ledger(
 
 
 def _store(
-    user_id: int, strategy: strategies.StrategyRow, orders: list[dict[str, Any]], balances: list[dict[str, Any]]
+    user_id: int,
+    strategy: strategies.StrategyRow,
+    orders: list[dict[str, Any]],
+    balances: list[dict[str, Any]],
+    range_start: date,
+    range_end: date,
 ) -> tuple[int, int]:
     with db.session() as conn, conn.transaction():
         version_id = int(
@@ -183,8 +276,11 @@ def _store(
         )
         backtest_id = int(
             conn.execute(
-                "INSERT INTO backtests (strategy_version_id, user_id, source) VALUES (%s, %s, %s) RETURNING id",
-                (version_id, user_id, SOURCE),
+                """
+                INSERT INTO backtests (strategy_version_id, user_id, source, range_start, range_end)
+                VALUES (%s, %s, %s, %s, %s) RETURNING id
+                """,
+                (version_id, user_id, SOURCE, range_start, range_end),
             ).fetchone()[0]
         )
         conn.cursor().executemany(
