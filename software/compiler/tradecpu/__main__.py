@@ -9,13 +9,13 @@ import sys
 from pathlib import Path
 
 from .asm import Assembled, AsmError, assemble, disassemble, format_asm, parse_asm
-from .compiler import CompileError, CompileOptions, Diagnostic, compile_strategy
+from .compiler import CompileError, CompileOptions, Diagnostic, compile_strategy, compile_to_json
 from .isa import NUM_BUFFERS, load_program_message
 from .simulator import BalanceMsg, Decision, run_rounds
 
 
 def _price_exps(pairs: list[str]) -> dict[int, int]:
-    exps = {b: 2 for b in range(NUM_BUFFERS)}
+    exps = {}
     for pair in pairs:
         buf, _, exp = pair.partition("=")
         exps[int(buf)] = int(exp)
@@ -27,28 +27,27 @@ def _read_json(path: str) -> dict:
 
 
 def cmd_compile(args: argparse.Namespace) -> int:
+    options = CompileOptions(price_exponents=_price_exps(args.price_exp))
     try:
         doc = _read_json(args.strategy)
-        result = compile_strategy(doc, CompileOptions(price_exponents=_price_exps(args.price_exp)))
-    except (json.JSONDecodeError, CompileError) as err:
-        e = err if isinstance(err, CompileError) else CompileError(
-            [Diagnostic("error", f"Strategy is not valid JSON: {err}")]
-        )
+    except json.JSONDecodeError as err:
+        bad_json = Diagnostic("error", f"Strategy is not valid JSON: {err}")
         if args.json:
-            print(json.dumps({"ok": False, "diagnostics": [d.to_json() for d in e.diagnostics]}))
+            print(json.dumps({"ok": False, "diagnostics": [bad_json.to_json()]}))
         else:
-            print(e, file=sys.stderr)
+            print(bad_json, file=sys.stderr)
         return 1
 
     if args.json:
-        print(json.dumps({
-            "ok": True,
-            "asm": format_asm(result.items, addresses=True),
-            "hex": result.assembled.hex_lines(),
-            "manifest": result.manifest,
-            "diagnostics": [w.to_json() for w in result.warnings],
-        }))
-        return 0
+        out = compile_to_json(doc, options)
+        print(json.dumps(out))
+        return 0 if out["ok"] else 1
+
+    try:
+        result = compile_strategy(doc, options)
+    except CompileError as e:
+        print(e, file=sys.stderr)
+        return 1
 
     if args.out:
         out = Path(args.out)

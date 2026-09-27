@@ -4,7 +4,7 @@ import unittest
 
 from helpers import Doc, only_rtl_ops
 
-from tradecpu.compiler import CompileError, CompileOptions, compile_strategy
+from tradecpu.compiler import CompileError, CompileOptions, compile_strategy, compile_to_json
 from tradecpu.simulator import BalanceMsg, Decision, TradeCPU, run_rounds
 
 
@@ -204,9 +204,53 @@ class TestBehaviour(unittest.TestCase):
         d = Doc()
         d.add("buy", "buy", quantity=3)
         d.exec("start", "buy")
-        r = compile_strategy(d.json(), CompileOptions(price_exponents={0: 1, 1: 2, 2: 2, 3: 2, 4: 2}))
+        r = compile_strategy(d.json(), CompileOptions(price_exponents={0: 1}))
         _, per_round, _ = run_rounds(r.words, rounds_for([9000]))  # $900.0 in dimes
         self.assertEqual(per_round[0][-1], BalanceMsg(10_000_000 - 900_00 * 3))
+        self.assertEqual([b["priceExponent"] for b in r.manifest["buffers"]], [1, 2, 2, 2, 2])
+
+    def test_price_exponent_for_unknown_buffer_is_rejected(self):
+        d = Doc()
+        with self.assertRaisesRegex(CompileError, "BUF5"):
+            compile_strategy(d.json(), CompileOptions(price_exponents={5: 1}))
+
+
+class MalformedDocumentTest(unittest.TestCase):
+    def test_wrong_json_shapes_become_diagnostics(self):
+        schema = "m4ntis.strategy/v1"
+        start = {"id": "start", "type": "start", "data": {"params": Doc().json()["flow"]["nodes"][0]["data"]["params"]}}
+        cases = {
+            "flow list": {"schema": schema, "flow": [1]},
+            "flow string": {"schema": schema, "flow": "x"},
+            "nodes object": {"schema": schema, "flow": {"nodes": {}, "edges": []}},
+            "node number": {"schema": schema, "flow": {"nodes": [start, 1], "edges": []}},
+            "data string": {"schema": schema, "flow": {"nodes": [start, {"id": "b", "type": "buy", "data": "x"}]}},
+            "params list": {"schema": schema, "flow": {"nodes": [start, {"id": "b", "type": "buy", "data": {"params": [1]}}]}},
+            "edge number": {"schema": schema, "flow": {"nodes": [start], "edges": [5]}},
+            "type list": {"schema": schema, "flow": {"nodes": [start, {"id": "b", "type": ["buy"]}]}},
+            "not a document": [1, 2],
+        }
+        for name, doc in cases.items():
+            with self.subTest(name):
+                with self.assertRaises(CompileError) as ctx:
+                    compile_strategy(doc)
+                self.assertTrue(ctx.exception.diagnostics)
+                out = compile_to_json(doc)
+                self.assertEqual(out["ok"], False)
+                self.assertEqual(out["diagnostics"][0]["level"], "error")
+
+    def test_compile_to_json_success_shape(self):
+        out = compile_to_json(sma_crossover(3, 5).json())
+        self.assertEqual(set(out), {"ok", "asm", "hex", "manifest", "diagnostics"})
+        self.assertTrue(out["ok"])
+        self.assertEqual(len(out["hex"].split()), out["manifest"]["programWords"])
+
+    def test_compile_to_json_points_at_the_bad_node(self):
+        d = sma_crossover(3, 5)
+        d.add("orphan", "sma", n=99)
+        out = compile_to_json(d.json())
+        self.assertFalse(out["ok"])
+        self.assertIn({"level": "error", "message": "sma: n=99 out of range [1, 30]", "node": "orphan"}, out["diagnostics"])
 
     def test_mean_reversion_fits_program_memory(self):
         d = Doc()

@@ -16,6 +16,23 @@ python3 -m tradecpu disasm FILE.hex                       # hex words -> assembl
 python3 -m unittest discover -s tests
 ```
 
+## Calling it from Python
+
+The backend (`software/backend/helpers/compile.py`, route `POST /compile`) imports the compiler
+directly instead of spawning the CLI:
+
+```python
+from tradecpu import CompileOptions, compile_to_json, compile_strategy
+
+out = compile_to_json(doc)                       # same dict as `compile --json`; never raises on bad input
+out = compile_to_json(doc, CompileOptions(price_exponents={0: 1}))  # BUF0 in dimes, others cents
+out["ok"], out["diagnostics"]                    # [{level, message, node?}], node = editor block id
+out["manifest"]["words"]                         # program words to upload
+
+result = compile_strategy(doc)                   # raises CompileError(diagnostics) instead
+result.words, result.asm, result.manifest
+```
+
 ## Testing strategies on the FPGA with dummy data
 
 `hwtest` runs each strategy on the board with synthetic prices and checks every message the board

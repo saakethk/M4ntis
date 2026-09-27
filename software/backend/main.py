@@ -9,6 +9,7 @@ import psycopg
 from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 import helpers.auth as auth
@@ -286,13 +287,18 @@ def compile_strategy_route(body: dict[str, Any], request: Request) -> dict:
     except compiler.InvalidCompileBody as exc:
         raise RequestValidationError(exc.errors) from exc
     except compiler.CompilationFailed as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "detail": str(exc), "diagnostics": exc.diagnostics},
+        )
     except strategies.StrategyNotFound as exc:
         raise HTTPException(status_code=404, detail="Strategy not found") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (RuntimeError, psycopg.Error) as exc:
         raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
+
+
 @app.post("/llm")
 def ask_llm_route(body: LlmAsk, request: Request) -> dict:
     _require_user(request)
