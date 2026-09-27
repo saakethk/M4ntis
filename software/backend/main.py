@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Any
 
@@ -11,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 import helpers.auth as auth
 import helpers.backtests as backtests
@@ -24,6 +25,21 @@ from helpers.symbols import MAX_LIMIT, find_symbol, normalize_symbol_query, sear
 
 BACKEND_PORT = env_port("BACKEND_PORT", 8001)
 FRONTEND_PORT = env_port("FRONTEND_PORT", 8002)
+# Provider errors sometimes echo the credential that was sent. Keep those out of the UI.
+_SECRET = re.compile(
+    r"(?i)(?:bearer\s+)\S+"
+    r"|AIza[0-9A-Za-z_\-]{10,}"
+    r"|\bsk-[A-Za-z0-9_\-]{8,}"
+    r"|(?:api[_-]?key|x-goog-api-key)\s*[:=]\s*\S+"
+)
+
+
+def _assistant_failure_detail(exc: BaseException) -> str:
+    """One sentence the UI can show: the provider's reason, without a copied API key."""
+    text = _SECRET.sub("[redacted]", " ".join(str(exc).split()))
+    if not text:
+        return "Assistant is unavailable"
+    return f"Assistant is unavailable: {text}"
 
 
 def frontend_origins(frontend_port: int) -> list[str]:
@@ -70,14 +86,26 @@ class StrategyCreate(BaseModel):
 
 
 class GraphNode(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # The editor node also carries position, measured size, and data.params.
+    model_config = ConfigDict(extra="ignore")
     id: str
     type: str
     params: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="before")
+    @classmethod
+    def params_from_editor_node(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or isinstance(value.get("params"), dict):
+            return value
+        data = value.get("data")
+        if isinstance(data, dict) and isinstance(data.get("params"), dict):
+            return {**value, "params": data["params"]}
+        return value
+
 
 class GraphEdge(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # React Flow edges also carry id, kind, class, and path options.
+    model_config = ConfigDict(extra="ignore")
     source: str
     sourceHandle: str
     target: str
@@ -85,15 +113,33 @@ class GraphEdge(BaseModel):
 
 
 class GraphBody(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
     nodes: list[GraphNode] = Field(max_length=80)
     edges: list[GraphEdge] = Field(default_factory=list, max_length=160)
 
+    @model_validator(mode="before")
+    @classmethod
+    def drop_edges_without_ports(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or not isinstance(value.get("edges"), list):
+            return value
+        edges = [
+            edge
+            for edge in value["edges"]
+            if isinstance(edge, dict) and edge.get("sourceHandle") and edge.get("targetHandle")
+        ]
+        return {**value, "edges": edges}
+
 
 class LlmAsk(BaseModel):
+    # The editor model switcher posts provider and model next to prompt and graph.
+    # Both stay optional so a request can omit them. extra=forbid still rejects any
+    # other key, so these two names have to stay declared or FastAPI returns 422
+    # ("Extra inputs are not permitted") for them.
     model_config = ConfigDict(extra="forbid")
     prompt: str
     graph: GraphBody | None = None
+    provider: str | None = None
+    model: str | None = None
 
 
 class BacktestCreate(BaseModel):
@@ -362,13 +408,13 @@ def ask_llm_route(body: LlmAsk, request: Request) -> dict:
     _require_user(request)
     try:
         canvas = body.graph.model_dump() if body.graph is not None else None
-        return llm.ask(body.prompt, canvas)
+        return llm.ask(body.prompt, canvas, provider=body.provider, model=body.model)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except llm.AIConfigError as exc:
-        raise HTTPException(status_code=503, detail="Assistant is not configured") from exc
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     except llm.AIProviderError as exc:
-        raise HTTPException(status_code=502, detail="Assistant is unavailable") from exc
+        raise HTTPException(status_code=502, detail=_assistant_failure_detail(exc)) from exc
 
 
 @app.get("/backtests/dummy")

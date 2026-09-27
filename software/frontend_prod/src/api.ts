@@ -470,10 +470,19 @@ function readDiscussionCreated(body: unknown): DiscussionCreated {
   }
 }
 
-export function askAssistant(prompt: string, graph: AssistantGraph): Promise<AssistantReply> {
+export function askAssistant(
+  prompt: string,
+  graph: AssistantGraph,
+  model?: { provider: string; model: string },
+): Promise<AssistantReply> {
+  const body: { prompt: string; graph: AssistantGraph; provider?: string; model?: string } = { prompt, graph }
+  if (model?.provider && model.model) {
+    body.provider = model.provider
+    body.model = model.model
+  }
   return requestJson('/llm', {
     method: 'POST',
-    body: JSON.stringify({ prompt, graph }),
+    body: JSON.stringify(body),
   }).then(readAssistantReply)
 }
 
@@ -627,7 +636,10 @@ async function errorMessage(response: Response): Promise<string> {
         .map((item) => {
           if (typeof item === 'string') return item
           if (item && typeof item === 'object' && 'msg' in item && typeof item.msg === 'string') {
-            return item.msg
+            const loc = 'loc' in item && Array.isArray(item.loc)
+              ? item.loc.filter((part) => part !== 'body').join('.')
+              : ''
+            return loc ? `${loc}: ${item.msg}` : item.msg
           }
           return ''
         })

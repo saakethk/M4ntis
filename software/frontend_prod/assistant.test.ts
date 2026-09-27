@@ -1,5 +1,15 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import {
+  ASSISTANT_MODEL_STORAGE_KEY,
+  ASSISTANT_MODELS,
+  DEFAULT_ASSISTANT_MODEL,
+  findAssistantModel,
+  modelChoiceId,
+  readStoredAssistantModel,
+  storeAssistantModel,
+  type ModelStorage,
+} from './src/assistantModels.ts'
 import { applyAssistantGraph, readAssistantGraph } from './src/flow/assistantGraph.ts'
 import { makeNode } from './src/flow/graph.ts'
 
@@ -68,6 +78,62 @@ describe('applyAssistantGraph', () => {
       () => applyAssistantGraph({ nodes: [{ id: 'buy', type: 'buy', params: {} }], edges: [] }),
       /Start/,
     )
+  })
+})
+
+function memoryStorage(initial: Record<string, string> = {}): ModelStorage & { saved: Map<string, string> } {
+  const saved = new Map(Object.entries(initial))
+  return {
+    saved,
+    getItem: (key) => saved.get(key) ?? null,
+    setItem: (key, value) => {
+      saved.set(key, value)
+    },
+  }
+}
+
+describe('assistant models', () => {
+  it('defaults to Gemini 2.5 Flash and lists Gemini and Meta', () => {
+    assert.equal(DEFAULT_ASSISTANT_MODEL.provider, 'gemini')
+    assert.equal(DEFAULT_ASSISTANT_MODEL.model, 'gemini-2.5-flash')
+    assert.deepEqual(
+      ASSISTANT_MODELS.map((choice) => `${choice.provider}:${choice.model}`),
+      [
+        'gemini:gemini-2.5-flash',
+        'gemini:gemini-2.5-pro',
+        'gemini:gemini-3.8-flash',
+        'gemini:gemini-3.5-flash-lite',
+        'gemini:gemini-3.1-pro-preview',
+        'meta:muse-spark-1.3',
+        'meta:muse-spark-1.3-contributor',
+        'meta:muse-spark-1.2',
+        'meta:muse-spark-1.2-contributor',
+        'meta:muse-spark-1.1',
+      ],
+    )
+  })
+
+  it('keeps the last choice and falls back when storage is empty or unknown', () => {
+    const storage = memoryStorage()
+    const muse = ASSISTANT_MODELS.find((choice) => choice.model === 'muse-spark-1.3')
+    assert.ok(muse)
+    storeAssistantModel(muse, storage)
+    assert.equal(storage.saved.get(ASSISTANT_MODEL_STORAGE_KEY), modelChoiceId(muse))
+    assert.deepEqual(readStoredAssistantModel(storage), muse)
+    assert.equal(readStoredAssistantModel(memoryStorage()).model, 'gemini-2.5-flash')
+    assert.equal(readStoredAssistantModel(memoryStorage({ [ASSISTANT_MODEL_STORAGE_KEY]: 'nope' })).model, 'gemini-2.5-flash')
+    assert.equal(findAssistantModel('meta:muse-spark-1.1').label, 'Muse Spark 1.1')
+    assert.equal(readStoredAssistantModel(null).model, 'gemini-2.5-flash')
+    const blocked: ModelStorage = {
+      getItem: () => {
+        throw new Error('denied')
+      },
+      setItem: () => {
+        throw new Error('denied')
+      },
+    }
+    assert.equal(readStoredAssistantModel(blocked).model, 'gemini-2.5-flash')
+    assert.doesNotThrow(() => storeAssistantModel(DEFAULT_ASSISTANT_MODEL, blocked))
   })
 })
 

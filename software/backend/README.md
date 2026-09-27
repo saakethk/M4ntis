@@ -21,7 +21,7 @@ This is the code to expose the backend code like the FPGA interface and such to 
 - POST /backtests with `{ "user_id", "strategy_id", "start"?, "end"?, "capital"? }` runs a backtest for the signed-in user. `user_id` must be that user. The strategy is compiled with `software/compiler` and replayed bar by bar through the TradeCPU simulator over `stock_minute_bars`, aggregated to the Start block's resolution. `start` and `end` are inclusive `YYYY-MM-DD` dates (omit for all data); `capital` overrides the starting balance for this run. Each symbol's price exponent is picked so its highest close fits the CPU's 16-bit tick. The run snapshots the strategy and stores its orders and up to 500 equity points. The CPU does not check cash or shares, so a buy that would take cash below $0, or a sell of more shares than are held (a short sale), stops the run and returns 400 naming the order; nothing is stored. A compile failure returns 400 with `diagnostics`; no market data, too few bars for the warm-up, or more than 60,000 bars returns 400.
 - GET /backtests/{id} returns that run for the user who created it (or anyone who can view the strategy): orders, balances, and metrics derived from them.
 - POST /discussions with `{ "body", "strategy_id"?, "parent_id"? }` creates a post for the signed-in user. Returns `{ "id", "strategy_id", "strategy_made_public" }`. If the author owns `strategy_id` and it is private, the strategy becomes `public` (view-only) and `strategy_made_public` is true. A non-owner cannot publish someone else's private strategy.
-- POST /llm with `{ "prompt", "graph"? }` asks the configured model for help building a strategy. `graph` is the current canvas (`nodes` of `{ "id", "type", "params" }`, `edges` of `{ "source", "sourceHandle", "target", "targetHandle" }`). The signed-in user gets `{ "reply", "dummy": false, "graph" }`. `graph` is the edited canvas when the prompt asks to build or change blocks, otherwise `null`. Accepting it replaces the editor canvas. A missing `AI_PROVIDER` or API key returns 503. A provider failure returns 502. A canvas the editor could not place returns 400.
+- POST /llm with `{ "prompt", "graph"? }` asks the configured model for help building a strategy. `graph` is the current canvas (`nodes` of `{ "id", "type", "params" }`, `edges` of `{ "source", "sourceHandle", "target", "targetHandle" }`). The signed-in user gets `{ "reply", "dummy": false, "graph" }`. `graph` is the edited canvas when the prompt asks to build or change blocks, otherwise `null`. Accepting it replaces the editor canvas. A missing provider or API key returns 503 and names the `.env` setting to add. A provider failure returns 502. A canvas the editor could not place returns 400.
 
 ## AI assistant client
 `helpers/ai_agent.py` gives one `AIAgent` class for every model provider, all sharing the system
@@ -42,7 +42,7 @@ reply.text, reply.input_tokens, reply.output_tokens, reply.finish_reason
 | `openai` | `OPENAI_API_KEY` | OpenAI Chat Completions |
 | `anthropic` | `ANTHROPIC_API_KEY` | Anthropic Messages |
 | `gemini` | `GEMINI_API_KEY` | Gemini `generateContent` |
-| `meta` | `META_API_KEY` | Llama API, OpenAI-compatible endpoint |
+| `meta` | `META_API_KEY` | Meta Model API chat completions (`https://api.meta.ai/v1`) |
 | `openai_compatible` | `AI_API_KEY` (optional) | Any OpenAI-style server at `AI_BASE_URL`, e.g. Ollama or vLLM |
 
 Errors raise `AIConfigError` (bad setup) or `AIProviderError` (the API refused or failed, with

@@ -81,10 +81,33 @@ class ProviderRequestTest(unittest.TestCase):
         self.assertIn("max_completion_tokens", body)
         self.assertEqual((reply.input_tokens, reply.output_tokens), (11, 2))
 
-    def test_meta_uses_openai_compatible_endpoint(self):
+    def test_meta_uses_muse_chat_completions(self):
         req, body, _ = self.capture("meta")
-        self.assertEqual(str(req.url), "https://api.llama.com/compat/v1/chat/completions")
-        self.assertIn("max_tokens", body)
+        self.assertEqual(str(req.url), "https://api.meta.ai/v1/chat/completions")
+        self.assertEqual(req.headers["authorization"], "Bearer test-key")
+        self.assertEqual(body["model"], "m")
+        self.assertEqual(body["messages"][0], {"role": "system", "content": "SYS"})
+        self.assertIn("max_completion_tokens", body)
+        self.assertNotIn("max_tokens", body)
+
+    def test_meta_request_body_uses_muse_spark_model_id(self):
+        seen: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["body"] = json.loads(request.content)
+            return httpx.Response(200, json=REPLIES["meta"])
+
+        AIAgent(
+            "meta",
+            "muse-spark-1.3",
+            api_key="test-key",
+            system_prompt="SYS",
+            client=httpx.Client(transport=httpx.MockTransport(handler)),
+        ).chat("ping")
+        self.assertEqual(seen["body"]["model"], "muse-spark-1.3")
+        self.assertNotIn("max_tokens", seen["body"])
+        self.assertEqual(seen["body"]["max_completion_tokens"], 1024)
+        self.assertEqual(seen["body"]["temperature"], 0.3)
 
     def test_anthropic_request(self):
         req, body, reply = self.capture("anthropic")
@@ -104,7 +127,53 @@ class ProviderRequestTest(unittest.TestCase):
         self.assertEqual(body["systemInstruction"], {"parts": [{"text": "SYS"}]})
         self.assertEqual([c["role"] for c in body["contents"]], ["user", "model", "user"])
         self.assertEqual(body["generationConfig"]["maxOutputTokens"], 1024)
+        self.assertEqual(body["generationConfig"]["temperature"], 0.3)
         self.assertEqual(reply.output_tokens, 2)
+
+    def test_gemini_3_flash_matches_generate_content(self):
+        seen: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["request"] = request
+            seen["body"] = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "modelVersion": "gemini-3.8-flash",
+                    "candidates": [
+                        {
+                            "content": {
+                                "role": "model",
+                                "parts": [{"thought": True, "text": "hidden"}, {"text": "hi"}],
+                            },
+                            "finishReason": "STOP",
+                        }
+                    ],
+                    "usageMetadata": {"promptTokenCount": 11, "candidatesTokenCount": 2},
+                },
+            )
+
+        reply = AIAgent(
+            "gemini",
+            "gemini-3.8-flash",
+            api_key="test-key",
+            system_prompt="SYS",
+            client=httpx.Client(transport=httpx.MockTransport(handler)),
+        ).chat("ping")
+        req = seen["request"]
+        body = seen["body"]
+        self.assertEqual(
+            str(req.url),
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+        )
+        self.assertEqual(req.headers["x-goog-api-key"], "test-key")
+        self.assertNotIn("model", body)
+        self.assertEqual(body["contents"], [{"role": "user", "parts": [{"text": "ping"}]}])
+        self.assertEqual(body["systemInstruction"], {"parts": [{"text": "SYS"}]})
+        self.assertEqual(body["generationConfig"], {"maxOutputTokens": 1024})
+        self.assertNotIn("temperature", body["generationConfig"])
+        self.assertEqual(reply.text, "hi")
+        self.assertEqual(reply.model, "gemini-3.8-flash")
 
     def test_self_hosted_server_needs_no_key(self):
         req, _, _ = self.capture("openai_compatible", api_key="")
@@ -157,12 +226,87 @@ class AgentBehaviourTest(unittest.TestCase):
         with patch.dict("os.environ", {"OPENAI_API_KEY": ""}):
             with self.assertRaises(AIConfigError):
                 AIAgent("openai", "m")
+        with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", {"OPENAI_API_KEY": "   "}):
+            with self.assertRaises(AIConfigError):
+                AIAgent("openai", "m")
 
     def test_from_env(self):
         env = {"AI_PROVIDER": "gemini", "AI_MODEL": "some-model", "GEMINI_API_KEY": "k"}
         with patch.dict("os.environ", env):
             agent = AIAgent.from_env()
         self.assertEqual((agent.provider.name, agent.model, agent.api_key), ("gemini", "some-model", "k"))
+        agent.close()
+
+    def test_from_env_override_uses_that_providers_key(self):
+        env = {
+            "AI_PROVIDER": "gemini",
+            "AI_MODEL": "gemini-2.5-flash",
+            "GEMINI_API_KEY": "gemini-key",
+            "META_API_KEY": "meta-key",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "AI_API_KEY": "",
+            "AI_BASE_URL": "",
+        }
+        with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", env):
+            agent = AIAgent.from_env(provider="meta", model="muse-spark-1.1")
+        self.assertEqual(agent.provider.name, "meta")
+        self.assertEqual(agent.model, "muse-spark-1.1")
+        self.assertEqual(agent.base_url, "https://api.meta.ai/v1")
+        self.assertEqual(agent.api_key, "meta-key")
+        agent.close()
+
+    def test_from_env_override_names_the_missing_key(self):
+        env = {
+            "AI_PROVIDER": "gemini",
+            "AI_MODEL": "gemini-2.5-flash",
+            "GEMINI_API_KEY": "gemini-key",
+            "META_API_KEY": "",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "AI_API_KEY": "",
+        }
+        with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", env):
+            with self.assertRaises(AIConfigError) as caught:
+                AIAgent.from_env(provider="meta", model="muse-spark-1.3")
+        self.assertIn("META_API_KEY", str(caught.exception))
+        self.assertIn(".env", str(caught.exception))
+
+    def test_from_env_uses_the_only_api_key(self):
+        env = {
+            "AI_PROVIDER": "",
+            "AI_MODEL": "",
+            "AI_BASE_URL": "",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "META_API_KEY": "",
+            "AI_API_KEY": "",
+            "GEMINI_API_KEY": "k",
+        }
+        # Ignore the repo-root .env so a local AI_MODEL does not hide the code default.
+        with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", env):
+            agent = AIAgent.from_env()
+        self.assertEqual(agent.provider.name, "gemini")
+        self.assertEqual(agent.model, "gemini-2.5-flash")
+        agent.close()
+
+    def test_from_env_names_the_missing_settings(self):
+        env = {
+            "AI_PROVIDER": "",
+            "AI_MODEL": "",
+            "AI_BASE_URL": "",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "GEMINI_API_KEY": "",
+            "META_API_KEY": "",
+            "AI_API_KEY": "",
+        }
+        # Ignore the repo-root .env so a local AI_PROVIDER does not hide the empty-config error.
+        with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", env):
+            with self.assertRaises(AIConfigError) as caught:
+                AIAgent.from_env()
+        self.assertIn("AI_PROVIDER", str(caught.exception))
+        self.assertIn(".env", str(caught.exception))
 
     def test_provider_error_carries_status_and_message(self):
         agent = make_agent(

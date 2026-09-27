@@ -11,11 +11,38 @@ import json
 import re
 from collections.abc import Callable
 
-from helpers.ai_agent import AIAgent, AIConfigError, AIProviderError, load_system_prompt
+from helpers.ai_agent import PROVIDERS, AIAgent, AIConfigError, AIProviderError, load_system_prompt
 from helpers.canvas import CanvasError, catalog_for_prompt, empty_canvas, normalize_graph
 
 MAX_PROMPT_LENGTH = 2000
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
+
+# Models the assistant panel can select. The first id for a provider is its default.
+# Gemini ids are Gemini Developer API model codes for generateContent
+# (https://ai.google.dev/api/generate-content, https://ai.google.dev/gemini-api/docs/models).
+# gemini-2.0-flash is shut down. gemini-2.5-flash is still served (access is limited
+# for new keys) and stays the no-provider default. 3.8 Flash and 3.5 Flash-Lite are
+# the text models the models page recommends for new projects; 3.1 Pro is the
+# stronger option. Meta ids are the Muse Spark models on
+# https://api.meta.ai/v1/chat/completions
+# (https://ai.developer.meta.com/docs/models/). Contributor ids are the same
+# models on the tier that may be used for training.
+ASSISTANT_MODELS: dict[str, tuple[str, ...]] = {
+    "gemini": (
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-pro-preview",
+    ),
+    "meta": (
+        "muse-spark-1.3",
+        "muse-spark-1.3-contributor",
+        "muse-spark-1.2",
+        "muse-spark-1.2-contributor",
+        "muse-spark-1.1",
+    ),
+}
 
 APPENDIX = """
 ## Canvas graph
@@ -42,10 +69,34 @@ def system_prompt() -> str:
     return f"{load_system_prompt()}\n\n{APPENDIX}\n{catalog_for_prompt()}"
 
 
+def resolve_assistant_model(provider: str | None, model: str | None) -> tuple[str | None, str | None]:
+    """Return provider and model overrides for AIAgent.from_env.
+
+    (None, None) keeps today's environment default. Unknown names raise ValueError.
+    """
+    provider_text = (provider or "").strip()
+    model_text = (model or "").strip()
+    if not provider_text and not model_text:
+        return None, None
+    if provider_text and provider_text not in PROVIDERS:
+        raise ValueError(f"Unknown provider: {provider_text}")
+    if model_text:
+        owner = _model_provider(model_text)
+        if owner is None or (provider_text and provider_text != owner):
+            raise ValueError(f"Unknown model: {model_text}")
+        return owner, model_text
+    listed = ASSISTANT_MODELS.get(provider_text)
+    if not listed:
+        raise ValueError("Unknown model")
+    return provider_text, listed[0]
+
+
 def ask(
     prompt: str,
     graph: dict | None = None,
     *,
+    provider: str | None = None,
+    model: str | None = None,
     complete: Callable[[str], str] | None = None,
 ) -> dict[str, object]:
     """Send one prompt and the current canvas. Return reply text plus an optional graph."""
@@ -58,7 +109,11 @@ def ask(
         canvas = empty_canvas() if graph is None else normalize_graph(graph)
     except CanvasError as exc:
         raise ValueError("Canvas graph is not valid") from exc
-    raw = (complete or _complete)(_message(text, canvas))
+    selected_provider, selected_model = resolve_assistant_model(provider, model)
+    if complete is None:
+        raw = _complete(_message(text, canvas), selected_provider, selected_model)
+    else:
+        raw = complete(_message(text, canvas))
     reply, proposed = _split(raw)
     applied: dict | None = None
     if proposed is not None:
@@ -74,8 +129,20 @@ def _message(prompt: str, graph: dict) -> str:
     return f"Current canvas:\n{canvas}\n\nUser request:\n{prompt}"
 
 
-def _complete(prompt: str) -> str:
-    with AIAgent.from_env() as agent:
+def _model_provider(model: str) -> str | None:
+    for name, models in ASSISTANT_MODELS.items():
+        if model in models:
+            return name
+    return None
+
+
+def _complete(prompt: str, provider: str | None = None, model: str | None = None) -> str:
+    kwargs: dict[str, str] = {}
+    if provider:
+        kwargs["provider"] = provider
+    if model:
+        kwargs["model"] = model
+    with AIAgent.from_env(**kwargs) as agent:
         response = agent.chat(prompt, system_prompt=system_prompt(), temperature=0.2, max_tokens=4096)
     if not response.text.strip():
         raise AIProviderError(response.provider, "empty response")
@@ -114,4 +181,12 @@ def _json_object(text: str) -> dict | None:
     return parsed if isinstance(parsed, dict) else None
 
 
-__all__ = ["AIConfigError", "AIProviderError", "MAX_PROMPT_LENGTH", "ask", "system_prompt"]
+__all__ = [
+    "AIConfigError",
+    "AIProviderError",
+    "ASSISTANT_MODELS",
+    "MAX_PROMPT_LENGTH",
+    "ask",
+    "resolve_assistant_model",
+    "system_prompt",
+]

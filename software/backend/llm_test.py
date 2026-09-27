@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 import main
 from helpers.ai_agent import AIConfigError, AIProviderError, ChatResponse
 from helpers.canvas import normalize_graph
-from helpers.llm import ask
+from helpers.llm import ASSISTANT_MODELS, ask, resolve_assistant_model
 
 
 BANDS = {
@@ -112,6 +112,67 @@ class AskTest(unittest.TestCase):
         with self.assertRaises(AIProviderError):
             ask("help", complete=lambda prompt: "  ")
 
+    def test_omitted_model_keeps_the_environment_default(self) -> None:
+        self.assertEqual(resolve_assistant_model(None, None), (None, None))
+        self.assertEqual(resolve_assistant_model("  ", ""), (None, None))
+
+    def test_known_models_resolve(self) -> None:
+        self.assertEqual(
+            resolve_assistant_model("gemini", "gemini-2.5-pro"),
+            ("gemini", "gemini-2.5-pro"),
+        )
+        self.assertEqual(
+            resolve_assistant_model(None, "muse-spark-1.1"),
+            ("meta", "muse-spark-1.1"),
+        )
+        self.assertEqual(resolve_assistant_model("meta", None), ("meta", "muse-spark-1.3"))
+        self.assertEqual(
+            resolve_assistant_model(None, "muse-spark-1.2"),
+            ("meta", "muse-spark-1.2"),
+        )
+        self.assertEqual(
+            ASSISTANT_MODELS["meta"],
+            (
+                "muse-spark-1.3",
+                "muse-spark-1.3-contributor",
+                "muse-spark-1.2",
+                "muse-spark-1.2-contributor",
+                "muse-spark-1.1",
+            ),
+        )
+        self.assertEqual(
+            ASSISTANT_MODELS["gemini"],
+            (
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash-lite",
+                "gemini-3.1-pro-preview",
+            ),
+        )
+        self.assertEqual(
+            resolve_assistant_model("gemini", "gemini-3.8-flash"),
+            ("gemini", "gemini-3.8-flash"),
+        )
+        self.assertEqual(resolve_assistant_model("gemini", None), ("gemini", "gemini-2.5-flash"))
+
+    def test_unknown_provider_and_model_are_rejected(self) -> None:
+        with self.assertRaises(ValueError) as unknown_provider:
+            ask("help", provider="cursor", model="gpt", complete=lambda prompt: "unused")
+        self.assertIn("Unknown provider", str(unknown_provider.exception))
+        called: list[str] = []
+        with self.assertRaises(ValueError) as unknown_model:
+            ask(
+                "help",
+                provider="gemini",
+                model="gpt",
+                complete=lambda prompt: called.append(prompt) or "unused",
+            )
+        self.assertIn("Unknown model", str(unknown_model.exception))
+        self.assertEqual(called, [])
+        with self.assertRaises(ValueError):
+            ask("help", provider="gemini", model="muse-spark-1.3", complete=lambda prompt: "unused")
+
 
 class NormalizeGraphTest(unittest.TestCase):
     def test_mean_reversion_graph_fills_defaults(self) -> None:
@@ -153,7 +214,7 @@ class LlmRouteTest(unittest.TestCase):
         agent = _FakeAgent(REPLY)
         with (
             patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
-            patch.object(main.llm.AIAgent, "from_env", return_value=agent),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent) as from_env,
         ):
             response = self.client.post(
                 "/llm",
@@ -162,6 +223,7 @@ class LlmRouteTest(unittest.TestCase):
                     "graph": {"nodes": [{"id": "start", "type": "start", "params": {}}], "edges": []},
                 },
             )
+        from_env.assert_called_once_with()
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertFalse(body["dummy"])
@@ -187,10 +249,121 @@ class LlmRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["detail"], "Canvas graph is not valid")
 
+    def test_editor_node_fields_are_accepted(self) -> None:
+        agent = _FakeAgent("A tick is one bar.")
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent),
+        ):
+            response = self.client.post(
+                "/llm",
+                json={
+                    "prompt": "what is a tick?",
+                    "graph": {
+                        "nodes": [
+                            {
+                                "id": "start",
+                                "type": "start",
+                                "position": {"x": 0, "y": -200},
+                                "measured": {"width": 180, "height": 40},
+                                "data": {"params": {"resolution": "15m", "startingBalance": 50000}},
+                                "selected": True,
+                            }
+                        ],
+                        "edges": [
+                            {
+                                "id": "e1",
+                                "source": "start",
+                                "sourceHandle": None,
+                                "target": "buy",
+                                "targetHandle": "exec:in",
+                                "data": {"kind": "exec"},
+                                "className": "edge-exec",
+                            }
+                        ],
+                    },
+                },
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertIn('"resolution":"15m"', agent.kwargs["messages"])
+        self.assertIn('"startingBalance":50000', agent.kwargs["messages"])
+        self.assertNotIn("position", agent.kwargs["messages"])
+
     def test_extra_fields_are_rejected(self) -> None:
         with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
-            response = self.client.post("/llm", json={"prompt": "help", "model": "gpt"})
+            response = self.client.post("/llm", json={"prompt": "help", "temperature": 0})
         self.assertEqual(response.status_code, 422)
+
+    def test_provider_and_model_are_not_extra_inputs(self) -> None:
+        agent = _FakeAgent("A tick is one bar.")
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent),
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "gemini", "model": "gemini-2.5-flash"},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotIn("Extra inputs are not permitted", response.text)
+
+    def test_selected_model_is_passed_to_the_agent(self) -> None:
+        agent = _FakeAgent("A tick is one bar.")
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent) as from_env,
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "meta", "model": "muse-spark-1.1"},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        from_env.assert_called_once_with(provider="meta", model="muse-spark-1.1")
+
+    def test_unknown_model_is_400(self) -> None:
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env") as from_env,
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "gemini", "model": "gpt"},
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Unknown model", response.json()["detail"])
+        from_env.assert_not_called()
+
+    def test_unknown_provider_is_400(self) -> None:
+        with patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "cursor", "model": "gemini-2.5-flash"},
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Unknown provider", response.json()["detail"])
+
+    def test_missing_selected_provider_key_is_503(self) -> None:
+        env = {
+            "AI_PROVIDER": "gemini",
+            "AI_MODEL": "gemini-2.5-flash",
+            "GEMINI_API_KEY": "present",
+            "META_API_KEY": "",
+            "OPENAI_API_KEY": "",
+            "ANTHROPIC_API_KEY": "",
+            "AI_API_KEY": "",
+        }
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch("helpers.ai_agent._load_repo_env"),
+            patch.dict("os.environ", env),
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "meta", "model": "muse-spark-1.3"},
+            )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("META_API_KEY", response.json()["detail"])
+        self.assertIn(".env", response.json()["detail"])
 
     def test_missing_provider_is_503(self) -> None:
         with (
@@ -199,7 +372,7 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post("/llm", json={"prompt": "help"})
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.json()["detail"], "Assistant is not configured")
+        self.assertEqual(response.json()["detail"], "set AI_PROVIDER")
 
     def test_provider_failure_is_502(self) -> None:
         with (
@@ -208,4 +381,21 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post("/llm", json={"prompt": "help"})
         self.assertEqual(response.status_code, 502)
-        self.assertEqual(response.json()["detail"], "Assistant is unavailable")
+        self.assertEqual(response.json()["detail"], "Assistant is unavailable: openai: bad key (HTTP 401)")
+
+    def test_provider_failure_does_not_echo_an_api_key(self) -> None:
+        leaked = "AIzaSyDUMMYKEYVALUE1234567890"
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(
+                main.llm.AIAgent,
+                "from_env",
+                side_effect=AIProviderError("gemini", f"rejected bearer {leaked}", 400),
+            ),
+        ):
+            response = self.client.post("/llm", json={"prompt": "help"})
+        self.assertEqual(response.status_code, 502)
+        detail = response.json()["detail"]
+        self.assertNotIn(leaked, detail)
+        self.assertIn("Assistant is unavailable:", detail)
+        self.assertIn("[redacted]", detail)
