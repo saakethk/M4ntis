@@ -19,7 +19,7 @@ export FRONTEND_PORT="${FRONTEND_PORT:-8002}"
 # Check for the vite binary, not just the folder: a partial or stale node_modules has no vite.
 if [[ ! -x "$HERE/software/node_modules/.bin/vite" ]]; then
   echo "Installing frontend dependencies..."
-  npm install --prefix "$HERE/software"
+  npm ci --prefix "$HERE/software"
 fi
 
 # Job control puts each background job in its own process group, so cleanup can
