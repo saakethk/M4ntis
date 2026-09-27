@@ -21,19 +21,19 @@
   position: relative;
   width: 248px;
   background: var(--surface);
-  border: 1px solid #e6e8ee;
+  border: 1px solid var(--field-border);
   border-radius: 14px;
-  box-shadow: var(--shadow), 0 10px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow), var(--shadow-block);
   font-size: 12px;
 }
 
 .block.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-ring), 0 10px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow-block);
 }
 
 .node-error .block {
-  border-color: #fda4af;
+  border-color: var(--danger-border);
 }
 
 .node-error .block::after {
@@ -125,7 +125,7 @@
   margin-left: auto;
   padding: 1px 6px;
   border-radius: 4px;
-  background: #fef3c7;
+  background: var(--warning-chip);
   color: var(--warning);
   font-size: 10px;
   font-weight: 700;
@@ -141,7 +141,7 @@
 label.param {
   gap: 4px;
   font-size: 12px;
-  color: #475569;
+  color: var(--ink-3);
 }
 
 .param-label {
@@ -159,7 +159,7 @@ label.param {
   width: 100%;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid #e6e8ee;
+  border: 1px solid var(--field-border);
   border-radius: 8px;
   background: var(--surface-2);
   font-size: 13px;
@@ -181,7 +181,7 @@ label.param {
   align-items: center;
   gap: 6px;
   padding: 6px 16px 6px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--slim-border);
   border-radius: 999px;
   background: var(--surface-2);
   box-shadow: none;
@@ -231,7 +231,7 @@ label.param {
   width: 130px;
   height: 28px;
   padding: 0 10px;
-  border: 1px solid #e6e8ee;
+  border: 1px solid var(--field-border);
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
@@ -257,7 +257,7 @@ label.param {
   margin: 4px 0 0;
   padding: 4px;
   list-style: none;
-  border: 1px solid #e6e8ee;
+  border: 1px solid var(--field-border);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-pop);
@@ -345,7 +345,7 @@ label.param {
 .block-ports {
   margin-top: 2px;
   padding: 6px 0 10px;
-  border-top: 1px solid #f1f3f6;
+  border-top: 1px solid var(--port-divider);
 }
 
 .port-row {
@@ -458,9 +458,9 @@ label.param {
   z-index: 2;
   width: 12px;
   height: 12px;
-  border: 2px solid #fff;
+  border: 2px solid var(--surface);
   background: var(--accent);
-  box-shadow: 0 0 0 1px #cfe8d3;
+  box-shadow: 0 0 0 1px var(--handle-ring);
 }
 
 .strategy-editor .react-flow__edge.edge-exec .react-flow__edge-path {

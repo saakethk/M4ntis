@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
 import type { User } from '../api/auth.ts'
 import { displayName } from '../lib/format.ts'
-import { UserIcon } from './icons.tsx'
+import { nextTheme, themeLabel, useTheme } from '../lib/theme.ts'
+import { MonitorIcon, MoonIcon, SunIcon, UserIcon } from './icons.tsx'
 import { useDismiss } from './useDismiss.ts'
 
 export type Section = 'strategies' | 'discussions'
@@ -48,36 +49,52 @@ export function Shell({ user, section, onNavigate, onLogout, loggingOut, logoutE
             ))}
           </nav>
         ) : null}
-        {user ? (
-          <div className="user-slot" ref={menuRef}>
-            <button
-              type="button"
-              className="user-btn"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              aria-label="Account"
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              <UserIcon />
-            </button>
-            {menuOpen ? (
-              <div className="user-menu" role="menu">
-                <p className="user-menu-name">{displayName(user.email)}</p>
-                <p className="user-menu-email">{user.email}</p>
-                {logoutError ? (
-                  <p className="form-error" role="alert">
-                    {logoutError}
-                  </p>
-                ) : null}
-                <button type="button" className="user-menu-signout" role="menuitem" onClick={onLogout} disabled={loggingOut}>
-                  {loggingOut ? 'Signing out…' : 'Sign out'}
-                </button>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        <div className="topbar-end">
+          <ThemeToggle />
+          {user ? (
+            <div className="user-slot" ref={menuRef}>
+              <button
+                type="button"
+                className="user-btn"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-label="Account"
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                <UserIcon />
+              </button>
+              {menuOpen ? (
+                <div className="user-menu" role="menu">
+                  <p className="user-menu-name">{displayName(user.email)}</p>
+                  <p className="user-menu-email">{user.email}</p>
+                  {logoutError ? (
+                    <p className="form-error" role="alert">
+                      {logoutError}
+                    </p>
+                  ) : null}
+                  <button type="button" className="user-menu-signout" role="menuitem" onClick={onLogout} disabled={loggingOut}>
+                    {loggingOut ? 'Signing out…' : 'Sign out'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </header>
       <main className={flush ? 'content content-flush' : 'content'}>{children}</main>
     </div>
+  )
+}
+
+function ThemeToggle() {
+  const { choice, resolved, setTheme } = useTheme()
+  const next = nextTheme(choice)
+  const current = choice === 'system' ? `System (${resolved})` : themeLabel(choice)
+  const label = `Theme: ${current}. Switch to ${themeLabel(next)}`
+  const Icon = choice === 'light' ? SunIcon : choice === 'dark' ? MoonIcon : MonitorIcon
+  return (
+    <button type="button" className="theme-toggle" aria-label={label} title={label} onClick={() => setTheme(next)}>
+      <Icon size={18} />
+    </button>
   )
 }

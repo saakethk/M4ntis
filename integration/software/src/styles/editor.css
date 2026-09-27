@@ -4,7 +4,7 @@
   height: calc(100vh - 64px);
   min-height: 0;
   display: flex;
-  background: #f7f8fa;
+  background: var(--page-muted-bg);
 }
 
 /* Palette */
@@ -191,13 +191,13 @@
   border: 1px solid var(--accent-line);
   border-radius: var(--radius);
   background: var(--accent-soft);
-  color: #276b31;
+  color: var(--accent-ink);
   font-size: 13px;
   font-weight: 600;
 }
 
 .editor-note.error {
-  border-color: #fecdd3;
+  border-color: var(--danger-line);
   background: var(--danger-soft);
   color: var(--error);
 }
@@ -214,7 +214,7 @@
 }
 
 .note-dismiss:hover {
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--tint);
 }
 
 .editor-canvas {
@@ -223,13 +223,19 @@
   min-height: 0;
   margin: 12px 16px 16px;
   overflow: hidden;
-  border: 1.5px dashed #e2e6ec;
+  border: 1.5px dashed var(--canvas-border);
   border-radius: 16px;
-  background: var(--surface-2);
+  background: var(--canvas-bg);
 }
 
 .editor-canvas .react-flow {
-  --xy-background-color: var(--surface-2);
+  --xy-background-color: var(--canvas-bg);
+}
+
+.editor-canvas .react-flow__background pattern circle,
+.editor-canvas .react-flow__background pattern path {
+  fill: var(--canvas-dot);
+  stroke: var(--canvas-dot);
 }
 
 .editor-empty {
@@ -449,15 +455,15 @@
 }
 
 .fpga-status.on {
-  border-color: #bbf7d0;
-  background: #f0fdf4;
-  color: #166534;
+  border-color: var(--success-line);
+  background: var(--success-soft);
+  color: var(--success-ink);
 }
 
 .fpga-status.off {
-  border-color: #fde68a;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: var(--warning-line);
+  background: var(--warning-soft);
+  color: var(--warning-ink);
 }
 
 .fpga-status .quiet {
@@ -569,7 +575,7 @@ label.assistant-model select {
   min-width: 0;
   height: 30px;
   padding: 0 6px;
-  border: 1px solid #e6e8ee;
+  border: 1px solid var(--field-border);
   border-radius: 8px;
   background: var(--surface);
   font-size: 12px;
@@ -689,7 +695,7 @@ label.assistant-model select {
   width: 100%;
   resize: none;
   padding: 8px;
-  border: 1px solid #e6e8ee;
+  border: 1px solid var(--field-border);
   border-radius: 8px;
   font-size: 12.5px;
   line-height: 1.35;

@@ -28,6 +28,7 @@ import { parseProgramFile, programFileName, programFileText } from '../../flow/p
 import { fromDocument, toDocument, toIR, type LoadedStrategy } from '../../flow/serialize.ts'
 import { BLANK_TEMPLATE, type Template } from '../../flow/templates.ts'
 import { downloadText, pickTextFile } from '../../lib/files.ts'
+import { useResolvedTheme } from '../../lib/theme.ts'
 import { AssistantPanel } from '../assistant/AssistantPanel.tsx'
 import { BacktestPanel } from './BacktestPanel.tsx'
 import { BlockPalette, DRAG_MIME } from './BlockPalette.tsx'
@@ -82,6 +83,7 @@ function StrategyCanvas({ userId, strategyId, initialProgram, unavailable = fals
   const [historyOpen, setHistoryOpen] = useState(false)
   const [tab, setTab] = useState<RailTab>('assistant')
   const canvasRef = useRef<HTMLDivElement>(null)
+  const colorMode = useResolvedTheme()
   const justCreated = useRef<number | null>(null)
   const { screenToFlowPosition, getViewport, fitView, getNodes } = useReactFlow()
 
@@ -422,7 +424,7 @@ function StrategyCanvas({ userId, strategyId, initialProgram, unavailable = fals
               snapToGrid
               snapGrid={[10, 10]}
               deleteKeyCode={null}
-              colorMode="light"
+              colorMode={colorMode}
               proOptions={{ hideAttribution: true }}
             >
               <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e2e6ec" />
