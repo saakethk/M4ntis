@@ -197,6 +197,37 @@ export function runDummyBacktest(userId: number, strategyId: number): Promise<Ba
   }).then(readBacktest)
 }
 
+export type BacktestMetrics = {
+  equity: number
+  returnPct: number
+  maxDrawdownPct: number
+  grossPnl: number
+  cagrPct: number | null
+  sharpe: number | null
+  numTrades: number
+  numTradesWon: number
+  numTradesLost: number
+  avgWin: number | null
+  avgLoss: number | null
+  expectedPnl: number | null
+  tradeReturns: number[]
+}
+
+export type BacktestReport = {
+  id: number
+  strategyId: number
+  strategyName: string
+  createdAt: string
+  dummy: boolean
+  orders: Array<BacktestOrder & { ts: string }>
+  balances: Array<BacktestBalance & { ts: string }>
+  metrics: BacktestMetrics
+}
+
+export function getBacktest(id: number): Promise<BacktestReport> {
+  return requestJson(`/backtests/${id}`).then(readReport)
+}
+
 function readBacktest(body: unknown): BacktestResult {
   if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
   const row = body as { id?: unknown; dummy?: unknown; orders?: unknown; balances?: unknown }
@@ -209,6 +240,81 @@ function readBacktest(body: unknown): BacktestResult {
     orders: row.orders.map(readOrder),
     balances: row.balances.map(readBalance),
   }
+}
+
+function readReport(body: unknown): BacktestReport {
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as {
+    strategy_id?: unknown
+    strategy_name?: unknown
+    created_at?: unknown
+    orders?: unknown
+    balances?: unknown
+    metrics?: unknown
+    dummy?: unknown
+    id?: unknown
+  }
+  if (!Array.isArray(row.orders) || !Array.isArray(row.balances)) {
+    throw new Error('Backtest response was not valid.')
+  }
+  if (typeof row.strategy_name !== 'string') throw new Error('Backtest response was not valid.')
+  return {
+    id: readId(row.id),
+    strategyId: readId(row.strategy_id),
+    strategyName: row.strategy_name,
+    createdAt: typeof row.created_at === 'string' ? row.created_at : '',
+    dummy: row.dummy === true,
+    orders: row.orders.map(readTimedOrder),
+    balances: row.balances.map(readTimedBalance),
+    metrics: readMetrics(row.metrics),
+  }
+}
+
+function readMetrics(body: unknown): BacktestMetrics {
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as Record<string, unknown>
+  const number = (key: string) => {
+    const value = row[key]
+    if (typeof value !== 'number') throw new Error('Backtest response was not valid.')
+    return value
+  }
+  const optional = (key: string) => {
+    const value = row[key]
+    if (value == null) return null
+    if (typeof value !== 'number') throw new Error('Backtest response was not valid.')
+    return value
+  }
+  const returns = row.trade_returns
+  if (!Array.isArray(returns) || returns.some((item) => typeof item !== 'number')) {
+    throw new Error('Backtest response was not valid.')
+  }
+  return {
+    equity: number('equity'),
+    returnPct: number('return_pct'),
+    maxDrawdownPct: number('max_drawdown_pct'),
+    grossPnl: number('gross_pnl'),
+    cagrPct: optional('cagr_pct'),
+    sharpe: optional('sharpe'),
+    numTrades: number('num_trades'),
+    numTradesWon: number('num_trades_won'),
+    numTradesLost: number('num_trades_lost'),
+    avgWin: optional('avg_win_amount'),
+    avgLoss: optional('avg_loss_amount'),
+    expectedPnl: optional('expected_pnl_per_trade'),
+    tradeReturns: returns,
+  }
+}
+
+function readTimedOrder(body: unknown): BacktestOrder & { ts: string } {
+  const order = readOrder(body)
+  const ts = body && typeof body === 'object' ? (body as { ts?: unknown }).ts : null
+  return { ...order, ts: typeof ts === 'string' ? ts : '' }
+}
+
+function readTimedBalance(body: unknown): BacktestBalance & { ts: string } {
+  const point = readBalance(body)
+  const ts = body && typeof body === 'object' ? (body as { ts?: unknown }).ts : null
+  return { ...point, ts: typeof ts === 'string' ? ts : '' }
 }
 
 function readOrder(body: unknown): BacktestOrder {

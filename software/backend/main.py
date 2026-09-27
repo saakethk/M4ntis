@@ -344,6 +344,17 @@ def dummy_backtest_menu_route(request: Request) -> dict:
     return backtests.dummy_menu()
 
 
+@app.get("/backtests/{backtest_id}")
+def get_backtest_route(backtest_id: int, request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        return backtests.get_backtest(user.id, backtest_id)
+    except backtests.BacktestNotFound as exc:
+        raise HTTPException(status_code=404, detail="Backtest not found") from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Backtest database is unavailable") from exc
+
+
 @app.post("/backtests", status_code=201)
 def create_backtest_route(body: BacktestCreate, request: Request) -> dict:
     user = _require_user(request)

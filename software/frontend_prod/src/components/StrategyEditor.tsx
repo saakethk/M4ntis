@@ -18,13 +18,11 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
 import {
   compileStrategy,
   createStrategy,
-  getDummyBacktest,
   getStrategy,
   listStrategyVersions,
   revertStrategyVersion,
   runDummyBacktest,
   updateStrategy,
-  type BacktestMenu,
   type CompileResult,
   type StrategyVersion,
 } from '../api'
@@ -71,6 +69,7 @@ type Props = {
   unavailable?: boolean
   onClose: () => void
   onCreated?: (id: number) => void
+  onOpenBacktest: (id: number) => void
 }
 
 function documentPayload(raw: unknown): unknown {
@@ -78,7 +77,14 @@ function documentPayload(raw: unknown): unknown {
   return JSON.parse(raw)
 }
 
-function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCreated }: Props) {
+function StrategyCanvas({
+  userId,
+  strategyId,
+  unavailable = false,
+  onClose,
+  onCreated,
+  onOpenBacktest,
+}: Props) {
   const blank = blankTemplate?.build() ?? { nodes: [], edges: [] }
   const [name, setName] = useState(strategyId == null && !unavailable ? 'Untitled strategy' : '')
   const [nodes, setNodes, onNodesChange] = useNodesState<BlockNodeT>(blank.nodes)
@@ -89,8 +95,6 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [running, setRunning] = useState(false)
-  const [backtest, setBacktest] = useState<BacktestMenu | null>(null)
-  const [backtestError, setBacktestError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
   const [compiledLog, setCompiledLog] = useState<string | null>(null)
@@ -100,26 +104,7 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
   const [revertingId, setRevertingId] = useState<number | null>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const skipFetchId = useRef<number | null>(null)
-  const { screenToFlowPosition, getViewport } = useReactFlow()
-
-  useEffect(() => {
-    let ignore = false
-    getDummyBacktest()
-      .then((menu) => {
-        if (!ignore) {
-          setBacktest(menu)
-          setBacktestError(null)
-        }
-      })
-      .catch((error: unknown) => {
-        if (!ignore) {
-          setBacktestError(error instanceof Error ? error.message : 'Could not load the backtest.')
-        }
-      })
-    return () => {
-      ignore = true
-    }
-  }, [])
+  const { screenToFlowPosition, getViewport, fitView } = useReactFlow()
 
   useEffect(() => {
     if (strategyId == null || unavailable) return
@@ -356,28 +341,18 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
     }
   }
 
+  function recenter() {
+    void fitView({ padding: 0.22, duration: 250 })
+  }
+
   async function runBacktest() {
     if (!loaded || running || saving) return
     setRunning(true)
-    setBacktest(null)
     try {
       const id = saved && storedId != null ? storedId : await persist()
       if (id == null) return
       const result = await runDummyBacktest(userId, id)
-      const ending = result.balances[result.balances.length - 1]
-      const starting = result.balances[0]
-      const equity = ending?.equity ?? 0
-      const returnPct =
-        starting && starting.equity !== 0 ? ((equity - starting.equity) / starting.equity) * 100 : 0
-      setBacktest({
-        dummy: result.dummy,
-        equity,
-        returnPct,
-        orders: result.orders,
-        balances: result.balances,
-      })
-      setBacktestError(null)
-      showMessage(`Dummy backtest finished. Ending equity ${equity.toLocaleString('en-US')}.`, false)
+      onOpenBacktest(result.id)
     } catch (error) {
       showMessage(error instanceof Error ? error.message : 'Could not run the backtest', true)
     } finally {
@@ -411,6 +386,9 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
                 {message}
               </p>
             ) : null}
+            <button type="button" className="quiet" onClick={recenter} disabled={!loaded}>
+              Recenter
+            </button>
             <button
               type="button"
               className="quiet icon-button"
@@ -519,7 +497,7 @@ function StrategyCanvas({ userId, strategyId, unavailable = false, onClose, onCr
       </section>
       <aside className="editor-rail">
         <Assistant onApply={applyProgram} />
-        <BacktestMenu menu={backtest} error={backtestError} />
+        <BacktestPanel />
       </aside>
     </div>
   )
@@ -531,43 +509,14 @@ function formatVersionTime(value: string): string {
   return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-function money(value: number) {
-  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-}
-
-function BacktestMenu({ menu, error }: { menu: BacktestMenu | null; error: string | null }) {
+function BacktestPanel() {
   return (
     <section className="backtest-menu" aria-label="Backtest">
-      <h2>Backtest</h2>
-      {error ? <p className="form-error">{error}</p> : null}
-      {menu ? (
-        <>
-          <p className="backtest-equity">{money(menu.equity)}</p>
-          <p className={menu.returnPct >= 0 ? 'backtest-return up' : 'backtest-return down'}>
-            {menu.returnPct >= 0 ? '+' : ''}
-            {menu.returnPct.toFixed(2)}%
-          </p>
-          <h3>Orders</h3>
-          <ul>
-            {menu.orders.map((order, index) => (
-              <li key={`${order.symbol}-${order.side}-${index}`}>
-                <span className={order.side === 'buy' ? 'up' : 'down'}>{order.side}</span>
-                {order.quantity} {order.symbol} at {order.price}
-              </li>
-            ))}
-          </ul>
-          <h3>Balance</h3>
-          <ul>
-            {menu.balances.map((point, index) => (
-              <li key={`${point.equity}-${index}`}>
-                Equity {money(point.equity)} · Cash {money(point.cash)}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        !error && <p className="backtest-wait">Loading backtest…</p>
-      )}
+      <p className="plan-kicker">Backtest</p>
+      <article className="plan-card plan-teal">
+        <h2>Analysis</h2>
+        <p>Run the strategy. Orders, balance, drawdown, and trade results open on their own page.</p>
+      </article>
     </section>
   )
 }
