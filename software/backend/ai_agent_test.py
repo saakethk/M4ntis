@@ -127,7 +127,53 @@ class ProviderRequestTest(unittest.TestCase):
         self.assertEqual(body["systemInstruction"], {"parts": [{"text": "SYS"}]})
         self.assertEqual([c["role"] for c in body["contents"]], ["user", "model", "user"])
         self.assertEqual(body["generationConfig"]["maxOutputTokens"], 1024)
+        self.assertEqual(body["generationConfig"]["temperature"], 0.3)
         self.assertEqual(reply.output_tokens, 2)
+
+    def test_gemini_3_flash_matches_generate_content(self):
+        seen: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["request"] = request
+            seen["body"] = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "modelVersion": "gemini-3.8-flash",
+                    "candidates": [
+                        {
+                            "content": {
+                                "role": "model",
+                                "parts": [{"thought": True, "text": "hidden"}, {"text": "hi"}],
+                            },
+                            "finishReason": "STOP",
+                        }
+                    ],
+                    "usageMetadata": {"promptTokenCount": 11, "candidatesTokenCount": 2},
+                },
+            )
+
+        reply = AIAgent(
+            "gemini",
+            "gemini-3.8-flash",
+            api_key="test-key",
+            system_prompt="SYS",
+            client=httpx.Client(transport=httpx.MockTransport(handler)),
+        ).chat("ping")
+        req = seen["request"]
+        body = seen["body"]
+        self.assertEqual(
+            str(req.url),
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+        )
+        self.assertEqual(req.headers["x-goog-api-key"], "test-key")
+        self.assertNotIn("model", body)
+        self.assertEqual(body["contents"], [{"role": "user", "parts": [{"text": "ping"}]}])
+        self.assertEqual(body["systemInstruction"], {"parts": [{"text": "SYS"}]})
+        self.assertEqual(body["generationConfig"], {"maxOutputTokens": 1024})
+        self.assertNotIn("temperature", body["generationConfig"])
+        self.assertEqual(reply.text, "hi")
+        self.assertEqual(reply.model, "gemini-3.8-flash")
 
     def test_self_hosted_server_needs_no_key(self):
         req, _, _ = self.capture("openai_compatible", api_key="")

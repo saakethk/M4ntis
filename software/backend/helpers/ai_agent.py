@@ -204,18 +204,32 @@ class AnthropicProvider(Provider):
 
 
 class GeminiProvider(Provider):
+    """Gemini Developer API generateContent (not Vertex).
+
+    https://ai.google.dev/api/generate-content
+    POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
+    Auth is the x-goog-api-key header, from GEMINI_API_KEY.
+    Gemini 3 drops temperature, topP, and topK; those sampling fields stay on 2.5.
+    https://ai.google.dev/gemini-api/docs/generate-content/latest-model
+    """
+
     name = "gemini"
     api_key_env = "GEMINI_API_KEY"
     default_base_url = "https://generativelanguage.googleapis.com/v1beta"
 
     def build(self, req: ChatRequest, api_key: str, base_url: str) -> HttpCall:
+        # Gemini 3 is tuned for default sampling. Sending temperature can loop or degrade
+        # reasoning, and the 3.8 migration says to strip temperature, top_p, and top_k.
+        generation: dict[str, Any] = {"maxOutputTokens": req.max_tokens}
+        if not req.model.startswith("gemini-3"):
+            generation["temperature"] = req.temperature
         body: dict[str, Any] = {
             # Gemini calls the assistant role "model".
             "contents": [
                 {"role": "model" if m.role == "assistant" else "user", "parts": [{"text": m.content}]}
                 for m in req.messages
             ],
-            "generationConfig": {"temperature": req.temperature, "maxOutputTokens": req.max_tokens},
+            "generationConfig": generation,
         }
         if req.system:
             body["systemInstruction"] = {"parts": [{"text": req.system}]}
@@ -233,8 +247,12 @@ class GeminiProvider(Provider):
         first = candidates[0]
         parts = (first.get("content") or {}).get("parts") or []
         usage = data.get("usageMetadata") or {}
+        # Thought summaries are optional parts (thought: true). The reply is the other text.
+        text = "".join(
+            p.get("text", "") for p in parts if isinstance(p, dict) and not p.get("thought")
+        )
         return ChatResponse(
-            text="".join(p.get("text", "") for p in parts),
+            text=text,
             provider=self.name,
             model=data.get("modelVersion") or req.model,
             finish_reason=first.get("finishReason"),

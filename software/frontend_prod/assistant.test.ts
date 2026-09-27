@@ -101,6 +101,9 @@ describe('assistant models', () => {
       [
         'gemini:gemini-2.5-flash',
         'gemini:gemini-2.5-pro',
+        'gemini:gemini-3.8-flash',
+        'gemini:gemini-3.5-flash-lite',
+        'gemini:gemini-3.1-pro-preview',
         'meta:muse-spark-1.3',
         'meta:muse-spark-1.3-contributor',
         'meta:muse-spark-1.2',

@@ -18,13 +18,23 @@ MAX_PROMPT_LENGTH = 2000
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 # Models the assistant panel can select. The first id for a provider is its default.
-# Gemini ids are Gemini API model codes. gemini-2.0-flash was shut down on
-# 2026-06-01, so the default is gemini-2.5-flash. Meta ids are the Muse Spark
-# models on https://api.meta.ai/v1/chat/completions
+# Gemini ids are Gemini Developer API model codes for generateContent
+# (https://ai.google.dev/api/generate-content, https://ai.google.dev/gemini-api/docs/models).
+# gemini-2.0-flash is shut down. gemini-2.5-flash is still served (access is limited
+# for new keys) and stays the no-provider default. 3.8 Flash and 3.5 Flash-Lite are
+# the text models the models page recommends for new projects; 3.1 Pro is the
+# stronger option. Meta ids are the Muse Spark models on
+# https://api.meta.ai/v1/chat/completions
 # (https://ai.developer.meta.com/docs/models/). Contributor ids are the same
 # models on the tier that may be used for training.
 ASSISTANT_MODELS: dict[str, tuple[str, ...]] = {
-    "gemini": ("gemini-2.5-flash", "gemini-2.5-pro"),
+    "gemini": (
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-pro-preview",
+    ),
     "meta": (
         "muse-spark-1.3",
         "muse-spark-1.3-contributor",

@@ -140,7 +140,21 @@ class AskTest(unittest.TestCase):
                 "muse-spark-1.1",
             ),
         )
-        self.assertEqual(ASSISTANT_MODELS["gemini"][0], "gemini-2.5-flash")
+        self.assertEqual(
+            ASSISTANT_MODELS["gemini"],
+            (
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-3.8-flash",
+                "gemini-3.5-flash-lite",
+                "gemini-3.1-pro-preview",
+            ),
+        )
+        self.assertEqual(
+            resolve_assistant_model("gemini", "gemini-3.8-flash"),
+            ("gemini", "gemini-3.8-flash"),
+        )
+        self.assertEqual(resolve_assistant_model("gemini", None), ("gemini", "gemini-2.5-flash"))
 
     def test_unknown_provider_and_model_are_rejected(self) -> None:
         with self.assertRaises(ValueError) as unknown_provider:
