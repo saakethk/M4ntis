@@ -81,10 +81,14 @@ class ProviderRequestTest(unittest.TestCase):
         self.assertIn("max_completion_tokens", body)
         self.assertEqual((reply.input_tokens, reply.output_tokens), (11, 2))
 
-    def test_meta_uses_openai_compatible_endpoint(self):
+    def test_meta_uses_muse_chat_completions(self):
         req, body, _ = self.capture("meta")
-        self.assertEqual(str(req.url), "https://api.llama.com/compat/v1/chat/completions")
-        self.assertIn("max_tokens", body)
+        self.assertEqual(str(req.url), "https://api.meta.ai/v1/chat/completions")
+        self.assertEqual(req.headers["authorization"], "Bearer test-key")
+        self.assertEqual(body["model"], "m")
+        self.assertEqual(body["messages"][0], {"role": "system", "content": "SYS"})
+        self.assertIn("max_completion_tokens", body)
+        self.assertNotIn("max_tokens", body)
 
     def test_anthropic_request(self):
         req, body, reply = self.capture("anthropic")
@@ -177,11 +181,13 @@ class AgentBehaviourTest(unittest.TestCase):
             "OPENAI_API_KEY": "",
             "ANTHROPIC_API_KEY": "",
             "AI_API_KEY": "",
+            "AI_BASE_URL": "",
         }
         with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", env):
-            agent = AIAgent.from_env(provider="meta", model="Llama-3.3-8B-Instruct")
+            agent = AIAgent.from_env(provider="meta", model="muse-spark-1.1")
         self.assertEqual(agent.provider.name, "meta")
-        self.assertEqual(agent.model, "Llama-3.3-8B-Instruct")
+        self.assertEqual(agent.model, "muse-spark-1.1")
+        self.assertEqual(agent.base_url, "https://api.meta.ai/v1")
         self.assertEqual(agent.api_key, "meta-key")
         agent.close()
 
@@ -197,7 +203,7 @@ class AgentBehaviourTest(unittest.TestCase):
         }
         with patch("helpers.ai_agent._load_repo_env"), patch.dict("os.environ", env):
             with self.assertRaises(AIConfigError) as caught:
-                AIAgent.from_env(provider="meta", model="Llama-3.3-70B-Instruct")
+                AIAgent.from_env(provider="meta", model="muse-spark-1.3")
         self.assertIn("META_API_KEY", str(caught.exception))
         self.assertIn(".env", str(caught.exception))
 

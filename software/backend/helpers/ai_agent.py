@@ -101,7 +101,7 @@ class Provider:
 
 
 class OpenAICompatible(Provider):
-    """OpenAI Chat Completions, and every API that copies it (Meta Llama API, Ollama, vLLM, ...)."""
+    """OpenAI Chat Completions, and every API that copies it (Meta Model API, Ollama, vLLM, ...)."""
 
     name = "openai_compatible"
     api_key_env = "AI_API_KEY"
@@ -150,11 +150,17 @@ class OpenAIProvider(OpenAICompatible):
 
 
 class MetaProvider(OpenAICompatible):
-    """Meta's Llama API through its OpenAI-compatible endpoint."""
+    """Meta Model API (Muse Spark) through its OpenAI-compatible chat endpoint.
+
+    https://dev.meta.ai/docs/protocols/chat-completions
+    POST https://api.meta.ai/v1/chat/completions with Authorization: Bearer.
+    """
 
     name = "meta"
     api_key_env = "META_API_KEY"
-    default_base_url = "https://api.llama.com/compat/v1"
+    default_base_url = "https://api.meta.ai/v1"
+    # Chat Completions prefers max_completion_tokens. max_tokens is a deprecated alias.
+    max_tokens_field = "max_completion_tokens"
 
 
 class AnthropicProvider(Provider):
@@ -247,7 +253,7 @@ _DEFAULT_MODEL = {
     "openai": "gpt-4o-mini",
     "anthropic": "claude-3-5-haiku-latest",
     "gemini": "gemini-2.5-flash",
-    "meta": "Llama-3.3-70B-Instruct",
+    "meta": "muse-spark-1.3",
 }
 _NOT_CONFIGURED = (
     "Assistant is not configured. In the .env file at the repo root, set AI_PROVIDER "

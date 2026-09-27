@@ -1,5 +1,5 @@
 // Models the assistant panel can switch to. Gemini ids are Gemini API model codes.
-// Meta ids are Llama API model ids for https://api.llama.com/compat/v1.
+// Meta ids are Muse Spark model ids for https://api.meta.ai/v1/chat/completions.
 
 export type AssistantModelChoice = {
   provider: 'gemini' | 'meta'
@@ -10,8 +10,8 @@ export type AssistantModelChoice = {
 export const ASSISTANT_MODELS: readonly AssistantModelChoice[] = [
   { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   { provider: 'gemini', model: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
-  { provider: 'meta', model: 'Llama-3.3-70B-Instruct', label: 'Llama 3.3 70B' },
-  { provider: 'meta', model: 'Llama-3.3-8B-Instruct', label: 'Llama 3.3 8B' },
+  { provider: 'meta', model: 'muse-spark-1.3', label: 'Muse Spark 1.3' },
+  { provider: 'meta', model: 'muse-spark-1.1', label: 'Muse Spark 1.1' },
 ]
 
 export const DEFAULT_ASSISTANT_MODEL = ASSISTANT_MODELS[0]

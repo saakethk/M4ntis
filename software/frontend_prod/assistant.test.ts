@@ -101,22 +101,22 @@ describe('assistant models', () => {
       [
         'gemini:gemini-2.5-flash',
         'gemini:gemini-2.5-pro',
-        'meta:Llama-3.3-70B-Instruct',
-        'meta:Llama-3.3-8B-Instruct',
+        'meta:muse-spark-1.3',
+        'meta:muse-spark-1.1',
       ],
     )
   })
 
   it('keeps the last choice and falls back when storage is empty or unknown', () => {
     const storage = memoryStorage()
-    const llama = ASSISTANT_MODELS.find((choice) => choice.model === 'Llama-3.3-70B-Instruct')
-    assert.ok(llama)
-    storeAssistantModel(llama, storage)
-    assert.equal(storage.saved.get(ASSISTANT_MODEL_STORAGE_KEY), modelChoiceId(llama))
-    assert.deepEqual(readStoredAssistantModel(storage), llama)
+    const muse = ASSISTANT_MODELS.find((choice) => choice.model === 'muse-spark-1.3')
+    assert.ok(muse)
+    storeAssistantModel(muse, storage)
+    assert.equal(storage.saved.get(ASSISTANT_MODEL_STORAGE_KEY), modelChoiceId(muse))
+    assert.deepEqual(readStoredAssistantModel(storage), muse)
     assert.equal(readStoredAssistantModel(memoryStorage()).model, 'gemini-2.5-flash')
     assert.equal(readStoredAssistantModel(memoryStorage({ [ASSISTANT_MODEL_STORAGE_KEY]: 'nope' })).model, 'gemini-2.5-flash')
-    assert.equal(findAssistantModel('meta:Llama-3.3-8B-Instruct').label, 'Llama 3.3 8B')
+    assert.equal(findAssistantModel('meta:muse-spark-1.1').label, 'Muse Spark 1.1')
     assert.equal(readStoredAssistantModel(null).model, 'gemini-2.5-flash')
     const blocked: ModelStorage = {
       getItem: () => {

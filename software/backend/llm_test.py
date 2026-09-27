@@ -122,10 +122,10 @@ class AskTest(unittest.TestCase):
             ("gemini", "gemini-2.5-pro"),
         )
         self.assertEqual(
-            resolve_assistant_model(None, "Llama-3.3-8B-Instruct"),
-            ("meta", "Llama-3.3-8B-Instruct"),
+            resolve_assistant_model(None, "muse-spark-1.1"),
+            ("meta", "muse-spark-1.1"),
         )
-        self.assertEqual(resolve_assistant_model("meta", None), ("meta", "Llama-3.3-70B-Instruct"))
+        self.assertEqual(resolve_assistant_model("meta", None), ("meta", "muse-spark-1.3"))
         self.assertEqual(ASSISTANT_MODELS["gemini"][0], "gemini-2.5-flash")
 
     def test_unknown_provider_and_model_are_rejected(self) -> None:
@@ -143,7 +143,7 @@ class AskTest(unittest.TestCase):
         self.assertIn("Unknown model", str(unknown_model.exception))
         self.assertEqual(called, [])
         with self.assertRaises(ValueError):
-            ask("help", provider="gemini", model="Llama-3.3-70B-Instruct", complete=lambda prompt: "unused")
+            ask("help", provider="gemini", model="muse-spark-1.3", complete=lambda prompt: "unused")
 
 
 class NormalizeGraphTest(unittest.TestCase):
@@ -287,10 +287,10 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post(
                 "/llm",
-                json={"prompt": "help", "provider": "meta", "model": "Llama-3.3-8B-Instruct"},
+                json={"prompt": "help", "provider": "meta", "model": "muse-spark-1.1"},
             )
         self.assertEqual(response.status_code, 200, response.text)
-        from_env.assert_called_once_with(provider="meta", model="Llama-3.3-8B-Instruct")
+        from_env.assert_called_once_with(provider="meta", model="muse-spark-1.1")
 
     def test_unknown_model_is_400(self) -> None:
         with (
@@ -331,7 +331,7 @@ class LlmRouteTest(unittest.TestCase):
         ):
             response = self.client.post(
                 "/llm",
-                json={"prompt": "help", "provider": "meta", "model": "Llama-3.3-70B-Instruct"},
+                json={"prompt": "help", "provider": "meta", "model": "muse-spark-1.3"},
             )
         self.assertEqual(response.status_code, 503)
         self.assertIn("META_API_KEY", response.json()["detail"])

@@ -19,11 +19,11 @@ _FENCE = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 
 # Models the assistant panel can select. The first id for a provider is its default.
 # Gemini ids are Gemini API model codes. gemini-2.0-flash was shut down on
-# 2026-06-01, so the default is gemini-2.5-flash. Meta ids are Llama API model
-# ids for https://api.llama.com/compat/v1, the same form as Llama-3.3-70B-Instruct.
+# 2026-06-01, so the default is gemini-2.5-flash. Meta ids are Muse Spark model
+# ids for https://api.meta.ai/v1/chat/completions (see https://dev.meta.ai/docs/models).
 ASSISTANT_MODELS: dict[str, tuple[str, ...]] = {
     "gemini": ("gemini-2.5-flash", "gemini-2.5-pro"),
-    "meta": ("Llama-3.3-70B-Instruct", "Llama-3.3-8B-Instruct"),
+    "meta": ("muse-spark-1.3", "muse-spark-1.1"),
 }
 
 APPENDIX = """
