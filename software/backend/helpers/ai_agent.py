@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any, Iterable, Literal, Mapping
 
 import httpx
-from dotenv import load_dotenv
+from dotenv import dotenv_values
 
 Role = Literal["user", "assistant"]
 
@@ -242,6 +242,18 @@ PROVIDERS: dict[str, Provider] = {
     for p in (OpenAIProvider(), AnthropicProvider(), GeminiProvider(), MetaProvider(), OpenAICompatible())
 }
 
+# Used when a key is present but AI_MODEL was left blank.
+_DEFAULT_MODEL = {
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-3-5-haiku-latest",
+    "gemini": "gemini-2.0-flash",
+    "meta": "Llama-3.3-70B-Instruct",
+}
+_NOT_CONFIGURED = (
+    "Assistant is not configured. In the .env file at the repo root, set AI_PROVIDER "
+    "(openai, anthropic, gemini, meta, or openai_compatible), AI_MODEL, and that provider's API key."
+)
+
 
 def load_system_prompt(path: Path = SYSTEM_PROMPT_PATH) -> str:
     return path.read_text().strip()
@@ -264,7 +276,7 @@ class AIAgent:
         max_retries: int = 2,
         client: httpx.Client | None = None,
     ):
-        load_dotenv(_repo_root() / ".env")
+        _load_repo_env()
         if provider not in PROVIDERS:
             raise AIConfigError(f"unknown provider {provider!r}; choose from {', '.join(PROVIDERS)}")
         if not model:
@@ -278,7 +290,9 @@ class AIAgent:
             raise AIConfigError(f"{provider} needs a base_url")
         # A self-hosted OpenAI-compatible server (e.g. Ollama) may not need a key.
         if not self.api_key and provider != "openai_compatible":
-            raise AIConfigError(f"missing API key: set {self.provider.api_key_env}")
+            raise AIConfigError(
+                f"Assistant is not configured. Set {self.provider.api_key_env} in the .env file at the repo root."
+            )
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.max_retries = max_retries
@@ -287,12 +301,20 @@ class AIAgent:
     @classmethod
     def from_env(cls, **overrides: Any) -> "AIAgent":
         """Build from AI_PROVIDER, AI_MODEL and (optionally) AI_BASE_URL in the environment or .env."""
-        load_dotenv(_repo_root() / ".env")
-        provider = overrides.pop("provider", None) or os.environ.get("AI_PROVIDER", "")
-        model = overrides.pop("model", None) or os.environ.get("AI_MODEL", "")
+        _load_repo_env()
+        provider = (overrides.pop("provider", None) or os.environ.get("AI_PROVIDER") or "").strip()
+        model = (overrides.pop("model", None) or os.environ.get("AI_MODEL") or "").strip()
         if not provider:
-            raise AIConfigError("set AI_PROVIDER (one of: " + ", ".join(PROVIDERS) + ")")
-        overrides.setdefault("base_url", os.environ.get("AI_BASE_URL") or None)
+            provider = _provider_from_keys()
+        if not provider:
+            raise AIConfigError(_NOT_CONFIGURED)
+        if not model:
+            model = _DEFAULT_MODEL.get(provider, "")
+        if not model:
+            raise AIConfigError(
+                "Assistant is not configured. Set AI_MODEL in the .env file at the repo root."
+            )
+        overrides.setdefault("base_url", (os.environ.get("AI_BASE_URL") or "").strip() or None)
         return cls(provider, model, **overrides)
 
     def chat(
@@ -359,7 +381,40 @@ class AIAgent:
 
 def _repo_root() -> Path:
     here = Path(__file__).resolve()
-    return next((p for p in here.parents if (p / ".git").exists()), Path.cwd())
+    for candidate in here.parents:
+        if (candidate / ".env.example").is_file() or (candidate / ".git").exists():
+            return candidate
+    return Path.cwd()
+
+
+def _load_repo_env() -> None:
+    """Fill blank AI settings from the repo-root .env. Values already set are kept."""
+    path = _repo_root() / ".env"
+    if not path.is_file():
+        return
+    for key, value in dotenv_values(path).items():
+        if value and not os.environ.get(key, "").strip():
+            os.environ[key] = value
+
+
+def _provider_from_keys() -> str:
+    """Pick a provider when AI_PROVIDER is blank and exactly one API key is set."""
+    found = [
+        name
+        for name, provider in PROVIDERS.items()
+        if name != "openai_compatible" and os.environ.get(provider.api_key_env, "").strip()
+    ]
+    if len(found) == 1:
+        return found[0]
+    if len(found) > 1:
+        raise AIConfigError(
+            "Assistant is not configured. More than one API key is set. Set AI_PROVIDER to one of: "
+            + ", ".join(found)
+            + "."
+        )
+    if (os.environ.get("AI_BASE_URL") or "").strip():
+        return "openai_compatible"
+    return ""
 
 
 def _normalize(messages: str | Iterable[Message | Mapping[str, str]]) -> tuple[Message, ...]:

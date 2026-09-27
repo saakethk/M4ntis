@@ -449,10 +449,19 @@ function readDiscussionCreated(body: unknown): DiscussionCreated {
   }
 }
 
-export function askAssistant(prompt: string, graph: AssistantGraph): Promise<AssistantReply> {
+export function askAssistant(
+  prompt: string,
+  graph: AssistantGraph,
+  model?: { provider: string; model: string },
+): Promise<AssistantReply> {
+  const body: { prompt: string; graph: AssistantGraph; provider?: string; model?: string } = { prompt, graph }
+  if (model?.provider && model.model) {
+    body.provider = model.provider
+    body.model = model.model
+  }
   return requestJson('/llm', {
     method: 'POST',
-    body: JSON.stringify({ prompt, graph }),
+    body: JSON.stringify(body),
   }).then(readAssistantReply)
 }
 
