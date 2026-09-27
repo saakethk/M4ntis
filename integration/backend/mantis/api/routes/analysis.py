@@ -11,7 +11,7 @@ from mantis.api.schemas import AnalysisRequest
 router = APIRouter(prefix="/backtests", tags=["backtests"])
 
 
-@router.post("/{backtest_id}/analysis")
+@router.post("/{backtest_id:int}/analysis")
 def analyze(backtest_id: int, user: CurrentUser, body: AnalysisRequest | None = None) -> dict:
     request = body or AnalysisRequest()
     return backtest_analysis.analyze(

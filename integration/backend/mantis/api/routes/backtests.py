@@ -21,6 +21,6 @@ def run(body: BacktestCreate, user: CurrentUser) -> dict:
     return backtests.run_backtest(user.id, body.user_id, body.strategy_id)
 
 
-@router.get("/{backtest_id}")
+@router.get("/{backtest_id:int}")
 def get(backtest_id: int, user: CurrentUser) -> dict:
     return backtests.get_backtest(user.id, backtest_id)

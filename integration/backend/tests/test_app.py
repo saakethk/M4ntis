@@ -104,3 +104,16 @@ def test_password_hashing_round_trip():
     assert auth.verify_password("correct-horse", stored)
     assert not auth.verify_password("wrong-horse", stored)
     assert not auth.verify_password("x", "not-a-hash")
+
+
+def test_backtests_fpga_route_is_not_captured_by_id(client):
+    with patch.object(auth, "user_from_token", return_value=auth.User(4, "a@b.com")):
+        response = client.get("/backtests/fpga", headers={"Authorization": "Bearer test"})
+    assert response.status_code == 200
+    assert "connected" in response.json()
+
+
+def test_backtests_non_integer_id_is_not_found(client):
+    with patch.object(auth, "user_from_token", return_value=auth.User(4, "a@b.com")):
+        response = client.get("/backtests/abc", headers={"Authorization": "Bearer test"})
+    assert response.status_code == 404
