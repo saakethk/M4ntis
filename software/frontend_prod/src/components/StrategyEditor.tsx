@@ -15,7 +15,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
-import { createStrategy, getStrategy, updateStrategy } from '../api'
+import { createStrategy, getStrategy, runDummyBacktest, updateStrategy, type BacktestResult } from '../api'
 import { BLOCK_DEFS, BLOCK_TYPES, isBlockType } from '../blocks/catalog'
 import type { BlockEdge, BlockNode as BlockNodeT, BlockType } from '../blocks/types'
 import { BlockNode } from '../flow/BlockNode'
@@ -54,6 +54,7 @@ function TrashIcon() {
 }
 
 type Props = {
+  userId: number
   strategyId: number | null
   unavailable?: boolean
   onClose: () => void
@@ -64,7 +65,7 @@ function documentPayload(raw: unknown): unknown {
   return JSON.parse(raw)
 }
 
-function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
+function StrategyCanvas({ userId, strategyId, unavailable = false, onClose }: Props) {
   const blank = blankTemplate?.build() ?? { nodes: [], edges: [] }
   const [name, setName] = useState(strategyId == null && !unavailable ? 'Untitled strategy' : '')
   const [nodes, setNodes, onNodesChange] = useNodesState<BlockNodeT>(blank.nodes)
@@ -74,6 +75,8 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
   const [loaded, setLoaded] = useState(strategyId == null && !unavailable)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [running, setRunning] = useState(false)
+  const [backtest, setBacktest] = useState<BacktestResult | null>(null)
   const [message, setMessage] = useState<string | null>(unavailable ? 'Could not open this strategy.' : null)
   const [messageError, setMessageError] = useState(unavailable)
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -210,13 +213,13 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
     showMessage(summary, true)
   }
 
-  async function save() {
-    if (!loaded || saving) return
+  async function persist(): Promise<number | null> {
+    if (!loaded || saving) return null
     const trimmed = name.trim()
     if (!trimmed) {
       setSaved(false)
       showMessage('Name is required', true)
-      return
+      return null
     }
     setSaving(true)
     try {
@@ -228,11 +231,32 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
       setSaved(true)
       setMessage(null)
       setMessageError(false)
+      return savedRow.id
     } catch (error) {
       setSaved(false)
       showMessage(error instanceof Error ? error.message : 'Could not save', true)
+      return null
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function runBacktest() {
+    if (!loaded || running || saving) return
+    setRunning(true)
+    setBacktest(null)
+    try {
+      const id = saved && storedId != null ? storedId : await persist()
+      if (id == null) return
+      const result = await runDummyBacktest(userId, id)
+      setBacktest(result)
+      const ending = result.balances[result.balances.length - 1]
+      const equity = ending ? ending.equity.toLocaleString('en-US') : '—'
+      showMessage(`Dummy backtest finished. Ending equity ${equity}.`, false)
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : 'Could not run the backtest', true)
+    } finally {
+      setRunning(false)
     }
   }
 
@@ -275,19 +299,31 @@ function StrategyCanvas({ strategyId, unavailable = false, onClose }: Props) {
             <button type="button" className="quiet" onClick={compile} disabled={!loaded}>
               Compile
             </button>
-            <button type="button" className="quiet" onClick={() => void save()} disabled={!loaded || saving}>
+            <button type="button" className="quiet" onClick={() => void persist()} disabled={!loaded || saving || running}>
               {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
             </button>
             <button
               type="button"
-              className="quiet"
-              onClick={() => showMessage('Run is not available yet.', false)}
-              disabled={!loaded}
+              className="run-backtest"
+              onClick={() => void runBacktest()}
+              disabled={!loaded || saving || running}
             >
-              Run
+              {running ? 'Running…' : 'Run Backtest'}
             </button>
           </div>
         </div>
+        {backtest ? (
+          <div className="backtest-result" role="status">
+            <p>Dummy backtest</p>
+            <ul>
+              {backtest.orders.map((order, index) => (
+                <li key={`${order.symbol}-${order.side}-${index}`}>
+                  {order.side} {order.quantity} {order.symbol} at {order.price}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <div
           ref={canvasRef}
           className="editor-canvas"

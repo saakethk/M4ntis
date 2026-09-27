@@ -115,6 +115,67 @@ export type AssistantReply = {
   dummy: boolean
 }
 
+export type BacktestOrder = {
+  symbol: string
+  side: string
+  quantity: number
+  price: number
+}
+
+export type BacktestBalance = {
+  cash: number
+  equity: number
+}
+
+export type BacktestResult = {
+  id: number
+  dummy: boolean
+  orders: BacktestOrder[]
+  balances: BacktestBalance[]
+}
+
+export function runDummyBacktest(userId: number, strategyId: number): Promise<BacktestResult> {
+  return requestJson('/backtests', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId, strategy_id: strategyId }),
+  }).then(readBacktest)
+}
+
+function readBacktest(body: unknown): BacktestResult {
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as { id?: unknown; dummy?: unknown; orders?: unknown; balances?: unknown }
+  if (!Array.isArray(row.orders) || !Array.isArray(row.balances)) {
+    throw new Error('Backtest response was not valid.')
+  }
+  return {
+    id: readId(row.id),
+    dummy: row.dummy === true,
+    orders: row.orders.map(readOrder),
+    balances: row.balances.map(readBalance),
+  }
+}
+
+function readOrder(body: unknown): BacktestOrder {
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as { symbol?: unknown; side?: unknown; quantity?: unknown; price?: unknown }
+  if (typeof row.symbol !== 'string' || typeof row.side !== 'string') {
+    throw new Error('Backtest response was not valid.')
+  }
+  if (typeof row.quantity !== 'number' || typeof row.price !== 'number') {
+    throw new Error('Backtest response was not valid.')
+  }
+  return { symbol: row.symbol, side: row.side, quantity: row.quantity, price: row.price }
+}
+
+function readBalance(body: unknown): BacktestBalance {
+  if (!body || typeof body !== 'object') throw new Error('Backtest response was not valid.')
+  const row = body as { cash?: unknown; equity?: unknown }
+  if (typeof row.cash !== 'number' || typeof row.equity !== 'number') {
+    throw new Error('Backtest response was not valid.')
+  }
+  return { cash: row.cash, equity: row.equity }
+}
+
 export function askAssistant(prompt: string): Promise<AssistantReply> {
   return requestJson('/llm', {
     method: 'POST',

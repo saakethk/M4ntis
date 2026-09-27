@@ -87,6 +87,7 @@ export default function App() {
   } else {
     main = (
       <StrategyEditor
+        userId={user.id}
         strategyId={screen.kind === 'edit' ? screen.id : null}
         unavailable={screen.kind === 'unavailable'}
         onClose={() => setScreen({ kind: 'home' })}
