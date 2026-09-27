@@ -7,11 +7,13 @@ from typing import Any
 import uvicorn
 import psycopg
 from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 
 import helpers.auth as auth
 import helpers.backtests as backtests
+import helpers.compile as compiler
 import helpers.discussions as discussions
 import helpers.strategies as strategies
 from helpers.db import env_port
@@ -268,6 +270,23 @@ def copy_strategy_route(strategy_id: int, request: Request) -> dict:
     except (RuntimeError, psycopg.Error) as exc:
         raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
     return {"id": new_id}
+
+
+@app.post("/compile")
+def compile_strategy_route(body: dict[str, Any], request: Request) -> dict:
+    user = _require_user(request)
+    try:
+        return compiler.compile_request(user.id, body)
+    except compiler.InvalidCompileBody as exc:
+        raise RequestValidationError(exc.errors) from exc
+    except compiler.CompilationFailed as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except strategies.StrategyNotFound as exc:
+        raise HTTPException(status_code=404, detail="Strategy not found") from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (RuntimeError, psycopg.Error) as exc:
+        raise HTTPException(status_code=503, detail="Strategy database is unavailable") from exc
 
 
 @app.post("/backtests", status_code=201)
