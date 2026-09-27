@@ -21,8 +21,9 @@ import {
   getStrategy,
   listStrategyVersions,
   revertStrategyVersion,
-  runDummyBacktest,
+  runBacktest as requestBacktest,
   updateStrategy,
+  type BacktestParams,
   type CompileResult,
   type StrategyVersion,
 } from '../api'
@@ -353,13 +354,21 @@ function StrategyCanvas({
     void fitView({ padding: 0.22, duration: 250 })
   }
 
-  async function runBacktest() {
+  async function runBacktest(params: BacktestParams) {
     if (!loaded || running || saving) return
+    if (params.start && params.end && params.end < params.start) {
+      showMessage('End date must be on or after the start date', true)
+      return
+    }
+    if (!(params.capital > 0)) {
+      showMessage('Capital must be more than $0', true)
+      return
+    }
     setRunning(true)
     try {
       const id = saved && storedId != null ? storedId : await persist()
       if (id == null) return
-      const result = await runDummyBacktest(userId, id)
+      const result = await requestBacktest(userId, id, params)
       onOpenBacktest(result.id)
     } catch (error) {
       showMessage(error instanceof Error ? error.message : 'Could not run the backtest', true)
@@ -497,9 +506,10 @@ function StrategyCanvas({
       </section>
       <aside className="editor-rail">
         <BacktestPanel
+          symbols={tickerSymbols(nodes)}
           running={running}
           disabled={!loaded || saving || running}
-          onRun={() => void runBacktest()}
+          onRun={(params) => void runBacktest(params)}
         />
         <Assistant graph={canvasSnapshot(nodes, edges)} onApply={applyGraph} />
       </aside>
@@ -514,40 +524,50 @@ function formatVersionTime(value: string): string {
 }
 
 const BACKTEST_PARAMETERS = {
-  symbol: 'AAPL',
   start: '2024-01-02',
   end: '2024-06-28',
   capital: 100_000,
 }
 
+/** Tickers the backtest will load: the symbols on the canvas's Get ticker blocks. */
+function tickerSymbols(nodes: BlockNodeT[]): string[] {
+  const symbols = nodes
+    .filter((node) => node.type === 'get_ticker')
+    .map((node) => String(node.data.params.symbol ?? '').trim().toUpperCase())
+    .filter(Boolean)
+  return [...new Set(symbols)]
+}
+
 function BacktestPanel({
+  symbols,
   running,
   disabled,
   onRun,
 }: {
+  symbols: string[]
   running: boolean
   disabled: boolean
-  onRun: () => void
+  onRun: (params: BacktestParams) => void
 }) {
-  const [symbol, setSymbol] = useState(BACKTEST_PARAMETERS.symbol)
   const [start, setStart] = useState(BACKTEST_PARAMETERS.start)
   const [end, setEnd] = useState(BACKTEST_PARAMETERS.end)
   const [capital, setCapital] = useState(BACKTEST_PARAMETERS.capital.toLocaleString('en-US'))
+
+  function run() {
+    onRun({ start, end, capital: Number(capital.replace(/,/g, '')) })
+  }
 
   return (
     <section className="backtest-menu" aria-label="Backtest">
       <p className="plan-kicker">Backtest</p>
       <h2>Parameters</h2>
       <div className="backtest-params">
-        <label>
-          <span>Symbol</span>
-          <input
-            value={symbol}
-            aria-label="Symbol"
-            spellCheck={false}
-            onChange={(event) => setSymbol(event.target.value.toUpperCase())}
-          />
-        </label>
+        <div className="backtest-param">
+          <span>Symbols</span>
+          <span className="backtest-symbols" aria-label="Symbols">
+            {symbols.length > 0 ? symbols.join(', ') : 'Add a Get ticker block'}
+          </span>
+        </div>
         <label>
           <span>Start</span>
           <input aria-label="Start" type="date" value={start} onChange={(event) => setStart(event.target.value)} />
@@ -578,7 +598,7 @@ function BacktestPanel({
           </span>
         </label>
       </div>
-      <button type="button" className="run-backtest" onClick={onRun} disabled={disabled}>
+      <button type="button" className="run-backtest" onClick={run} disabled={disabled}>
         {running ? 'Running…' : 'Run Backtest'}
       </button>
     </section>

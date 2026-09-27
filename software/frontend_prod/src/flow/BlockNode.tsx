@@ -126,77 +126,6 @@ const VALUE_CHIP_LABEL: Partial<Record<BlockType, string>> = {
   get_var: 'Var',
 };
 
-function StartBlock({
-  data,
-  selected,
-  def,
-  setParam,
-}: {
-  data: BlockNodeT['data'];
-  selected?: boolean;
-  def: BlockDef;
-  setParam: (key: string, value: ParamValue) => void;
-}) {
-  const balance = def.params.find((p) => p.key === 'startingBalance');
-  const resolution = def.params.find((p) => p.key === 'resolution');
-  const buffers = def.params.filter((p) => p.key.startsWith('symbol') && p.type === 'select');
-  const execOuts = portsOf('start', 'exec', 'out');
-
-  return (
-    <div className={['block', 'block-start', selected ? 'selected' : ''].join(' ')}>
-      <div className="start-title">{def.label}</div>
-      <div className="start-fields">
-        {balance?.type === 'number' && (
-          <label className="start-field">
-            <span>Balance</span>
-            <NumberField
-              def={balance}
-              value={Number(data.params[balance.key] ?? balance.default)}
-              onChange={(v) => setParam(balance.key, v)}
-            />
-          </label>
-        )}
-        {resolution?.type === 'select' && (
-          <label className="start-field">
-            <span>Resolution</span>
-            <SelectControl
-              def={resolution}
-              value={data.params[resolution.key] ?? resolution.default}
-              onChange={(v) => setParam(resolution.key, v)}
-            />
-          </label>
-        )}
-      </div>
-      {buffers.length > 0 && (
-        <div className="buffer-chips" aria-label="Stock buffers">
-          {buffers.map((p) =>
-            p.type === 'select' ? (
-              <label key={p.key} className="buffer-chip" title={p.label}>
-                <span>{p.label}</span>
-                <SelectControl
-                  def={p}
-                  value={data.params[p.key] ?? p.default}
-                  onChange={(v) => setParam(p.key, v)}
-                  className="nodrag buffer-chip-select"
-                />
-              </label>
-            ) : null,
-          )}
-        </div>
-      )}
-      {execOuts.length > 0 && (
-        <div className="exec-outs">
-          {execOuts.map((p) => (
-            <div className="exec-out" key={p.id}>
-              <Handle type="source" position={Position.Bottom} id={p.id} className="handle-exec" />
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ValueChip({
   data,
   selected,
@@ -617,10 +546,6 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
 
   const setParam = (key: string, value: ParamValue) =>
     updateNodeData(id, { params: { ...data.params, [key]: value } });
-
-  if (def.type === 'start') {
-    return <StartBlock data={data} selected={selected} def={def} setParam={setParam} />;
-  }
 
   if (def.type in VALUE_CHIP_LABEL) {
     return (

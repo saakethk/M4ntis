@@ -1253,7 +1253,8 @@ input:focus-visible {
   gap: 10px;
 }
 
-.backtest-menu .backtest-params label {
+.backtest-menu .backtest-params label,
+.backtest-menu .backtest-param {
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr);
   align-items: center;
@@ -1283,6 +1284,11 @@ input:focus-visible {
   outline: none;
   border-color: #0f6e68;
   box-shadow: 0 0 0 3px rgba(15, 110, 104, 0.16);
+}
+
+.backtest-symbols {
+  overflow-wrap: anywhere;
+  color: #1c2430;
 }
 
 .backtest-capital {
