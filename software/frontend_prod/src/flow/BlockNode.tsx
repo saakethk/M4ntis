@@ -1,5 +1,5 @@
 import { Handle, Position, useReactFlow, useStore, type NodeProps } from '@xyflow/react';
-import { memo, useState } from 'react';
+import { memo, useId, useRef, useState } from 'react';
 import { BLOCK_DEFS, CATEGORIES, COMPARISON_OPERATORS, portsOf } from '../blocks/catalog';
 import { NUM_STOCK_BUFFERS, ticksToDuration } from '../blocks/hardware';
 import { NASDAQ_100 } from '../blocks/symbols';
@@ -233,6 +233,107 @@ function FlowHandles({ type }: { type: BlockType }) {
   );
 }
 
+const TICKER_MATCH_LIMIT = 6;
+
+/** Prefix matches first, then substring matches. Empty input matches nothing. */
+function tickerMatches(query: string): string[] {
+  const q = query.trim().toUpperCase();
+  if (!q) return [];
+  const prefix: string[] = [];
+  const contains: string[] = [];
+  for (const symbol of NASDAQ_100) {
+    if (symbol.startsWith(q)) prefix.push(symbol);
+    else if (symbol.includes(q)) contains.push(symbol);
+  }
+  return [...prefix, ...contains].slice(0, TICKER_MATCH_LIMIT);
+}
+
+function TickerSearch({ value, onChange }: { value: string; onChange: (symbol: string) => void }) {
+  const selected = value.trim().toUpperCase() || 'AAPL';
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const matches = tickerMatches(query);
+  const showList = open && query.trim().length > 0;
+
+  const choose = (symbol: string) => {
+    onChange(symbol);
+    setQuery('');
+    setOpen(false);
+    inputRef.current?.blur();
+  };
+
+  return (
+    <div className={`ticker-search nodrag nopan nowheel${open ? ' open' : ''}`}>
+      <span className="ticker-chip">{selected}</span>
+      <input
+        ref={inputRef}
+        className="nodrag nopan ticker-search-input"
+        aria-label="Search ticker"
+        role="combobox"
+        aria-expanded={showList}
+        aria-controls={listId}
+        aria-autocomplete="list"
+        spellCheck={false}
+        autoComplete="off"
+        autoCapitalize="characters"
+        placeholder="Search"
+        value={query}
+        onFocus={() => setOpen(true)}
+        onBlur={() => {
+          setOpen(false);
+          setQuery('');
+        }}
+        onChange={(event) => {
+          setQuery(event.target.value.toUpperCase());
+          setOpen(true);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            event.stopPropagation();
+            const pick = matches[0];
+            if (pick) choose(pick);
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            setQuery('');
+            setOpen(false);
+            inputRef.current?.blur();
+          }
+        }}
+      />
+      {showList && (
+        <ul className="ticker-matches nodrag nopan nowheel" id={listId} role="listbox">
+          {matches.length === 0 ? (
+            <li className="ticker-match-empty">No matches</li>
+          ) : (
+            matches.map((symbol, index) => (
+              <li key={symbol}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={symbol === selected}
+                  className={['nodrag', 'nopan', 'ticker-match', index === 0 ? 'top' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    choose(symbol);
+                  }}
+                >
+                  {symbol}
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /** Resolution from Start. Tickers come from Get ticker blocks, then from symbols saved on older Start blocks. */
 function useStrategyContext() {
   const joined = useStore((s) => {
@@ -323,18 +424,10 @@ function BlockNodeImpl({ id, type, data, selected }: NodeProps<BlockNodeT>) {
           </div>
         </div>
         <div className="ticker-row">
-          <select
-            className="nodrag ticker-chip"
-            aria-label="Ticker"
+          <TickerSearch
             value={String(data.params.symbol ?? 'AAPL')}
-            onChange={(event) => setParam('symbol', event.target.value)}
-          >
-            {NASDAQ_100.map((symbol) => (
-              <option key={symbol} value={symbol}>
-                {symbol}
-              </option>
-            ))}
-          </select>
+            onChange={(symbol) => setParam('symbol', symbol)}
+          />
         </div>
         <FlowHandles type={def.type} />
       </div>

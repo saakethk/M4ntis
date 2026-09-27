@@ -110,9 +110,18 @@ export function createStrategy(body: StrategyWrite): Promise<StrategyRecord> {
   }).then(readRecord)
 }
 
+export type AssistantProgram = {
+  resolution: string
+  symbol: string
+  fast: number
+  slow: number
+  quantity: number
+}
+
 export type AssistantReply = {
   reply: string
   dummy: boolean
+  program: AssistantProgram | null
 }
 
 export type BacktestOrder = {
@@ -304,11 +313,36 @@ export function askAssistant(prompt: string): Promise<AssistantReply> {
 
 function readAssistantReply(body: unknown): AssistantReply {
   if (!body || typeof body !== 'object') throw new Error('Assistant response was not valid.')
-  const row = body as { reply?: unknown; dummy?: unknown }
+  const row = body as { reply?: unknown; dummy?: unknown; program?: unknown }
   if (typeof row.reply !== 'string' || !row.reply.trim()) {
     throw new Error('Assistant response was not valid.')
   }
-  return { reply: row.reply, dummy: row.dummy === true }
+  return { reply: row.reply, dummy: row.dummy === true, program: readProgram(row.program) }
+}
+
+function readProgram(body: unknown): AssistantProgram | null {
+  if (body == null) return null
+  if (!body || typeof body !== 'object') throw new Error('Assistant response was not valid.')
+  const row = body as {
+    resolution?: unknown
+    symbol?: unknown
+    fast?: unknown
+    slow?: unknown
+    quantity?: unknown
+  }
+  if (typeof row.resolution !== 'string' || typeof row.symbol !== 'string') {
+    throw new Error('Assistant response was not valid.')
+  }
+  if (typeof row.fast !== 'number' || typeof row.slow !== 'number' || typeof row.quantity !== 'number') {
+    throw new Error('Assistant response was not valid.')
+  }
+  return {
+    resolution: row.resolution,
+    symbol: row.symbol,
+    fast: row.fast,
+    slow: row.slow,
+    quantity: row.quantity,
+  }
 }
 
 export function updateStrategy(id: number, body: StrategyWrite): Promise<StrategyRecord> {
