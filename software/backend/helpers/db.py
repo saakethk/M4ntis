@@ -25,8 +25,28 @@ def _repo_root() -> Path:
     return Path.cwd().resolve()
 
 
-def connect() -> psycopg.Connection:
+def load_repo_env() -> None:
+    """Load the repo-root .env. Values already set in the process are kept."""
     load_dotenv(_repo_root() / ".env")
+
+
+def env_port(name: str, default: int) -> int:
+    """Listen port from the repo-root env. Empty uses default; a non-integer fails."""
+    load_repo_env()
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    text = raw.strip()
+    if not text.isascii() or not text.isdigit():
+        raise ValueError(f"{name} must be an integer from 1 to 65535, got {raw!r}")
+    port = int(text)
+    if port < 1 or port > 65535:
+        raise ValueError(f"{name} must be an integer from 1 to 65535, got {raw!r}")
+    return port
+
+
+def connect() -> psycopg.Connection:
+    load_repo_env()
     missing = [name for name in _REQUIRED_ENV if not os.environ.get(name)]
     if missing:
         raise RuntimeError("Missing environment variables: " + ", ".join(missing))
