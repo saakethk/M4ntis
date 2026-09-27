@@ -75,7 +75,10 @@ class CompileOptions:
     be sent in cents and must use exponent 1.
     """
 
-    price_exponents: dict[int, int] = field(default_factory=lambda: {b: 2 for b in range(NUM_BUFFERS)})
+    price_exponents: dict[int, int] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.price_exponents = {**{b: 2 for b in range(NUM_BUFFERS)}, **self.price_exponents}
 
 
 @dataclass
@@ -182,22 +185,34 @@ class Strategy:
             raise CompileError([Diagnostic("error", f"expected a {DOCUMENT_SCHEMA} document")])
         self.name = str(doc.get("name") or "Untitled strategy")
         flow = doc.get("flow") or {}
+        if not isinstance(flow, dict):
+            raise CompileError([Diagnostic("error", "flow must be an object with nodes and edges")])
+        raw_nodes, raw_edges = flow.get("nodes") or [], flow.get("edges") or []
+        if not isinstance(raw_nodes, list) or not isinstance(raw_edges, list):
+            raise CompileError([Diagnostic("error", "flow.nodes and flow.edges must be lists")])
 
         self.nodes: dict[str, GNode] = {}
-        for raw in flow.get("nodes", []):
+        for raw in raw_nodes:
+            if not isinstance(raw, dict):
+                self.err("every node must be an object")
+                continue
             nid, ntype = str(raw.get("id")), raw.get("type")
-            if ntype not in BLOCKS and ntype != "get_ticker":
+            if not isinstance(ntype, str) or (ntype not in BLOCKS and ntype != "get_ticker"):
                 self.err(f"unknown block type {ntype!r}", nid)
                 continue
             if nid in self.nodes:
                 self.err("duplicate node id", nid)
                 continue
-            params = dict((raw.get("data") or {}).get("params") or {})
+            data = raw.get("data") or {}
+            params = (data.get("params") or {}) if isinstance(data, dict) else None
+            if not isinstance(params, dict):
+                self.err(f"{ntype}: data.params must be an object", nid)
+                continue
             if ntype == "get_ticker":
                 # Same lowering as current_price. The symbol is copied onto Start below.
-                self.nodes[nid] = GNode(nid, ntype, params, BLOCKS["current_price"])
+                self.nodes[nid] = GNode(nid, ntype, dict(params), BLOCKS["current_price"])
                 continue
-            self.nodes[nid] = GNode(nid, ntype, params, BLOCKS[ntype])
+            self.nodes[nid] = GNode(nid, ntype, dict(params), BLOCKS[ntype])
 
         starts = [n for n in self.nodes.values() if n.type == "start"]
         if len(starts) != 1:
@@ -207,13 +222,18 @@ class Strategy:
 
         self.data_src: dict[tuple[str, str], tuple[str, str]] = {}
         self.exec_next: dict[tuple[str, str], str] = {}
-        for e in flow.get("edges", []):
-            self._add_edge(e)
+        for e in raw_edges:
+            if isinstance(e, dict):
+                self._add_edge(e)
+            else:
+                self.err("every edge must be an object")
 
         for n in self.nodes.values():
             self._check_params(n)
         for b, e in options.price_exponents.items():
-            if not 0 <= e <= MAX_SCALE:
+            if b not in range(NUM_BUFFERS):
+                self.err(f"price exponent given for BUF{b}, but buffers are BUF0..BUF{NUM_BUFFERS - 1}")
+            elif isinstance(e, bool) or not isinstance(e, int) or not 0 <= e <= MAX_SCALE:
                 self.err(f"price exponent for BUF{b} must be 0..{MAX_SCALE}, got {e}")
 
         self.reachable = self._reachable_exec()
@@ -942,3 +962,22 @@ def compile_strategy(doc: dict, options: CompileOptions | None = None) -> Compil
         "warnings": [w.to_json() for w in g.warnings],
     }
     return CompileResult(items=items, assembled=assembled, manifest=manifest, warnings=g.warnings)
+
+
+def compile_to_json(doc: dict, options: CompileOptions | None = None) -> dict:
+    """compile_strategy as a JSON-ready dict; a rejected strategy is returned as ok=False, not raised.
+
+    Success: {ok, asm, hex, manifest, diagnostics}. Failure: {ok: false, diagnostics}.
+    Each diagnostic is {level, message, node?}; node is the editor node id to highlight.
+    """
+    try:
+        result = compile_strategy(doc, options)
+    except CompileError as err:
+        return {"ok": False, "diagnostics": [d.to_json() for d in err.diagnostics]}
+    return {
+        "ok": True,
+        "asm": format_asm(result.items, addresses=True),
+        "hex": result.assembled.hex_lines(),
+        "manifest": result.manifest,
+        "diagnostics": [w.to_json() for w in result.warnings],
+    }

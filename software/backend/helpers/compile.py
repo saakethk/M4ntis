@@ -19,8 +19,7 @@ _COMPILER_ROOT = Path(__file__).resolve().parents[2] / "compiler"
 if str(_COMPILER_ROOT) not in sys.path:
     sys.path.insert(0, str(_COMPILER_ROOT))
 
-from tradecpu.asm import format_asm  # noqa: E402
-from tradecpu.compiler import CompileError, compile_strategy  # noqa: E402
+from tradecpu import CompileOptions, compile_to_json  # noqa: E402
 
 DOCUMENT_SCHEMA = "m4ntis.strategy/v1"
 IR_SCHEMA = "m4ntis.strategy-ir/v1"
@@ -28,11 +27,17 @@ _COMPILER_SCHEMAS = frozenset({DOCUMENT_SCHEMA, IR_SCHEMA})
 
 
 class CompileBody(BaseModel):
-    """Saved strategy id and/or an inline document. The document stays free-form."""
+    """Saved strategy id and/or an inline document. The document stays free-form.
+
+    ``price_exponents`` maps a buffer (0-4) to how its prices are scaled into the
+    16-bit tick field: 2 = cents (default), 1 = dimes, 0 = dollars. A stock above
+    $327.67 cannot be sent in cents.
+    """
 
     model_config = ConfigDict(extra="forbid")
     strategy_id: int | None = None
     document: dict[str, Any] | None = None
+    price_exponents: dict[int, int] | None = None
 
 
 class _StrategyId(BaseModel):
@@ -43,7 +48,15 @@ class _StrategyId(BaseModel):
 
 
 class CompilationFailed(Exception):
-    """The compiler rejected the document. ``str(exc)`` is the compiler message."""
+    """The compiler rejected the document.
+
+    ``str(exc)`` is the compiler message; ``diagnostics`` is the list of
+    ``{level, message, node?}`` entries for highlighting blocks in the editor.
+    """
+
+    def __init__(self, diagnostics: list[dict[str, Any]]):
+        self.diagnostics = diagnostics
+        super().__init__("\n".join(_describe(d) for d in diagnostics))
 
 
 class InvalidCompileBody(Exception):
@@ -52,37 +65,35 @@ class InvalidCompileBody(Exception):
         super().__init__("Invalid compile request")
 
 
-def compile_document(document: dict[str, Any]) -> dict[str, Any]:
+def compile_document(
+    document: dict[str, Any], price_exponents: dict[int, int] | None = None
+) -> dict[str, Any]:
     """Compile one strategy document. Returns the compiler's JSON object.
 
     Same fields as ``python -m tradecpu compile - --json``: ``ok``, ``asm``,
-    ``hex``, ``manifest``, and ``diagnostics``.
+    ``hex``, ``manifest``, and ``diagnostics``. ``manifest["words"]`` is the
+    program to upload to the board.
     """
     if not isinstance(document, dict):
         raise ValueError("document must be a JSON object")
+    options = CompileOptions(price_exponents=dict(price_exponents or {}))
     try:
-        result = compile_strategy(document)
-    except CompileError as exc:
-        raise CompilationFailed(str(exc)) from exc
+        result = compile_to_json(document, options)
     except (TypeError, AttributeError, KeyError, ValueError) as exc:
-        raise CompilationFailed(f"error: {exc}") from exc
-    return {
-        "ok": True,
-        "asm": format_asm(result.items, addresses=True),
-        "hex": result.assembled.hex_lines(),
-        "manifest": result.manifest,
-        "diagnostics": [warning.to_json() for warning in result.warnings],
-    }
+        raise CompilationFailed([{"level": "error", "message": str(exc)}]) from exc
+    if not result["ok"]:
+        raise CompilationFailed(result["diagnostics"])
+    return result
 
 
 def compile_request(user_id: int, body: dict[str, Any]) -> dict[str, Any]:
     """Compile a request body for a signed-in user.
 
     A body whose ``schema`` is the strategy document or the IR is compiled as
-    itself. Any other object is ``{strategy_id?, document?}`` and rejects
-    unknown fields. A strategy id is compiled only when ``user_id`` can view
-    that strategy. When both an id and a document are present, the document is
-    what gets compiled, after the view check.
+    itself. Any other object is ``{strategy_id?, document?, price_exponents?}``
+    and rejects unknown fields. A strategy id is compiled only when ``user_id``
+    can view that strategy. When both an id and a document are present, the
+    document is what gets compiled, after the view check.
     """
     if body.get("schema") in _COMPILER_SCHEMAS:
         if "strategy_id" in body:
@@ -97,7 +108,12 @@ def compile_request(user_id: int, body: dict[str, Any]) -> dict[str, Any]:
             document = stored["document"]
     if not isinstance(document, dict):
         raise ValueError("A strategy document or strategy id is required")
-    return compile_document(document)
+    return compile_document(document, parsed.price_exponents)
+
+
+def _describe(diagnostic: dict[str, Any]) -> str:
+    text = f"{diagnostic.get('level', 'error')}: {diagnostic.get('message', '')}"
+    return text + (f" [{diagnostic['node']}]" if diagnostic.get("node") else "")
 
 
 def _require_visible(user_id: int, strategy_id: int) -> dict[str, Any]:

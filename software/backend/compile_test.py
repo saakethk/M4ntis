@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import copy
+import json
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -47,6 +50,13 @@ STORED = {
     "name": "Stored",
 }
 
+SMA_CROSSOVER = json.loads(
+    (
+        Path(__file__).resolve().parents[1]
+        / "frontend/dev-sketchout/examples/sma_crossover.strategy.json"
+    ).read_text()
+)
+
 IR = {
     "schema": "m4ntis.strategy-ir/v1",
     "entry": "start",
@@ -68,6 +78,27 @@ class CompileDocumentTest(unittest.TestCase):
         self.assertEqual(result["manifest"]["schema"], "m4ntis.compiled/v1")
         self.assertEqual(result["manifest"]["name"], "Blank")
         self.assertEqual(result["diagnostics"], [])
+
+    def test_example_strategy_compiles_to_uploadable_words(self) -> None:
+        result = compiler.compile_document(SMA_CROSSOVER)
+        words = result["manifest"]["words"]
+        self.assertGreater(len(words), 10)
+        self.assertTrue(all(w.startswith("0x") and len(w) == 10 for w in words))
+        self.assertEqual(result["manifest"]["warmupTicks"], 29)
+
+    def test_price_exponents_reach_the_manifest(self) -> None:
+        result = compiler.compile_document(SMA_CROSSOVER, {0: 1})
+        exponents = [b["priceExponent"] for b in result["manifest"]["buffers"]]
+        self.assertEqual(exponents, [1, 2, 2, 2, 2])
+
+    def test_rejection_carries_node_diagnostics(self) -> None:
+        document = copy.deepcopy(SMA_CROSSOVER)
+        sma = next(n for n in document["flow"]["nodes"] if n["type"] == "sma")
+        sma["data"]["params"]["n"] = 99
+        with self.assertRaises(compiler.CompilationFailed) as ctx:
+            compiler.compile_document(document)
+        self.assertEqual(ctx.exception.diagnostics[0]["node"], sma["id"])
+        self.assertIn(f"[{sma['id']}]", str(ctx.exception))
 
 
 class CompileRouteTest(unittest.TestCase):
@@ -129,6 +160,35 @@ class CompileRouteTest(unittest.TestCase):
             response = self.client.post("/compile", json=bad)
         self.assertEqual(response.status_code, 400)
         self.assertNotIn("Traceback", response.text)
+        self.assertIn("flow must be an object", response.json()["detail"])
+
+    def test_rejected_strategy_returns_diagnostics(self) -> None:
+        _sign_in(self.client)
+        document = copy.deepcopy(SMA_CROSSOVER)
+        document["flow"]["edges"] = [
+            e for e in document["flow"]["edges"] if e["targetHandle"] != "data:a"
+        ]
+        with patch.object(auth, "user_from_token", return_value=OWNER):
+            response = self.client.post("/compile", json=document)
+        self.assertEqual(response.status_code, 400)
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["diagnostics"][0]["level"], "error")
+        self.assertIn("node", body["diagnostics"][0])
+
+    def test_price_exponents_in_the_wrapper(self) -> None:
+        _sign_in(self.client)
+        with patch.object(auth, "user_from_token", return_value=OWNER):
+            ok = self.client.post(
+                "/compile", json={"document": SMA_CROSSOVER, "price_exponents": {"0": 1}}
+            )
+            bad = self.client.post(
+                "/compile", json={"document": SMA_CROSSOVER, "price_exponents": {"7": 1}}
+            )
+        self.assertEqual(ok.status_code, 200)
+        self.assertEqual(ok.json()["manifest"]["buffers"][0]["priceExponent"], 1)
+        self.assertEqual(bad.status_code, 400)
+        self.assertIn("BUF7", bad.json()["detail"])
 
     def test_strategy_id_compiles_the_stored_document_when_viewable(self) -> None:
         _sign_in(self.client)
@@ -164,11 +224,11 @@ class CompileRouteTest(unittest.TestCase):
             patch.object(
                 strategies, "get_strategy", side_effect=strategies.StrategyNotFound
             ),
-            patch.object(compiler, "compile_strategy") as compile_strategy,
+            patch.object(compiler, "compile_to_json") as compile_to_json,
         ):
             response = self.client.post("/compile", json=body)
         self.assertEqual(response.status_code, 404)
-        compile_strategy.assert_not_called()
+        compile_to_json.assert_not_called()
 
     def test_hidden_strategy_is_not_compiled(self) -> None:
         _sign_in(self.client)
@@ -177,12 +237,12 @@ class CompileRouteTest(unittest.TestCase):
             patch.object(
                 strategies, "get_strategy", side_effect=strategies.StrategyNotFound
             ),
-            patch.object(compiler, "compile_strategy") as compile_strategy,
+            patch.object(compiler, "compile_to_json") as compile_to_json,
         ):
             response = self.client.post("/compile", json={"strategy_id": 8})
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json()["detail"], "Strategy not found")
-        compile_strategy.assert_not_called()
+        compile_to_json.assert_not_called()
 
     def test_strategy_lookup_failure_does_not_compile(self) -> None:
         _sign_in(self.client)
@@ -191,11 +251,11 @@ class CompileRouteTest(unittest.TestCase):
             patch.object(
                 strategies, "get_strategy", side_effect=RuntimeError("db down")
             ),
-            patch.object(compiler, "compile_strategy") as compile_strategy,
+            patch.object(compiler, "compile_to_json") as compile_to_json,
         ):
             response = self.client.post("/compile", json={"strategy_id": 8})
         self.assertEqual(response.status_code, 503)
-        compile_strategy.assert_not_called()
+        compile_to_json.assert_not_called()
 
 
 if __name__ == "__main__":
