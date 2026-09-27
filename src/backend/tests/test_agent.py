@@ -139,7 +139,7 @@ def signed_in():
 
 def test_llm_route_runs_the_agent_with_the_chosen_model(client, signed_in):
     fake = FakeClient(json.dumps(BUILD_CROSSOVER), json.dumps({"reply": "Done."}))
-    with patch("mantis.ai.assistant.ChatClient.from_env", return_value=fake) as from_env:
+    with patch("src.backend.mantis.ai.assistant.ChatClient.from_env", return_value=fake) as from_env:
         response = client.post(
             "/llm",
             json={

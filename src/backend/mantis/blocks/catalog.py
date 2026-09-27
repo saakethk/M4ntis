@@ -1,7 +1,7 @@
 """The block catalog as the backend sees it: ports, parameters, and descriptions.
 
-This mirrors ``integration/software/src/blocks/catalog.ts`` (the editor's catalog)
-and the compiler's catalog in ``software/compiler/tradecpu/blocks.py``. Blocks
+This mirrors ``src/frontend/src/blocks/catalog.ts`` (the editor's catalog)
+and the compiler's catalog in ``dev/software/compiler/tradecpu/blocks.py``. Blocks
 marked ``macro`` are not known to the compiler; :mod:`mantis.blocks.macros`
 rewrites them into compiler blocks before compiling.
 

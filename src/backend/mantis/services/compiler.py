@@ -1,4 +1,4 @@
-"""Compile strategies with the TradeCPU compiler in ``software/compiler``.
+"""Compile strategies with the TradeCPU compiler in ``dev/software/compiler``.
 
 The compiler reads ``m4ntis.strategy/v1`` documents (the editor's saved format).
 Macro blocks such as Z-Score are expanded first, and diagnostics that land on a

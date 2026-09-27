@@ -41,7 +41,7 @@ scripted fake model (see `tests/test_agent.py`).
 Register a tool and the harness lists it in the prompt automatically:
 
 ```python
-from mantis.ai.agent import BLOCK_TOOLS, Tool
+from src.backend.mantis.ai.agent import BLOCK_TOOLS, Tool
 
 def count_blocks(ctx, args):
     return len(ctx.workspace.graph["nodes"])

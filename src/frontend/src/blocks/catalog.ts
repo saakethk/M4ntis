@@ -1,6 +1,6 @@
 // Every block the editor knows: ports, parameters, and how it compiles.
-// Mirrors integration/backend/mantis/blocks/catalog.py (used by the assistant)
-// and software/compiler/tradecpu/blocks.py (used by the compiler).
+// Mirrors src/backend/mantis/blocks/catalog.py (used by the assistant)
+// and dev/software/compiler/tradecpu/blocks.py (used by the compiler).
 
 import { BUFFER_DEPTH, NUM_STOCK_BUFFERS, NUM_VAR_SLOTS, RESOLUTIONS } from './hardware.ts'
 import type { BlockCategory, BlockDef, BlockType, ParamDef, ParamValue, PortDef } from './types.ts'

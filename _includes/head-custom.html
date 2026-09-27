@@ -1,0 +1,15 @@
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (!window.mermaid) return;
+    mermaid.initialize({ startOnLoad: false, theme: "default" });
+    document.querySelectorAll("pre > code.language-mermaid").forEach(function (code) {
+      var pre = code.parentElement;
+      var div = document.createElement("div");
+      div.className = "mermaid";
+      div.textContent = code.textContent;
+      pre.replaceWith(div);
+    });
+    mermaid.run({ querySelector: ".mermaid" });
+  });
+</script>

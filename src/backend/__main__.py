@@ -1,4 +1,4 @@
-"""Run the Mantis backend: ``python main.py`` (port from BACKEND_PORT, default 8001)."""
+"""Run the Mantis backend: ``python -m src.backend`` from the repo root (BACKEND_PORT, default 8001)."""
 
 from __future__ import annotations
 

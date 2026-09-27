@@ -116,7 +116,10 @@ def test_backtests_fpga_route_is_not_captured_by_id(client):
 
 def test_backtests_range_route_is_not_captured_by_id(client):
     with patch.object(auth, "user_from_token", return_value=auth.User(4, "a@b.com")):
-        with patch("mantis.api.routes.backtests.backtests.backtest_available_range", return_value={"symbols": [], "days": []}):
+        with patch(
+            "src.backend.mantis.api.routes.backtests.backtests.backtest_available_range",
+            return_value={"symbols": [], "days": []},
+        ):
             response = client.get("/backtests/range?strategy_id=1", headers={"Authorization": "Bearer test"})
     assert response.status_code == 200
 

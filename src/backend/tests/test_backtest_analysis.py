@@ -67,7 +67,7 @@ def test_run_text_has_blocks_metrics_and_question_but_no_layout():
 
 def test_route_uses_the_chosen_model(client, faked):
     fake = FakeClient()
-    with patch("mantis.ai.backtest_analysis.ChatClient.from_env", return_value=fake) as from_env:
+    with patch("src.backend.mantis.ai.backtest_analysis.ChatClient.from_env", return_value=fake) as from_env:
         response = client.post("/backtests/7/analysis", json={"provider": "meta", "model": "muse-spark-1.3", "question": "Why?"})
     assert response.status_code == 200, response.text
     assert response.json() == {"id": 7, "analysis": "It bought once and never sold.", "model": "muse-spark-1.3"}
