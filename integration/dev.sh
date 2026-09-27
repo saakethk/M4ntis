@@ -16,7 +16,9 @@ fi
 export BACKEND_PORT="${BACKEND_PORT:-8001}"
 export FRONTEND_PORT="${FRONTEND_PORT:-8002}"
 
-if [[ ! -d "$HERE/software/node_modules" ]]; then
+# Check for the vite binary, not just the folder: a partial or stale node_modules has no vite.
+if [[ ! -x "$HERE/software/node_modules/.bin/vite" ]]; then
+  echo "Installing frontend dependencies..."
   npm install --prefix "$HERE/software"
 fi
 
@@ -54,6 +56,9 @@ start() {
 echo "Starting backend on ${BACKEND_PORT} and frontend on ${FRONTEND_PORT}"
 start backend "$HERE/backend" python3 -u main.py
 start frontend "$HERE/software" npm run dev
+# The jobs already have their own process groups; turning job control off again
+# stops bash from printing "Terminated" notices when cleanup stops them.
+set +m
 
 # Stop both as soon as either exits.
 while true; do
