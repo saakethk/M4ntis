@@ -266,6 +266,19 @@ class LlmRouteTest(unittest.TestCase):
             response = self.client.post("/llm", json={"prompt": "help", "temperature": 0})
         self.assertEqual(response.status_code, 422)
 
+    def test_provider_and_model_are_not_extra_inputs(self) -> None:
+        agent = _FakeAgent("A tick is one bar.")
+        with (
+            patch.object(main.auth, "user_from_token", return_value=main.auth.User(4, "a@b.com")),
+            patch.object(main.llm.AIAgent, "from_env", return_value=agent),
+        ):
+            response = self.client.post(
+                "/llm",
+                json={"prompt": "help", "provider": "gemini", "model": "gemini-2.0-flash"},
+            )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertNotIn("Extra inputs are not permitted", response.text)
+
     def test_selected_model_is_passed_to_the_agent(self) -> None:
         agent = _FakeAgent("A tick is one bar.")
         with (

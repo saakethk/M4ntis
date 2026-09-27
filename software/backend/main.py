@@ -114,6 +114,10 @@ class GraphBody(BaseModel):
 
 
 class LlmAsk(BaseModel):
+    # The editor model switcher posts provider and model next to prompt and graph.
+    # Both stay optional so a request can omit them. extra=forbid still rejects any
+    # other key, so these two names have to stay declared or FastAPI returns 422
+    # ("Extra inputs are not permitted") for them.
     model_config = ConfigDict(extra="forbid")
     prompt: str
     graph: GraphBody | None = None
