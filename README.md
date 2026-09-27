@@ -268,7 +268,7 @@ Simulation: `bash src/hardware/scripts/run_sim.sh`.
     │   ├── compiler/         # Strategy → TradeCPU asm/hex (tradecpu package)
     │   └── database/         # Timescale loaders, SQL schemas
     ├── planning/             # Early diagrams and backlog notes
-    └── scripts/dev.sh        # Legacy launcher (old software/ paths — use ./dev.sh)
+    └── scripts/dev.sh        # Forwards to ./dev.sh
 ```
 
 Deeper docs: [`src/backend/README.md`](src/backend/README.md), [`src/frontend/README.md`](src/frontend/README.md), [`dev/software/compiler/README.md`](dev/software/compiler/README.md), [`dev/software/database/README.md`](dev/software/database/README.md).
@@ -330,7 +330,7 @@ cd src/frontend && npm run dev
 ./dev.sh
 ```
 
-Do not use `dev/scripts/dev.sh`—it still points at `software/backend` and `software/frontend_prod`.
+It works with macOS's built-in bash, uses `.venv/bin/python` when present, installs frontend dependencies if needed, and stops both servers on Ctrl-C. `dev/scripts/dev.sh` forwards to it.
 
 Production build: `cd src/frontend && npm run build`, then serve `dist/` with `VITE_API_URL` set to your API.
 
