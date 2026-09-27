@@ -4,10 +4,11 @@
 providers.py   one adapter per vendor API (Gemini, Meta, OpenAI, Anthropic, OpenAI-compatible)
 client.py      ChatClient: same request and response for every provider, retries, config errors
 models.py      the models the product offers, defaults, and validation of the user's choice
-prompts/       prompt files (assistant persona, agent protocol, post summary)
+prompts/       prompt files (assistant persona, agent protocol, post summary, backtest analysis)
 agent/         tool-using harness that edits block graphs        -> agent/README.md
 assistant.py   POST /llm: runs the agent with the chosen model and the compiler as checker
 summaries.py   thread summaries written by Meta Muse Spark
+backtest_analysis.py  POST /backtests/{id}/analysis: explains a finished run
 ```
 
 ## Models
@@ -35,3 +36,12 @@ in `providers.py` and register it in `PROVIDERS`.
 and every reply to Muse Spark (`POST_SUMMARY_MODEL`, default `muse-spark-1.3`) with
 `prompts/post_summary.md`. The result is stored on the post with the reply count it
 saw; it is reused until a new reply arrives or the user asks to regenerate.
+
+## Backtest analysis
+
+`POST /backtests/{id}/analysis` sends the model the run's strategy version snapshot
+(blocks with their params and the wires between them, without canvas positions),
+the metrics, about 40 evenly spaced equity points, up to 60 orders, where the run
+executed, and the user's optional question, with `prompts/backtest_analysis.md`. It
+uses the same model picker and validation as the assistant. Answers are not cached;
+each request calls the model again.

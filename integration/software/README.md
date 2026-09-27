@@ -20,7 +20,7 @@ src/
     editor/             the block editor                         -> editor/README.md
     assistant/          AI assistant panel and model choice
     discussions/        feed, composer, replies, likes, AI thread summaries
-    backtest/           backtest report page
+    backtest/           backtest report page and its AI analysis card
   components/           app shell, icons, popover dismissal
   lib/                  formatting and browser file helpers
   styles/               base, pages, discussions, editor, blocks
@@ -33,7 +33,7 @@ tests/                  node:test unit tests for the non-React modules
 | --- | --- |
 | `/` | My Strategies: open, download as JSON, import JSON, filter by visibility |
 | `/strategy/new`, `/strategy/:id` | Editor |
-| `/backtest/:id` | Backtest report |
+| `/backtest/:id` | Backtest report, with an AI analysis card (model picker, Analyze, follow-up questions) |
 | `/discussions` | Discussions feed |
 
 ## Scripts
