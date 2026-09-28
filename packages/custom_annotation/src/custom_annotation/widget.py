@@ -44,18 +44,16 @@ class Annotator(anywidget.AnyWidget):
             spans=[s.to_dict(text=self._document.text) for s in self._document.spans],
             **kwargs,
         )
-        self.observe(self._spans_changed, names="spans")
 
     @property
     def document(self) -> AnnotationDocument:
         self._document.set_spans_from_dicts(self.spans)
         return self._document
 
-    def _spans_changed(self, change: dict[str, Any]) -> None:
-        if change.get("name") != "spans":
-            return
+    @traitlets.observe("spans")
+    def _spans_changed(self, change: traitlets.Bunch) -> None:
         try:
-            self._document.set_spans_from_dicts(change["new"])
+            self._document.set_spans_from_dicts(change.new)
         except ValueError as exc:
             self.status = f"Invalid span: {exc}"
 
